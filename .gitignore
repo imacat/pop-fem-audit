@@ -1,0 +1,22 @@
+# Copyrighted lyrics cache — never commit full lyrics
+data/lyrics/
+
+# Secrets
+.env
+
+# Claude Code local settings (machine/user-specific, not research content)
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# OS / Dropbox artifacts
+*.conflicted copy*
+.DS_Store

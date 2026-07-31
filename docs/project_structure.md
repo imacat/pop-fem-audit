@@ -1,7 +1,7 @@
 # 專案目錄結構
 
-（2026-07-30 討論定案版；分析管線已改為 API script 路線，
-定義檔不再放 `.claude/agents/`）
+（2026-07-30 討論定案；2026-07-31 更新為 tools/ 子專案與
+SQLite 工作儲存架構）
 
 ```
 pop-fem-audit/
@@ -10,22 +10,29 @@ pop-fem-audit/
 │                              #   絕不放理論、codebook、預期結果）
 ├── .gitignore                 # data/lyrics/、.env、scratch
 ├── conference_abstract.md     # pilot 摘要（投稿版）
-├── data/
+├── data/                      # 源頭與捕捉層（文字格式，進 git）
 │   ├── yearend_hot100_2016_2025.csv   # 原始榜單（唯一手放原始檔）
-│   ├── songs_unique.csv               # 衍生：去重歌曲表（song id）
-│   ├── artists_gender.csv             # 衍生：演唱者性別後設資料
-│   └── lyrics/                        # 歌詞快取（gitignored，版權）
+│   ├── artists_wikidata.csv           # 捕捉：Wikidata 快照
+│   ├── artists_overrides.csv          # 人工核定 / 深度背景
+│   ├── lyrics_provenance.csv          # 歌詞出處（source + method）
+│   └── lyrics/                        # 歌詞 .txt 快取
+│                                      #   （gitignored，版權）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
 │   └── <task>_v<N>.md         #   版本化：screen_v1.md、judge_v2.md…
 ├── tools/                     # 輔助工具子專案（src-layout）
-│   ├── pyproject.toml         #   套件 pop_fem_audit_tools；
+│   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；
 │   │                          #   pip install -e tools/ 安裝
-│   ├── src/pop_fem_audit_tools/ # deterministic Python 程式
-│   │   │                      #   （runner、抓歌詞、統計、圖表）
+│   ├── README.rst  LICENSE  MANIFEST.in  .env.example  .gitignore
+│   ├── docs/                  # Sphinx API 文件
+│   ├── instance/              # SQLite 工作儲存（generated、
+│   │                          #   gitignored；含歌詞全文）
+│   ├── src/pop_fem_audit_tools/
 │   │   ├── __main__.py        # 套件 CLI 進入點（分派子命令）
+│   │   ├── config.py          # pydantic-settings 設定（.env）
+│   │   ├── database.py        # SQLAlchemy engine / session / Base
 │   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
 │   │                          #   自動寫入 runs/；執行方式
-│   │                          #   python -m pop_fem_audit_tools run-llm
+│   │                          #   pop-fem-audit-tools run-llm
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 每次執行的完整稽核紀錄（進 git）
 │   └── <階段>/<日期>-<定義檔版本>/
@@ -35,7 +42,8 @@ pop-fem-audit/
 │       ├── arbitration.jsonl  # 仲裁輸出
 │       └── meta.json          # model ID、temperature、時間戳、
 │                              #   batch ID、一致率
-├── results/                   # 仲裁後最終衍生表（論文引用來源）
+├── results/                   # 論文引用的報表 CSV（export 產出；
+│                              #   「可再生仍 commit」的唯一例外）
 ├── docs/
 │   ├── research_plan.md       # 研究步驟規劃（本檔之姊妹篇）
 │   ├── project_structure.md   # 本檔
@@ -55,8 +63,14 @@ pop-fem-audit/
   論文只引 `results/`，其來源可回溯至 `runs/`。
 - **`prompts/` 用檔名版本化**（不只靠 git 歷史）：定義檔版本是
   論文附錄的引用單位，須可直接指名（如 judge_v2.md）。
-- **API 金鑰**放 `.env`（gitignored），script 由環境變數讀取，
-  絕不寫入 repo。
+- **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
+  commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
+  一律以文字 commit。`results/` 報表是唯一例外（引用穩定性、
+  審稿人零門檻、撰稿期可 diff）。詳見 `research_plan.md`
+  「資料儲存與模型」。
+- **設定**經 pydantic-settings 統一：`.env`（gitignored，範本
+  `tools/.env.example`）供應 `SQLALCHEMY_DATABASE_URL` 與
+  `ANTHROPIC_API_KEY`，絕不寫入 repo。
 - **CLAUDE.md 極簡**：實測證實 Claude Code subagent 會繼承專案
   CLAUDE.md 全文，故其中只放工作流程規則，領域知識一律放
   `docs/`（subagent 不會自動讀到）。

@@ -49,3 +49,27 @@
   console script `pop-fem-audit-tools run-llm ...`
   （`[project.scripts]`）。理由：後續多支工具共用單一入口，
   `--help` 可列出全部子命令，重現文件穩定。
+- **資料儲存架構定案**：commit 判準——凡能由「committed 輸入＋
+  committed 程式」決定性再生者不 commit；源頭、外部捕捉、人工
+  著作以文字格式 commit。工作儲存採 SQLite 單檔
+  （`tools/instance/`，generated、不進 git；歌詞全文入 DB 故無
+  版權疑慮），schema 以 SQLAlchemy 2.0 typed ORM 定義，設定經
+  pydantic-settings（`.env`）。`results/` 報表 CSV 為「可再生仍
+  commit」的唯一例外，理由：論文引用穩定性、審稿人零門檻、
+  撰稿期數字變動可 diff。（本條經多輪辯證後定案，推翻 Claude
+  最初的全 CSV 方案。）
+- **資料模型**：songs、chart_entries（1—N）、artists、
+  song_artists（M—N：角色、署名順序）、lyrics（1—1）；領域
+  不變量檢查內建 `build-db`，違規即失敗。
+- **歌手背景擴充與防火牆**：歌手資料擴為實體表（QID、性別、
+  型態、曲風、國籍），women-power 候選的歌手另做深度背景
+  （族裔以公開自我認同為準、音樂場景），供人工解讀與論文
+  討論；**歌手背景絕不進 LLM 輸入**（歌詞-only），避免光環
+  偏誤污染條件 A/B 實驗。
+- **沿用先導研究歌詞捕捉**（lyrics.json，684 首，2018–2025）：
+  只匯入識別欄位與歌詞本文，pilot 分析欄位不匯入；以
+  (year, rank) 精確匹配。出處記於 `lyrics_provenance.csv`：
+  source（原始 API）與 method（pilot-import / api-fetch）
+  兩層；取得日期不可考者不假造，僅記可證上界。
+- **`run_llm` 改走 pydantic-settings 統一設定**（刪手寫 .env
+  parser），與 `config.py` / `database.py` 一致。

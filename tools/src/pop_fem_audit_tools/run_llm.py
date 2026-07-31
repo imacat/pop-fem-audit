@@ -14,7 +14,6 @@ arbitration batch, and archives every artifact self-contained under
 import argparse
 import hashlib
 import json
-import os
 import sys
 import time
 from datetime import datetime
@@ -22,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 import anthropic
+
+from .config import get_settings
 
 type Item = dict[str, str]
 """An input item with "id" and "content"."""
@@ -133,49 +134,6 @@ def load_items(path: Path) -> list[Item]:
     if len(items) == 0:
         raise InputFormatError(f"{path}: no input items")
     return items
-
-
-def parse_env_file(path: Path) -> dict[str, str]:
-    """Parse a simple KEY=VALUE .env file.
-
-    Blank lines and lines starting with "#" are ignored.
-
-    :param path: The path of the .env file.
-    :return: The key-value pairs; empty when the file is missing.
-    """
-    values: dict[str, str] = {}
-    if not path.is_file():
-        return values
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped: str = line.strip()
-        if stripped == "" or stripped.startswith("#"):
-            continue
-        if "=" not in stripped:
-            continue
-        key, _, value = stripped.partition("=")
-        values[key.strip()] = value.strip()
-    return values
-
-
-def resolve_api_key(env_path: Path) -> str:
-    """Resolve the Anthropic API key.
-
-    The ``ANTHROPIC_API_KEY`` environment variable takes precedence;
-    the .env file is consulted as a fallback.
-
-    :param env_path: The path of the .env file.
-    :return: The API key.
-    :raises RuntimeError: When no API key can be found.
-    """
-    key: str | None = os.environ.get("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    key = parse_env_file(env_path).get("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    raise RuntimeError(
-        "ANTHROPIC_API_KEY is not set in the environment and not"
-        f" found in {env_path}")
 
 
 def build_request(item: Item, system_prompt: str,
@@ -571,13 +529,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"dry run: archive created at {run_dir}",
               file=sys.stderr)
         return 0
-    try:
-        api_key: str = resolve_api_key(Path(".env"))
-    except RuntimeError as error:
-        print(f"error: {error}", file=sys.stderr)
-        return 1
     client: anthropic.Anthropic = anthropic.Anthropic(
-        api_key=api_key)
+        api_key=get_settings().ANTHROPIC_API_KEY)
     run1: Results
     run2: Results
     run1, run2 = execute_runs(

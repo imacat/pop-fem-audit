@@ -4,6 +4,14 @@ pop\_fem\_audit\_tools package
 Submodules
 ----------
 
+pop\_fem\_audit\_tools.config module
+------------------------------------
+
+.. automodule:: pop_fem_audit_tools.config
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 pop\_fem\_audit\_tools.run\_llm module
 --------------------------------------
 

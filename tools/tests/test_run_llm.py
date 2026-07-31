@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from pop_fem_audit_tools import run_llm
+from pop_fem_audit_tools import config, run_llm
 
 
 class RunLLMTestCase(unittest.TestCase):
@@ -153,58 +153,6 @@ class TestLoadItems(RunLLMTestCase):
         path: Path = self.__write_input("")
         with self.assertRaises(run_llm.InputFormatError):
             run_llm.load_items(path)
-
-
-class TestEnvParsing(RunLLMTestCase):
-    """Test cases for the .env parsing and API key resolution."""
-
-    def setUp(self) -> None:
-        """Create a temporary directory for the .env files."""
-        self.__dir: Path = self._make_temp_dir()
-
-    def test_parse_env_file(self) -> None:
-        """Test parsing a .env file with comments and blanks."""
-        path: Path = self.__dir / ".env"
-        path.write_text(
-            "# a comment\n"
-            "\n"
-            "ANTHROPIC_API_KEY=sk-test-123\n"
-            "OTHER = value \n"
-            "garbage line\n",
-            encoding="utf-8")
-        values: dict[str, str] = run_llm.parse_env_file(path)
-        self.assertEqual(values,
-                         {"ANTHROPIC_API_KEY": "sk-test-123",
-                          "OTHER": "value"})
-
-    def test_parse_missing_env_file(self) -> None:
-        """Test that a missing .env file yields no values."""
-        values: dict[str, str] = run_llm.parse_env_file(
-            self.__dir / ".env")
-        self.assertEqual(values, {})
-
-    def test_resolve_from_environment(self) -> None:
-        """Test that the environment variable takes precedence."""
-        path: Path = self.__dir / ".env"
-        path.write_text("ANTHROPIC_API_KEY=sk-file\n",
-                        encoding="utf-8")
-        with mock.patch.dict(os.environ,
-                             {"ANTHROPIC_API_KEY": "sk-env"}):
-            self.assertEqual(run_llm.resolve_api_key(path), "sk-env")
-
-    def test_resolve_from_env_file(self) -> None:
-        """Test that the .env file is used as a fallback."""
-        path: Path = self.__dir / ".env"
-        path.write_text("ANTHROPIC_API_KEY=sk-file\n",
-                        encoding="utf-8")
-        with mock.patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(run_llm.resolve_api_key(path), "sk-file")
-
-    def test_resolve_missing_key(self) -> None:
-        """Test that a missing API key raises an error."""
-        with mock.patch.dict(os.environ, {}, clear=True):
-            with self.assertRaises(RuntimeError):
-                run_llm.resolve_api_key(self.__dir / ".env")
 
 
 class TestRequestBuilding(RunLLMTestCase):
@@ -373,6 +321,10 @@ class TestMainFlow(RunLLMTestCase):
             "--arbitration-prompt", "prompts/task_arbitration_v1.md",
             "--input", "items.jsonl",
             "--phase", "coding"]
+        self.__settings: config.Settings = config.Settings(
+            SQLALCHEMY_DATABASE_URL="sqlite://",
+            ANTHROPIC_API_KEY="test-key")
+        config.set_settings(self.__settings)
 
     @staticmethod
     def __make_client(run1: list[Any], run2: list[Any],
@@ -414,10 +366,8 @@ class TestMainFlow(RunLLMTestCase):
         """
         stdout: io.StringIO = io.StringIO()
         stderr: io.StringIO = io.StringIO()
-        environ: dict[str, str] = {"ANTHROPIC_API_KEY": "sk-test"}
-        with mock.patch.dict(os.environ, environ), \
-                mock.patch.object(run_llm.anthropic, "Anthropic",
-                                  return_value=client), \
+        with mock.patch.object(run_llm.anthropic, "Anthropic",
+                               return_value=client), \
                 redirect_stdout(stdout), redirect_stderr(stderr):
             status: int = run_llm.main(argv)
         return status, stdout.getvalue()

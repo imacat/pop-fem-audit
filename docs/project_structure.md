@@ -17,10 +17,16 @@ pop-fem-audit/
 │   └── lyrics/                        # 歌詞快取（gitignored，版權）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
 │   └── <task>_v<N>.md         #   版本化：screen_v1.md、judge_v2.md…
-├── scripts/                   # deterministic Python scripts
-│   │                          #   （runner、抓歌詞、統計、圖表）
-│   └── run_llm.py             # API runner：2+1 協定、Batch API、
-│                              #   自動寫入 runs/
+├── tools/                     # 輔助工具子專案（src-layout）
+│   ├── pyproject.toml         #   套件 pop_fem_audit_tools；
+│   │                          #   pip install -e tools/ 安裝
+│   ├── src/pop_fem_audit_tools/ # deterministic Python 程式
+│   │   │                      #   （runner、抓歌詞、統計、圖表）
+│   │   ├── __main__.py        # 套件 CLI 進入點（分派子命令）
+│   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
+│   │                          #   自動寫入 runs/；執行方式
+│   │                          #   python -m pop_fem_audit_tools run-llm
+│   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 每次執行的完整稽核紀錄（進 git）
 │   └── <階段>/<日期>-<定義檔版本>/
 │       ├── prompt.md          # 當次定義檔快照（自我完備）

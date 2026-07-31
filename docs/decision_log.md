@@ -27,3 +27,25 @@
 - **完整歌詞不進 git**（版權）；API 金鑰走 `.env`。
 - **專案目錄維持原名 `pop-fem-audit`**：API 管線下目錄名不會
   進入模型輸入，無污染疑慮。
+
+## 2026-07-31
+
+- **專案英文名定為「A Feminist Audit of Pop Music」**：明示
+  女性主義立場，「audit」兼指對歌曲與對 LLM 標籤系統的稽核，
+  並與縮寫 `pop-fem-audit` 對應。
+- **程式碼收整為 `tools/` src-layout 子專案**：發行名
+  `pop-fem-audit-tools`、import 套件名 `pop_fem_audit_tools`、
+  description「Tools for A Feminist Audit of Pop Music.」；
+  以 `pip install -e tools/` 安裝、`python -m
+  pop_fem_audit_tools.run_llm` 執行；相依套件記於
+  `pyproject.toml`（`requirements.txt` 移除）；Sphinx 文件
+  暫緩。理由：後續多支程式將共用程式碼，套件化後測試可用
+  正常 import；目錄名 `tools/` 經無脈絡的獨立 subagent 命名
+  評估選出，最誠實反映「服務研究的輔助工具」定位——研究
+  本體在根目錄的 prompts/、runs/、results/，程式只是配套。
+- **CLI 入口改為套件層級 dispatcher**：dispatcher 為單一
+  入口，`run_llm.py` 的 entry point 移除；有兩種等價呼叫
+  形式——`python -m pop_fem_audit_tools run-llm ...` 與
+  console script `pop-fem-audit-tools run-llm ...`
+  （`[project.scripts]`）。理由：後續多支工具共用單一入口，
+  `--help` 可列出全部子命令，重現文件穩定。

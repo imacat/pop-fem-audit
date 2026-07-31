@@ -7,12 +7,6 @@ data/lyrics/
 # Claude Code local settings (machine/user-specific, not research content)
 .claude/
 
-# Python
-__pycache__/
-*.pyc
-.venv/
-venv/
-
 # IDE
 .idea/
 .vscode/
@@ -20,3 +14,4 @@ venv/
 # OS / Dropbox artifacts
 *.conflicted copy*
 .DS_Store
+excludes/

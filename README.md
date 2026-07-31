@@ -14,17 +14,20 @@ Hot 100（2016–2025）為例的內容分析。
 
 ## 重現方式
 
-1. 準備 Python 3.10+ 環境，安裝 `requirements.txt`。
-2. 將 Anthropic API 金鑰寫入 `.env`（格式見 `.env.example`）。
-3. 依 `docs/research_plan.md` 的階段順序執行 `scripts/` 下的
-   程式。LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
+1. 準備 Python 3.12+ 環境，安裝分析管線套件：
+   `pip install -e tools/`。
+2. 將 Anthropic API 金鑰寫入 `.env`（格式見
+   `tools/.env.example`）。
+3. 依 `docs/research_plan.md` 的階段順序執行 `tools/`
+   子專案的程式（如 `python -m pop_fem_audit_tools run-llm ...`）。
+   LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
    thinking 關閉；每步驟獨立執行兩次後由仲裁步驟合併
    （「2+1」協定）。
 4. 每次執行的完整紀錄（定義檔快照、原始輸出、參數）存於
    `runs/`，可逐筆稽核。論文引用的最終資料表在 `results/`。
 
 注意：歌詞受版權保護，`data/lyrics/` 不隨 repo 發布，須自行
-以 `scripts/` 中的抓取程式重建。
+以 `tools/` 中的抓取程式重建。
 
 ## 授權
 

@@ -1,0 +1,53 @@
+# Tools for A Feminist Audit of Pop Music.
+# Copyright 2026 imacat.  All rights reserved.
+# Authors:
+#   imacat@mail.imacat.idv.tw (imacat), 2026/7/30
+
+[project]
+name = "pop-fem-audit-tools"
+dynamic = ["version"]
+description = "Tools for A Feminist Audit of Pop Music."
+readme = "README.rst"
+requires-python = ">=3.12"
+authors = [
+    {name = "imacat", email = "imacat@mail.imacat.idv.tw"},
+]
+keywords = [
+    "content analysis",
+    "feminism",
+    "gender studies",
+    "popular music",
+    "lyrics",
+    "Billboard",
+    "LLM",
+    "computational social science",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Sociology",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "anthropic",
+]
+
+[project.scripts]
+pop-fem-audit-tools = "pop_fem_audit_tools.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "pop_fem_audit_tools.VERSION"}

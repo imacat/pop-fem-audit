@@ -1,0 +1,11 @@
+# Tools for A Feminist Audit of Pop Music.
+# Copyright 2026 imacat.  All rights reserved.
+# Authors:
+#   imacat@mail.imacat.idv.tw (imacat), 2026/7/31
+
+include .env.example
+recursive-include docs *
+recursive-exclude docs/build *
+recursive-include tests *
+recursive-exclude tests *.pyc
+exclude tests/test_temp.py

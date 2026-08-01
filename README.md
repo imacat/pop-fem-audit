@@ -16,10 +16,15 @@ Hot 100（2016–2025）為例的內容分析。
 
 1. 準備 Python 3.14+ 環境，安裝分析管線套件：
    `pip install -e tools/`。
-2. 將 Anthropic API 金鑰寫入 `.env`（格式見
-   `tools/.env.example`）。
-3. 依 `docs/research_plan.md` 的階段順序執行 `tools/`
-   子專案的程式（如 `python -m pop_fem_audit_tools run-llm ...`）。
+2. 自 `tools/.env.example` 建立 `tools/.env`，寫入
+   Anthropic API 金鑰。
+3. 依 `docs/research_plan.md` 的階段順序，於 `tools/` 目錄下
+   執行子命令，必要輸入以位置引數、選擇性輸入以選項給定（如
+   `pop-fem-audit-tools build-db
+   ../data/yearend_hot100_2016_2025.csv
+   --lyrics-dir ../data/lyrics
+   --wikidata-csv ../data/artists_wikidata.csv
+   --overrides-csv ../data/artists_overrides.csv`）。
    LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
    thinking 關閉；每步驟獨立執行兩次後由仲裁步驟合併
    （「2+1」協定）。

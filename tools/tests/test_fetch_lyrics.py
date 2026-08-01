@@ -6,7 +6,6 @@
 import csv
 import io
 import json
-import os
 import tempfile
 import unittest
 import urllib.error
@@ -38,15 +37,15 @@ class TestFetchLyrics(unittest.TestCase):
     """The expected header row of the missing report CSV file."""
 
     def setUp(self) -> None:
-        """Create a temporary working directory with the store."""
+        """Create a temporary capture directory with the store."""
         tmp: tempfile.TemporaryDirectory[str] \
             = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
-        old_cwd: str = os.getcwd()
-        self.addCleanup(os.chdir, old_cwd)
-        os.chdir(self.__dir)
-        Path("data").mkdir()
+        self.__lyrics: Path = self.__dir / "lyrics"
+        self.__provenance: Path = \
+            self.__dir / "lyrics_provenance.csv"
+        self.__missing: Path = self.__dir / "lyrics_missing.csv"
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL=url,
@@ -110,8 +109,7 @@ class TestFetchLyrics(unittest.TestCase):
         return urllib.error.HTTPError(
             "https://example.com/", 404, "Not Found", None, None)
 
-    @staticmethod
-    def __run_fetch() -> tuple[int, str]:
+    def __run_fetch(self) -> tuple[int, str]:
         """Run the fetcher with the standard error captured.
 
         :return: A tuple of the exit status and the standard
@@ -119,7 +117,9 @@ class TestFetchLyrics(unittest.TestCase):
         """
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
-            status: int = fetch_lyrics.main([])
+            status: int = fetch_lyrics.main(
+                [str(self.__lyrics), str(self.__provenance),
+                 str(self.__missing)])
         return status, stderr.getvalue()
 
     @staticmethod
@@ -149,10 +149,11 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual(request.get_header("User-agent"),
                          fetch_lyrics.USER_AGENT)
         self.assertEqual(
-            Path("data/lyrics/1.txt").read_text(encoding="utf-8"),
+            (self.__lyrics / "1.txt")
+            .read_text(encoding="utf-8"),
             "Hello, it's me\n")
         rows: list[list[str]] = self.__read_rows(
-            Path("data/lyrics_provenance.csv"))
+            self.__provenance)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], self.PROVENANCE_HEADER)
         self.assertEqual(rows[1][:3],
@@ -175,10 +176,11 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 2)
         self.assertEqual(
-            Path("data/lyrics/1.txt").read_text(encoding="utf-8"),
+            (self.__lyrics / "1.txt")
+            .read_text(encoding="utf-8"),
             "Hello\n")
         rows: list[list[str]] = self.__read_rows(
-            Path("data/lyrics_provenance.csv"))
+            self.__provenance)
         self.assertEqual(rows[1][:2], ["1", "lrclib"])
 
     def test_both_miss(self) -> None:
@@ -192,11 +194,9 @@ class TestFetchLyrics(unittest.TestCase):
             stderr: str
             status, stderr = self.__run_fetch()
         self.assertEqual(status, 0)
-        self.assertFalse(Path("data/lyrics/1.txt").exists())
-        self.assertFalse(
-            Path("data/lyrics_provenance.csv").exists())
-        rows: list[list[str]] = self.__read_rows(
-            Path("data/lyrics_missing.csv"))
+        self.assertFalse((self.__lyrics / "1.txt").exists())
+        self.assertFalse(self.__provenance.exists())
+        rows: list[list[str]] = self.__read_rows(self.__missing)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], self.MISSING_HEADER)
         self.assertEqual(rows[1][:3], ["1", "Hello", "Adele"])
@@ -205,8 +205,8 @@ class TestFetchLyrics(unittest.TestCase):
     def test_cached_song_skipped(self) -> None:
         """Test that a cached song triggers no HTTP request."""
         self.__seed([("Hello", "Adele")])
-        Path("data/lyrics").mkdir()
-        Path("data/lyrics/1.txt").write_text(
+        self.__lyrics.mkdir()
+        (self.__lyrics / "1.txt").write_text(
             "cached\n", encoding="utf-8")
         urlopen: mock.Mock
         with mock.patch("urllib.request.urlopen") as urlopen:
@@ -214,10 +214,10 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual(status, 0)
         urlopen.assert_not_called()
         self.assertEqual(
-            Path("data/lyrics/1.txt").read_text(encoding="utf-8"),
+            (self.__lyrics / "1.txt")
+            .read_text(encoding="utf-8"),
             "cached\n")
-        rows: list[list[str]] = self.__read_rows(
-            Path("data/lyrics_missing.csv"))
+        rows: list[list[str]] = self.__read_rows(self.__missing)
         self.assertEqual(rows, [self.MISSING_HEADER])
 
     def test_url_encoding(self) -> None:
@@ -252,17 +252,17 @@ class TestFetchLyrics(unittest.TestCase):
                     self.__response({"lyrics": "one\n"}),
                     self.__response({"lyrics": "two\n"})]):
             self.assertEqual(self.__run_fetch()[0], 0)
-        provenance: Path = Path("data/lyrics_provenance.csv")
-        rows: list[list[str]] = self.__read_rows(provenance)
+        rows: list[list[str]] = self.__read_rows(
+            self.__provenance)
         self.assertEqual(len(rows), 3)
         self.assertEqual(rows[0], self.PROVENANCE_HEADER)
-        Path("data/lyrics/2.txt").unlink()
+        (self.__lyrics / "2.txt").unlink()
         with mock.patch(
                 "urllib.request.urlopen",
                 side_effect=[
                     self.__response({"lyrics": "two again\n"})]):
             self.assertEqual(self.__run_fetch()[0], 0)
-        rows = self.__read_rows(provenance)
+        rows = self.__read_rows(self.__provenance)
         self.assertEqual(len(rows), 4)
         self.assertEqual(rows[0], self.PROVENANCE_HEADER)
         self.assertNotIn(self.PROVENANCE_HEADER, rows[1:])

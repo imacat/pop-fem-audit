@@ -6,7 +6,6 @@
 """Unit tests for the run_llm batch runner module."""
 import io
 import json
-import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -310,24 +309,24 @@ class TestMainFlow(RunLLMTestCase):
     """Test cases for the end-to-end main flow."""
 
     def setUp(self) -> None:
-        """Create a temporary working directory with input files."""
+        """Create a temporary directory with the input files."""
         directory: Path = self._make_temp_dir()
-        old_cwd: str = os.getcwd()
-        self.addCleanup(os.chdir, old_cwd)
-        os.chdir(directory)
-        Path("prompts").mkdir()
-        Path("prompts/task_v1.md").write_text(
-            "The task prompt.\n", encoding="utf-8")
-        Path("prompts/task_arbitration_v1.md").write_text(
+        self.__runs: Path = directory / "runs"
+        prompt: Path = directory / "task_v1.md"
+        prompt.write_text("The task prompt.\n", encoding="utf-8")
+        arbitration: Path = directory / "task_arbitration_v1.md"
+        arbitration.write_text(
             "The arbitration prompt.\n", encoding="utf-8")
-        Path("items.jsonl").write_text(
+        self.__input: Path = directory / "items.jsonl"
+        self.__input.write_text(
             '{"id": "a", "content": "first item"}\n'
             '{"id": "b", "content": "second item"}\n',
             encoding="utf-8")
         self.__argv: list[str] = [
-            "--prompt", "prompts/task_v1.md",
-            "--arbitration-prompt", "prompts/task_arbitration_v1.md",
-            "--input", "items.jsonl",
+            str(self.__runs),
+            "--prompt", str(prompt),
+            "--arbitration-prompt", str(arbitration),
+            "--input", str(self.__input),
             "--phase", "coding"]
         self.__settings: config.Settings = config.Settings(
             SQLALCHEMY_DATABASE_URL="sqlite://",
@@ -385,7 +384,8 @@ class TestMainFlow(RunLLMTestCase):
 
         :return: The archive directory.
         """
-        directories: list[Path] = list(Path("runs/coding").iterdir())
+        directories: list[Path] = list(
+            (self.__runs / "coding").iterdir())
         self.assertEqual(len(directories), 1)
         return directories[0]
 
@@ -509,9 +509,8 @@ class TestMainFlow(RunLLMTestCase):
 
     def test_invalid_input_exits_non_zero(self) -> None:
         """Test that an invalid input file aborts before archiving."""
-        Path("items.jsonl").write_text(
-            '{"id": "a"}\n', encoding="utf-8")
+        self.__input.write_text('{"id": "a"}\n', encoding="utf-8")
         status: int = self.__run_main(
             self.__argv + ["--dry-run"])[0]
         self.assertEqual(status, 1)
-        self.assertFalse(Path("runs").exists())
+        self.assertFalse(self.__runs.exists())

@@ -5,8 +5,13 @@
 """The builder of the SQLite working store.
 
 Rebuilds the working store from scratch out of the committed
-inputs: the year-end chart CSV, the lyrics cache, the Wikidata
-artist snapshot, and the manual artist overrides.  Missing tables
+inputs: the year-end chart CSV, given as the positional
+command-line argument, and the optional capture inputs, each
+given as an option: the lyrics cache directory, the Wikidata
+artist snapshot CSV, and the manual artist overrides CSV.  An
+omitted option leaves its capture layer unloaded; a given
+option whose path does not exist fails the build.  Missing
+tables
 are created on a fresh store; existing tables are never altered,
 as the schema lifecycle belongs to the migrations.  Every rebuild
 deletes all the rows, loads the data, and validates it in one
@@ -18,9 +23,6 @@ The rebuild is deterministic: the builder assigns the song and
 artist IDs itself, as 1, 2, 3, ... in the first-occurrence file
 order, so the IDs are reproducible across rebuilds on every
 database engine, given the frozen input file.
-
-Run from the repository root; the input paths are relative to the
-current working directory.
 """
 import argparse
 import csv
@@ -43,14 +45,6 @@ from .models import (
     SongArtist,
 )
 
-CHART_CSV: Path = Path("data/yearend_hot100_2016_2025.csv")
-"""The year-end chart CSV file."""
-LYRICS_DIR: Path = Path("data/lyrics")
-"""The lyrics cache directory."""
-WIKIDATA_CSV: Path = Path("data/artists_wikidata.csv")
-"""The Wikidata artist snapshot CSV file."""
-OVERRIDES_CSV: Path = Path("data/artists_overrides.csv")
-"""The manual artist override CSV file."""
 YEARS: Sequence[int] = range(2016, 2026)
 """The expected chart years."""
 RANKS_PER_YEAR: int = 100
@@ -85,6 +79,18 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Rebuild the SQLite working store from the"
                     " committed inputs.")
+    parser.add_argument(
+        "chart_csv", type=Path,
+        help="the year-end chart CSV file")
+    parser.add_argument(
+        "--lyrics-dir", type=Path, default=None,
+        help="the lyrics cache directory to load")
+    parser.add_argument(
+        "--wikidata-csv", type=Path, default=None,
+        help="the Wikidata artist snapshot CSV file to apply")
+    parser.add_argument(
+        "--overrides-csv", type=Path, default=None,
+        help="the manual artist override CSV file to apply")
     return parser.parse_args(argv)
 
 
@@ -189,18 +195,15 @@ def load_chart(session: Session, path: Path) -> None:
 def load_lyrics(session: Session, directory: Path) -> None:
     """Load the cached lyrics files into the matching songs.
 
-    A missing directory is skipped.  A file whose stem is not an
-    existing song ID is skipped with a warning to the standard
-    error.
+    A file whose stem is not an existing song ID is skipped with
+    a warning to the standard error.
 
     :param session: The database session, with the songs flushed.
-    :param directory: The lyrics cache directory with one
-        ``<song_id>.txt`` file per song.
+    :param directory: The existing lyrics cache directory with
+        one ``<song_id>.txt`` file per song.
     :return: None.
     :raises OSError: When a lyrics file cannot be read.
     """
-    if not directory.is_dir():
-        return
     for path in sorted(directory.glob("*.txt")):
         song: Song | None = None
         if path.stem.isdigit():
@@ -217,8 +220,7 @@ def apply_artist_csv(session: Session, path: Path) -> None:
 
     Artists match by exact name.  Only the non-empty cells are
     applied, so a later CSV overrides an earlier one field by
-    field.  The note column is ignored.  A missing file is
-    skipped.
+    field.  The note column is ignored.
 
     :param session: The database session, with the artists
         flushed.
@@ -228,8 +230,6 @@ def apply_artist_csv(session: Session, path: Path) -> None:
     :raises BuildError: When a name matches no artist.
     :raises OSError: When the file cannot be read.
     """
-    if not path.exists():
-        return
     with open(path, encoding="utf-8", newline="") as file:
         row: dict[str, str]
         for row in csv.DictReader(file):
@@ -372,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
         ``sys.argv``.
     :return: The exit status: 0 on success, non-zero on failure.
     """
-    parse_args(argv)
+    args: argparse.Namespace = parse_args(argv)
     engine: sa.Engine = ds.engine
     prepare_engine(engine)
     Base.metadata.create_all(engine)
@@ -380,11 +380,17 @@ def main(argv: list[str] | None = None) -> int:
     counts: StoreCounts
     try:
         reset_store(session)
-        load_chart(session, CHART_CSV)
+        load_chart(session, args.chart_csv)
         session.flush()
-        load_lyrics(session, LYRICS_DIR)
-        apply_artist_csv(session, WIKIDATA_CSV)
-        apply_artist_csv(session, OVERRIDES_CSV)
+        if args.lyrics_dir is not None:
+            if not args.lyrics_dir.is_dir():
+                raise BuildError(
+                    f"{args.lyrics_dir}: no such directory")
+            load_lyrics(session, args.lyrics_dir)
+        if args.wikidata_csv is not None:
+            apply_artist_csv(session, args.wikidata_csv)
+        if args.overrides_csv is not None:
+            apply_artist_csv(session, args.overrides_csv)
         session.flush()
         violations: list[str] = find_violations(
             session, YEARS, RANKS_PER_YEAR)

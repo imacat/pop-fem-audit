@@ -6,7 +6,6 @@
 import csv
 import io
 import json
-import os
 import tempfile
 import unittest
 import urllib.error
@@ -31,15 +30,13 @@ class TestFetchArtists(unittest.TestCase):
     """The expected header row of the snapshot CSV file."""
 
     def setUp(self) -> None:
-        """Create a temporary working directory with the store."""
+        """Create a temporary capture directory with the store."""
         tmp: tempfile.TemporaryDirectory[str] \
             = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
-        old_cwd: str = os.getcwd()
-        self.addCleanup(os.chdir, old_cwd)
-        os.chdir(self.__dir)
-        Path("data").mkdir()
+        self.__snapshot: Path = \
+            self.__dir / "artists_wikidata.csv"
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL=url,
@@ -116,8 +113,7 @@ class TestFetchArtists(unittest.TestCase):
             x: {"labels": {"en": {"value": y}}}
             for x, y in labels.items()}}
 
-    @staticmethod
-    def __run_fetch() -> tuple[int, str]:
+    def __run_fetch(self) -> tuple[int, str]:
         """Run the fetcher with the standard error captured.
 
         :return: A tuple of the exit status and the standard
@@ -125,7 +121,8 @@ class TestFetchArtists(unittest.TestCase):
         """
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
-            status: int = fetch_artists.main([])
+            status: int = fetch_artists.main(
+                [str(self.__snapshot)])
         return status, stderr.getvalue()
 
     @staticmethod
@@ -183,7 +180,7 @@ class TestFetchArtists(unittest.TestCase):
             "?action=wbgetentities&ids=Q2%7CQ5%7CQ3%7CQ4%7CQ6"
             "&props=labels&languages=en&format=json")
         rows: list[list[str]] = self.__read_rows(
-            Path("data/artists_wikidata.csv"))
+            self.__snapshot)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], self.HEADER)
         self.assertEqual(rows[1], [
@@ -214,7 +211,7 @@ class TestFetchArtists(unittest.TestCase):
             status: int = self.__run_fetch()[0]
         self.assertEqual(status, 0)
         rows: list[list[str]] = self.__read_rows(
-            Path("data/artists_wikidata.csv"))
+            self.__snapshot)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1], [
             "BTS", "Q10", "", "group", "K-pop", "South Korea",
@@ -234,7 +231,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 1)
         rows: list[list[str]] = self.__read_rows(
-            Path("data/artists_wikidata.csv"))
+            self.__snapshot)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], self.HEADER)
         self.assertEqual(rows[1], [
@@ -255,7 +252,7 @@ class TestFetchArtists(unittest.TestCase):
             status, stderr = self.__run_fetch()
         self.assertEqual(status, 0)
         rows: list[list[str]] = self.__read_rows(
-            Path("data/artists_wikidata.csv"))
+            self.__snapshot)
         self.assertEqual(len(rows), 3)
         self.assertEqual(rows[1][:2], ["Broken", ""])
         self.assertTrue(rows[1][6].startswith("error: "))
@@ -268,7 +265,7 @@ class TestFetchArtists(unittest.TestCase):
     def test_rerun_skips_existing(self) -> None:
         """Test that the snapshot rows are skipped and preserved."""
         self.__seed(["Adele", "Nobody"])
-        snapshot: Path = Path("data/artists_wikidata.csv")
+        snapshot: Path = self.__snapshot
         old_row: list[str] = [
             "Adele", "Q1", "female", "solo", "pop",
             "United Kingdom", "English singer"]

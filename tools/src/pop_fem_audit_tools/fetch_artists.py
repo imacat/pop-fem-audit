@@ -6,17 +6,14 @@
 
 Fetches the metadata of the artists without a snapshot row from
 Wikidata into the capture layer: the Wikidata artist snapshot
-CSV.  The working store is only read, never written; the
-``build-db`` subcommand assembles the captured files into the
-store on the next rebuild.
+CSV, given as the positional command-line argument.  The working
+store is only read, never written; the ``build-db`` subcommand
+assembles the captured files into the store on the next rebuild.
 
 Every fetched row is meant for later human verification: the
 description of the search hit is recorded in the note column so
 that a bad match can be spotted.  A search miss or an error on
 one artist is noted on its row and does not fail the run.
-
-Run from the repository root; the data paths are relative to the
-current working directory.
 """
 import argparse
 import csv
@@ -37,8 +34,6 @@ from sqlalchemy.orm import Session
 from .database import ds
 from .models import Artist
 
-WIKIDATA_CSV: Path = Path("data/artists_wikidata.csv")
-"""The Wikidata artist snapshot CSV file."""
 API_URL: str = "https://www.wikidata.org/w/api.php"
 """The URL of the Wikidata API endpoint."""
 USER_AGENT: str = ("pop-fem-audit-tools"
@@ -130,6 +125,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Fetch the artist metadata from Wikidata"
                     " into the capture layer.")
+    parser.add_argument(
+        "wikidata_csv", type=Path,
+        help="the Wikidata artist snapshot CSV file")
     return parser.parse_args(argv)
 
 
@@ -341,34 +339,36 @@ class ArtistFetcher:
             return json.load(response)
 
 
-def read_snapshot_names() -> set[str]:
+def read_snapshot_names(path: Path) -> set[str]:
     """Read the artist names already in the snapshot CSV file.
 
+    :param path: The Wikidata artist snapshot CSV file.
     :return: The artist names, or an empty set when the file is
         missing.
     :raises OSError: When the file cannot be read.
     """
-    if not WIKIDATA_CSV.exists():
+    if not path.exists():
         return set()
-    with open(WIKIDATA_CSV, encoding="utf-8",
+    with open(path, encoding="utf-8",
               newline="") as file:
         reader: csv.DictReader[str] = csv.DictReader(file)
         return {x["name"] for x in reader}
 
 
-def append_row(snapshot: ArtistSnapshot) -> None:
+def append_row(path: Path, snapshot: ArtistSnapshot) -> None:
     """Append a snapshot row to the snapshot CSV file.
 
     The CSV file is created with the header row when missing; the
     existing rows are preserved.
 
+    :param path: The Wikidata artist snapshot CSV file.
     :param snapshot: The snapshot of an artist.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
-    is_new: bool = not WIKIDATA_CSV.exists()
-    WIKIDATA_CSV.parent.mkdir(parents=True, exist_ok=True)
-    with open(WIKIDATA_CSV, "a", encoding="utf-8",
+    is_new: bool = not path.exists()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8",
               newline="") as file:
         writer: csv.DictWriter[str] = csv.DictWriter(
             file, SNAPSHOT_FIELDS)
@@ -385,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     :return: The exit status: 0 on success, misses and errors
         included, non-zero on a setup error.
     """
-    parse_args(argv)
+    args: argparse.Namespace = parse_args(argv)
     fetcher: ArtistFetcher = ArtistFetcher()
     fetched: int = 0
     not_found: int = 0
@@ -393,7 +393,7 @@ def main(argv: list[str] | None = None) -> int:
     skipped: int = 0
     session: Session = ds.get_db()
     try:
-        done: set[str] = read_snapshot_names()
+        done: set[str] = read_snapshot_names(args.wikidata_csv)
         name: str
         for name in session.scalars(
                 sa.select(Artist.name).order_by(Artist.id)):
@@ -401,7 +401,7 @@ def main(argv: list[str] | None = None) -> int:
                 skipped += 1
                 continue
             snapshot: ArtistSnapshot = fetcher.fetch(name)
-            append_row(snapshot)
+            append_row(args.wikidata_csv, snapshot)
             status: str = snapshot.qid
             if snapshot.note == NOTE_NOT_FOUND:
                 not_found += 1

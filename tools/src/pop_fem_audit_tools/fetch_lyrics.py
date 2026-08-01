@@ -6,17 +6,15 @@
 
 Fetches the lyrics of the songs without a cache file from the
 public lyrics APIs, Lyrics.ovh and LRCLIB, into the capture
-layer: the lyrics cache directory and the provenance CSV.  The
-working store is only read, never written; the ``build-db``
-subcommand assembles the captured files into the store on the
-next rebuild.
+layer: the lyrics cache directory and the provenance CSV, each
+given as a positional command-line argument.  The working store
+is only read, never written; the ``build-db`` subcommand
+assembles the captured files into the store on the next rebuild.
 
 A song that every API misses is reported in the missing lyrics
-CSV, which is rewritten on every run to reflect the current
-status.  Misses are expected and do not fail the run.
-
-Run from the repository root; the data paths are relative to the
-current working directory.
+CSV, also given as a positional command-line argument, which is
+rewritten on every run to reflect the current status.  Misses
+are expected and do not fail the run.
 """
 import argparse
 import csv
@@ -42,12 +40,6 @@ from .models import (
     SongArtist,
 )
 
-LYRICS_DIR: Path = Path("data/lyrics")
-"""The lyrics cache directory."""
-PROVENANCE_CSV: Path = Path("data/lyrics_provenance.csv")
-"""The lyrics provenance CSV file."""
-MISSING_CSV: Path = Path("data/lyrics_missing.csv")
-"""The missing lyrics report CSV file."""
 PROVENANCE_FIELDS: Sequence[str] = (
     "song_id", "source", "method", "acquired_at", "note")
 """The header columns of the lyrics provenance CSV file."""
@@ -95,6 +87,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Fetch the missing song lyrics from the"
                     " public lyrics APIs into the capture layer.")
+    parser.add_argument(
+        "lyrics_dir", type=Path,
+        help="the lyrics cache directory")
+    parser.add_argument(
+        "provenance_csv", type=Path,
+        help="the lyrics provenance CSV file")
+    parser.add_argument(
+        "missing_csv", type=Path,
+        help="the missing lyrics report CSV file")
     return parser.parse_args(argv)
 
 
@@ -203,34 +204,38 @@ def query_artist(session: Session, song_id: int) -> str:
     return name
 
 
-def save_lyrics(song_id: int, lyrics: str) -> None:
+def save_lyrics(lyrics_dir: Path, song_id: int,
+                lyrics: str) -> None:
     """Write the lyrics of a song into the cache directory.
 
     The cache directory is created when missing.
 
+    :param lyrics_dir: The lyrics cache directory.
     :param song_id: The song ID.
     :param lyrics: The lyrics text.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
-    LYRICS_DIR.mkdir(parents=True, exist_ok=True)
-    (LYRICS_DIR / f"{song_id}.txt").write_text(
+    lyrics_dir.mkdir(parents=True, exist_ok=True)
+    (lyrics_dir / f"{song_id}.txt").write_text(
         lyrics, encoding="utf-8")
 
 
-def append_provenance(song_id: int, source: str) -> None:
+def append_provenance(path: Path, song_id: int,
+                      source: str) -> None:
     """Append a provenance row for a fetched lyrics file.
 
     The CSV file is created with the header row when missing.
 
+    :param path: The lyrics provenance CSV file.
     :param song_id: The song ID.
     :param source: The source name of the fetched lyrics.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
-    is_new: bool = not PROVENANCE_CSV.exists()
-    PROVENANCE_CSV.parent.mkdir(parents=True, exist_ok=True)
-    with open(PROVENANCE_CSV, "a", encoding="utf-8",
+    is_new: bool = not path.exists()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8",
               newline="") as file:
         writer: Any = csv.writer(file)
         if is_new:
@@ -239,19 +244,21 @@ def append_provenance(song_id: int, source: str) -> None:
                          datetime.date.today().isoformat(), ""])
 
 
-def write_missing(misses: Sequence[MissingLyrics]) -> None:
+def write_missing(path: Path,
+                  misses: Sequence[MissingLyrics]) -> None:
     """Rewrite the missing lyrics report CSV file.
 
     The previous content is replaced, so the file reflects the
     current misses only.
 
+    :param path: The missing lyrics report CSV file.
     :param misses: The report entries of the songs still without
         lyrics.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
-    MISSING_CSV.parent.mkdir(parents=True, exist_ok=True)
-    with open(MISSING_CSV, "w", encoding="utf-8",
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8",
               newline="") as file:
         writer: Any = csv.writer(file)
         writer.writerow(MISSING_FIELDS)
@@ -266,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     :return: The exit status: 0 on success, misses included,
         non-zero on a setup error.
     """
-    parse_args(argv)
+    args: argparse.Namespace = parse_args(argv)
     fetcher: LyricsFetcher = LyricsFetcher()
     fetched: int = 0
     misses: list[MissingLyrics] = []
@@ -275,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         song: Song
         for song in session.scalars(
                 sa.select(Song).order_by(Song.id)):
-            if (LYRICS_DIR / f"{song.id}.txt").exists():
+            if (args.lyrics_dir / f"{song.id}.txt").exists():
                 continue
             artist: str = query_artist(session, song.id)
             result: tuple[str, str] | None = fetcher.fetch(
@@ -291,12 +298,13 @@ def main(argv: list[str] | None = None) -> int:
             lyrics: str
             source: str
             lyrics, source = result
-            save_lyrics(song.id, lyrics)
-            append_provenance(song.id, source)
+            save_lyrics(args.lyrics_dir, song.id, lyrics)
+            append_provenance(args.provenance_csv, song.id,
+                              source)
             fetched += 1
             print(f"song {song.id} \"{song.title}\": {source}",
                   file=sys.stderr)
-        write_missing(misses)
+        write_missing(args.missing_csv, misses)
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

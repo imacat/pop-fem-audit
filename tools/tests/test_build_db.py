@@ -4,7 +4,6 @@
 #   imacat@mail.imacat.idv.tw (imacat), 2026/7/31
 """Unit tests for the working store builder module."""
 import io
-import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -104,15 +103,17 @@ class TestBuildDB(unittest.TestCase):
     """The default chart CSV fixture: 2 years with 2 ranks each."""
 
     def setUp(self) -> None:
-        """Create a temporary working directory with the fixtures."""
+        """Create a temporary data directory with the fixtures."""
         tmp: tempfile.TemporaryDirectory[str] \
             = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
-        old_cwd: str = os.getcwd()
-        self.addCleanup(os.chdir, old_cwd)
-        os.chdir(self.__dir)
-        Path("data").mkdir()
+        self.__chart: Path = self.__dir / "chart.csv"
+        self.__lyrics: Path = self.__dir / "lyrics"
+        self.__wikidata: Path = \
+            self.__dir / "artists_wikidata.csv"
+        self.__overrides: Path = \
+            self.__dir / "artists_overrides.csv"
         self.__write_chart(self.CHART_CSV)
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
@@ -127,26 +128,25 @@ class TestBuildDB(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    @staticmethod
-    def __write_chart(content: str) -> None:
+    def __write_chart(self, content: str) -> None:
         """Write the chart CSV fixture.
 
         :param content: The CSV content.
         :return: None.
         """
-        Path("data/yearend_hot100_2016_2025.csv").write_text(
-            content, encoding="utf-8")
+        self.__chart.write_text(content, encoding="utf-8")
 
-    @staticmethod
-    def __run_build() -> tuple[int, str]:
+    def __run_build(self, *options: str) -> tuple[int, str]:
         """Run the build with the standard error captured.
 
+        :param options: The additional command-line options.
         :return: A tuple of the exit status and the standard
             error.
         """
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
-            status: int = build_db.main([])
+            status: int = build_db.main(
+                [str(self.__chart), *options])
         return status, stderr.getvalue()
 
     def __session(self) -> Session:
@@ -244,15 +244,17 @@ class TestBuildDB(unittest.TestCase):
 
     def test_overrides_apply_over_wikidata(self) -> None:
         """Test that the overrides win over the Wikidata snapshot."""
-        Path("data/artists_wikidata.csv").write_text(
+        self.__wikidata.write_text(
             "name,qid,gender,type,genre,country,note\n"
             "Adele,Q2831,female,solo,pop,GB,\n",
             encoding="utf-8")
-        Path("data/artists_overrides.csv").write_text(
+        self.__overrides.write_text(
             "name,qid,gender,type,genre,country,note\n"
             "Adele,,,,soul,,manually checked\n",
             encoding="utf-8")
-        self.assertEqual(self.__run_build()[0], 0)
+        self.assertEqual(self.__run_build(
+            "--wikidata-csv", str(self.__wikidata),
+            "--overrides-csv", str(self.__overrides))[0], 0)
         session: Session = self.__session()
         artist: Artist | None = session.scalar(
             sa.select(Artist).where(Artist.name == "Adele"))
@@ -264,12 +266,13 @@ class TestBuildDB(unittest.TestCase):
 
     def test_unknown_override_name_fails(self) -> None:
         """Test that an unknown override name fails the build."""
-        Path("data/artists_overrides.csv").write_text(
+        self.__overrides.write_text(
             "name,qid,gender,type,genre,country,note\n"
             "Adel,,female,,,,typo\n", encoding="utf-8")
         status: int
         stderr: str
-        status, stderr = self.__run_build()
+        status, stderr = self.__run_build(
+            "--overrides-csv", str(self.__overrides))
         self.assertNotEqual(status, 0)
         self.assertIn("Adel", stderr)
         session: Session = self.__session()
@@ -277,14 +280,15 @@ class TestBuildDB(unittest.TestCase):
 
     def test_lyrics_loaded(self) -> None:
         """Test loading the lyrics cache into the songs."""
-        Path("data/lyrics").mkdir()
-        Path("data/lyrics/1.txt").write_text(
+        self.__lyrics.mkdir()
+        (self.__lyrics / "1.txt").write_text(
             "Hello, it's me\n", encoding="utf-8")
-        Path("data/lyrics/999.txt").write_text(
+        (self.__lyrics / "999.txt").write_text(
             "orphan\n", encoding="utf-8")
         status: int
         stderr: str
-        status, stderr = self.__run_build()
+        status, stderr = self.__run_build(
+            "--lyrics-dir", str(self.__lyrics))
         self.assertEqual(status, 0)
         self.assertIn("999", stderr)
         self.assertIn("1 songs with lyrics", stderr)
@@ -293,3 +297,62 @@ class TestBuildDB(unittest.TestCase):
         assert song is not None
         self.assertEqual(song.title, "Hello")
         self.assertEqual(song.lyrics, "Hello, it's me\n")
+
+    def test_omitted_options_skip_capture_layers(self) -> None:
+        """Test that omitted options leave the layers unloaded."""
+        self.__lyrics.mkdir()
+        (self.__lyrics / "1.txt").write_text(
+            "Hello, it's me\n", encoding="utf-8")
+        self.__wikidata.write_text(
+            "name,qid,gender,type,genre,country,note\n"
+            "Adele,Q2831,female,solo,pop,GB,\n",
+            encoding="utf-8")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        self.assertIn("0 songs with lyrics", stderr)
+        session: Session = self.__session()
+        song: Song | None = session.get(Song, 1)
+        assert song is not None
+        self.assertIsNone(song.lyrics)
+        artist: Artist | None = session.scalar(
+            sa.select(Artist).where(Artist.name == "Adele"))
+        assert artist is not None
+        self.assertIsNone(artist.wikidata_qid)
+        self.assertIsNone(artist.gender)
+
+    def test_missing_lyrics_dir_fails(self) -> None:
+        """Test that a given but missing lyrics directory fails."""
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--lyrics-dir", str(self.__lyrics))
+        self.assertNotEqual(status, 0)
+        self.assertIn(f"error: {self.__lyrics}", stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_missing_wikidata_csv_fails(self) -> None:
+        """Test that a given but missing snapshot CSV fails."""
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata))
+        self.assertNotEqual(status, 0)
+        self.assertIn("error:", stderr)
+        self.assertIn(str(self.__wikidata), stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_missing_overrides_csv_fails(self) -> None:
+        """Test that a given but missing override CSV fails."""
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--overrides-csv", str(self.__overrides))
+        self.assertNotEqual(status, 0)
+        self.assertIn("error:", stderr)
+        self.assertIn(str(self.__overrides), stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])

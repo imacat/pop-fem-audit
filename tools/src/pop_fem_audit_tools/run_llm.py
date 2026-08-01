@@ -9,7 +9,9 @@
 Sends every input item to the Anthropic Messages Batch API twice with
 the same system prompt, reconciles the disagreeing items with a third
 arbitration batch, and archives every artifact self-contained under
-``runs/<phase>/<YYYYMMDD-HHMM>-<prompt-stem>/``.
+``<runs_dir>/<phase>/<YYYYMMDD-HHMM>-<prompt-stem>/``, where the
+base directory of the run archives is given as the positional
+command-line argument.
 """
 import argparse
 import enum
@@ -173,6 +175,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Run one LLM step: 2 runs + 1 arbitration.")
+    parser.add_argument(
+        "runs_dir", type=Path,
+        help="the base directory of the run archives")
     parser.add_argument(
         "--prompt", required=True, type=Path,
         help="the prompt definition file, used as the system prompt")
@@ -567,7 +572,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     try:
         run_dir: Path = create_archive_dir(
-            Path("runs"), args.phase, args.prompt, datetime.now())
+            args.runs_dir, args.phase, args.prompt,
+            datetime.now())
     except FileExistsError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

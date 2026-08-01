@@ -96,3 +96,26 @@
   逐連線設定）。裁定其歸屬為連線組態，實作於 `database.py`
   的 `__create_engine`——建 engine 時對 SQLite 註冊 connect
   listener，所有消費者全程生效，不再由 build-db 各自註冊。
+
+## 2026-08-02
+
+- **`import-lyrics` 不設為子命令，pilot 歌詞改以私人腳本
+  匯入**。理由：pilot 捕捉檔不隨論文發布，子命令
+  形式會在發布的 CLI 裡留下讀者無法執行的死命令——要交待的
+  是「沿用 pilot 捕捉」的事實（記於 lyrics_provenance.csv 與
+  論文方法節），不是工具本身；工具移出專案，發布管線即
+  「讀者可完整執行的程序」。讀者重現歌詞的路徑為
+  `fetch-lyrics`，API 漂移造成的差異屬捕捉層的已承認限制。
+  provenance 的 method 值域定為
+  pilot-import / api-fetch / manual。
+- **資料路徑全面改為顯式 CLI 引數**——必要運算元為位置
+  引數、選擇性輸入為選項（build-db 吃榜單 CSV 一個位置引數，
+  歌詞目錄、Wikidata 快照、overrides 為 `--lyrics-dir`／
+  `--wikidata-csv`／`--overrides-csv` 三個選項；fetch-lyrics
+  吃歌詞目錄、provenance、缺漏報表三個位置引數；fetch-artists
+  吃快照檔；run-llm 吃 runs 目錄），命令與 CWD 無關，且每次
+  執行觸碰的檔案完整見於指令本身。省略選項即不載入該捕捉層；
+  給了選項而路徑不存在即建置失敗，取代原本的默默跳過。理由：
+  settings 的 `.env` 依 pydantic 慣例讀自 CWD（約定
+  `tools/`），資料路徑原以 repo 根為 CWD，兩者衝突；顯式引數
+  消滅隱性 CWD 契約，亦拒絕以父目錄推導兄弟檔案的隱性慣例。

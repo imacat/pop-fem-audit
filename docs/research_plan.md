@@ -56,16 +56,20 @@
   維持歌詞-only，避免光環偏誤污染條件 A/B 實驗。women-power
   候選歌曲的歌手另做深度背景（族裔以公開自我認同為準、音樂
   場景），script 輔助、人工核定。
-- **Pilot 歌詞沿用**：先導研究捕捉檔（lyrics.json，684 首，
-  2018–2025）匯入歌詞快取——只取識別欄位與歌詞本文，pilot
-  的分析欄位一律不匯入；以 (year, rank) 精確匹配 song_id。
-  出處記於 `data/lyrics_provenance.csv`（進 git）：`source`
-  （原始 API）與 `method`（pilot-import / api-fetch）兩層，
-  取得日期不可考者不假造，僅記可證上界。
+- **Pilot 歌詞沿用（私人匯入，不進發布管線）**：先導研究
+  捕捉檔（lyrics.json，684 首，2018–2025）以私人腳本
+  匯入歌詞快取——只取識別欄位與歌詞本文，以
+  (year, rank) 精確匹配 song_id。匯入工具不屬於專案交付物
+  （讀者拿不到其輸入），讀者的重現路徑純粹是 `fetch-lyrics`；
+  沿用之**事實**記於 `data/lyrics_provenance.csv`（進 git）：
+  `source`（原始 API）與 `method`
+  （pilot-import / api-fetch / manual）兩層，取得日期不可考者
+  不假造，僅記可證上界。
 - **子命令**（`pop-fem-audit-tools <cmd>` 或
-  `python -m pop_fem_audit_tools <cmd>`）：`run-llm`（已完成）、
-  `build-db`、`import-lyrics`、`fetch-lyrics`、`fetch-artists`、
-  `export-llm-input`；之後再加報表 export 與統計。
+  `python -m pop_fem_audit_tools <cmd>`）：`run-llm`、
+  `build-db`、`fetch-lyrics`、`fetch-artists`（皆已完成）、
+  `export-llm-input`（階段 2 前補上）；之後再加報表 export
+  與統計。
 
 ## 階段與時程（全文截稿 2026-08-15）
 

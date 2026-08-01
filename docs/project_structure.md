@@ -39,8 +39,8 @@ pop-fem-audit/
 │   │   │                      #   public APIs into data/lyrics/
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
-│   │                          #   自動寫入 runs/；執行方式
-│   │                          #   pop-fem-audit-tools run-llm
+│   │                          #   寫入引數指定的 runs 目錄；執行
+│   │                          #   方式 pop-fem-audit-tools run-llm
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 每次執行的完整稽核紀錄（進 git）
 │   └── <階段>/<日期>-<定義檔版本>/

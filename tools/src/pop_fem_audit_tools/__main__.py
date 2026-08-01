@@ -81,8 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     prog_backup: str = sys.argv[0]
     main_module: ModuleType = sys.modules["__main__"]
-    spec_backup: ModuleSpec | None = getattr(
-        main_module, "__spec__", None)
+    spec_backup: ModuleSpec | None = main_module.__spec__
     sys.argv[0] = f"{prog()} {args[0]}"
     main_module.__spec__ = None
     try:

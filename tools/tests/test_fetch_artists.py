@@ -26,7 +26,7 @@ class TestFetchArtists(unittest.TestCase):
     """Test cases for the artist metadata fetcher."""
 
     HEADER: list[str] = [
-        "name", "qid", "gender", "artist_type", "genre",
+        "name", "qid", "gender", "type", "genre",
         "country", "note"]
     """The expected header row of the snapshot CSV file."""
 

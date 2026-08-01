@@ -27,6 +27,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,7 @@ from sqlalchemy.orm import Session
 from .database import ds
 from .models import (
     Artist,
+    Role,
     Song,
     SongArtist,
 )
@@ -59,6 +61,28 @@ TIMEOUT: float = 30.0
 """The timeout of an HTTP request, in seconds."""
 SLEEP_SECONDS: float = 1.0
 """The delay between consecutive HTTP requests, in seconds."""
+
+
+@dataclass
+class MissingLyrics:
+    """One row of the missing lyrics report CSV file."""
+
+    song_id: int
+    """The song ID."""
+    title: str
+    """The song title."""
+    artist_credit: str
+    """The artist credit of the song."""
+    reason: str
+    """The reason the lyrics are missing."""
+
+    def to_row(self) -> list[str]:
+        """Return this report entry as a CSV row.
+
+        :return: The row values, in the column order.
+        """
+        return [str(self.song_id), self.title,
+                self.artist_credit, self.reason]
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -160,21 +184,23 @@ class LyricsFetcher:
             return None
 
 
-def query_artist(session: Session, song_id: int) -> str | None:
+def query_artist(session: Session, song_id: int) -> str:
     """Find the artist name to query the APIs with.
 
     :param session: The database session.
     :param song_id: The song ID.
     :return: The name of the primary-role artist with the lowest
-        position, or None when the song has no primary artist.
+        position.
     """
-    return session.scalar(
+    name: str | None = session.scalar(
         sa.select(Artist.name)
         .join(SongArtist, SongArtist.artist_id == Artist.id)
         .where(SongArtist.song_id == song_id,
-               SongArtist.role == "primary")
+               SongArtist.role == Role.PRIMARY)
         .order_by(SongArtist.position)
         .limit(1))
+    assert name is not None
+    return name
 
 
 def save_lyrics(song_id: int, lyrics: str) -> None:
@@ -213,15 +239,14 @@ def append_provenance(song_id: int, source: str) -> None:
                          datetime.date.today().isoformat(), ""])
 
 
-def write_missing(misses: Sequence[Sequence[Any]]) -> None:
+def write_missing(misses: Sequence[MissingLyrics]) -> None:
     """Rewrite the missing lyrics report CSV file.
 
     The previous content is replaced, so the file reflects the
     current misses only.
 
-    :param misses: The rows of the songs still without lyrics,
-        each with the song ID, the title, the artist credit, and
-        the reason.
+    :param misses: The report entries of the songs still without
+        lyrics.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
@@ -230,7 +255,7 @@ def write_missing(misses: Sequence[Sequence[Any]]) -> None:
               newline="") as file:
         writer: Any = csv.writer(file)
         writer.writerow(MISSING_FIELDS)
-        writer.writerows(misses)
+        writer.writerows(x.to_row() for x in misses)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -244,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
     parse_args(argv)
     fetcher: LyricsFetcher = LyricsFetcher()
     fetched: int = 0
-    misses: list[tuple[int, str, str, str]] = []
+    misses: list[MissingLyrics] = []
     session: Session = ds.get_db()
     try:
         song: Song
@@ -252,15 +277,14 @@ def main(argv: list[str] | None = None) -> int:
                 sa.select(Song).order_by(Song.id)):
             if (LYRICS_DIR / f"{song.id}.txt").exists():
                 continue
-            artist: str | None = query_artist(session, song.id)
-            result: tuple[str, str] | None = None
-            reason: str = "no primary artist"
-            if artist is not None:
-                result = fetcher.fetch(artist, song.title)
-                reason = "not found"
+            artist: str = query_artist(session, song.id)
+            result: tuple[str, str] | None = fetcher.fetch(
+                artist, song.title)
             if result is None:
-                misses.append((song.id, song.title,
-                               song.artist_credit, reason))
+                misses.append(MissingLyrics(
+                    song_id=song.id, title=song.title,
+                    artist_credit=song.artist_credit,
+                    reason="not found"))
                 print(f"song {song.id} \"{song.title}\": miss",
                       file=sys.stderr)
                 continue

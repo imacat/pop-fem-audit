@@ -51,8 +51,12 @@ class RunLLMTestCase(unittest.TestCase):
                           error_type: str) -> mock.Mock:
         """Create a mock errored batch result entry.
 
+        The error object is shaped as the SDK envelope: the outer
+        error carries the constant type ``error``, and the specific
+        error code lives at ``error.error.type``.
+
         :param custom_id: The custom ID of the entry.
-        :param error_type: The error type.
+        :param error_type: The specific error code.
         :return: The mock result entry.
         """
         entry: mock.Mock = mock.Mock()
@@ -60,7 +64,9 @@ class RunLLMTestCase(unittest.TestCase):
         entry.result = mock.Mock()
         entry.result.type = "errored"
         entry.result.error = mock.Mock()
-        entry.result.error.type = error_type
+        entry.result.error.type = "error"
+        entry.result.error.error = mock.Mock()
+        entry.result.error.error.type = error_type
         return entry
 
     @staticmethod
@@ -105,9 +111,10 @@ class TestLoadItems(RunLLMTestCase):
         path: Path = self.__write_input(
             '{"id": "a", "content": "one"}\n'
             '{"id": "b", "content": "two"}\n')
-        items: list[run_llm.Item] = run_llm.load_items(path)
-        self.assertEqual(items, [{"id": "a", "content": "one"},
-                                 {"id": "b", "content": "two"}])
+        items: list[run_llm.InputItem] = run_llm.load_items(path)
+        self.assertEqual(items, [
+            run_llm.InputItem(id="a", content="one"),
+            run_llm.InputItem(id="b", content="two")])
 
     def test_malformed_json_names_line(self) -> None:
         """Test that malformed JSON reports the line number."""
@@ -161,7 +168,7 @@ class TestRequestBuilding(RunLLMTestCase):
     def test_build_request(self) -> None:
         """Test the shape of a batch request."""
         request: dict[str, Any] = run_llm.build_request(
-            {"id": "song-1", "content": "the lyrics"},
+            run_llm.InputItem(id="song-1", content="the lyrics"),
             "the system prompt", 2048)
         self.assertEqual(request["custom_id"], "song-1")
         params: dict[str, Any] = request["params"]
@@ -188,18 +195,18 @@ class TestAgreement(RunLLMTestCase):
 
     def test_split_by_agreement(self) -> None:
         """Test splitting items into agreed and disagreeing ones."""
-        items: list[run_llm.Item] = [
-            {"id": "a", "content": "one"},
-            {"id": "b", "content": "two"},
-            {"id": "c", "content": "three"}]
+        items: list[run_llm.InputItem] = [
+            run_llm.InputItem(id="a", content="one"),
+            run_llm.InputItem(id="b", content="two"),
+            run_llm.InputItem(id="c", content="three")]
         run1: run_llm.Results = {
-            "a": {"id": "a", "text": "same\n"},
-            "b": {"id": "b", "text": "left"},
-            "c": {"id": "c", "text": " padded "}}
+            "a": run_llm.BatchResult(id="a", text="same\n"),
+            "b": run_llm.BatchResult(id="b", text="left"),
+            "c": run_llm.BatchResult(id="c", text=" padded ")}
         run2: run_llm.Results = {
-            "a": {"id": "a", "text": "same"},
-            "b": {"id": "b", "text": "right"},
-            "c": {"id": "c", "text": "padded"}}
+            "a": run_llm.BatchResult(id="a", text="same"),
+            "b": run_llm.BatchResult(id="b", text="right"),
+            "c": run_llm.BatchResult(id="c", text="padded")}
         agreed: list[str]
         disagreed: list[str]
         agreed, disagreed = run_llm.split_by_agreement(
@@ -213,14 +220,15 @@ class TestFinalRecords(RunLLMTestCase):
 
     def test_build_final_records(self) -> None:
         """Test assembling final records from runs and arbitration."""
-        items: list[run_llm.Item] = [
-            {"id": "a", "content": "one"},
-            {"id": "b", "content": "two"}]
+        items: list[run_llm.InputItem] = [
+            run_llm.InputItem(id="a", content="one"),
+            run_llm.InputItem(id="b", content="two")]
         run1: run_llm.Results = {
-            "a": {"id": "a", "text": "agreed text\n"},
-            "b": {"id": "b", "text": "left"}}
+            "a": run_llm.BatchResult(id="a", text="agreed text\n"),
+            "b": run_llm.BatchResult(id="b", text="left")}
         arbitration: run_llm.Results = {
-            "b": {"id": "b", "text": "arbitrated text"}}
+            "b": run_llm.BatchResult(id="b",
+                                     text="arbitrated text")}
         records: list[dict[str, str]] = run_llm.build_final_records(
             items, run1, arbitration)
         self.assertEqual(records, [
@@ -237,23 +245,23 @@ class TestCollectResults(RunLLMTestCase):
         client: mock.Mock = mock.Mock()
         client.messages.batches.results.return_value = iter([
             self._make_success_entry("a", "output a"),
-            self._make_error_entry("b", "invalid_request")])
+            self._make_error_entry("b", "invalid_request_error")])
         results: run_llm.Results = run_llm.collect_results(
             client, "batch_x")
-        self.assertEqual(results["a"]["text"], "output a")
-        self.assertEqual(results["a"]["stop_reason"], "end_turn")
-        self.assertEqual(results["a"]["usage"],
+        self.assertEqual(results["a"].text, "output a")
+        self.assertEqual(results["a"].stop_reason, "end_turn")
+        self.assertEqual(results["a"].usage,
                          {"input_tokens": 10, "output_tokens": 5})
-        self.assertEqual(results["b"],
-                         {"id": "b", "error": "invalid_request"})
+        self.assertEqual(results["b"], run_llm.BatchResult(
+            id="b", error="invalid_request_error"))
         client.messages.batches.results.assert_called_once_with(
             "batch_x")
 
     def test_find_failures(self) -> None:
         """Test finding failed and missing items."""
         results: run_llm.Results = {
-            "a": {"id": "a", "text": "fine"},
-            "b": {"id": "b", "error": "errored"}}
+            "a": run_llm.BatchResult(id="a", text="fine"),
+            "b": run_llm.BatchResult(id="b", error="errored")}
         self.assertEqual(
             run_llm.find_failures(["a", "b", "c"], results),
             ["b", "c"])
@@ -345,7 +353,7 @@ class TestMainFlow(RunLLMTestCase):
             mock.Mock(id=x) for x in batch_ids]
         ended: mock.Mock = mock.Mock()
         ended.processing_status = "ended"
-        ended.ended_at = "2026-07-30T20:00:00+08:00"
+        ended.ended_at = datetime(2026, 7, 30, 20, 0)
         client.messages.batches.retrieve.return_value = ended
         results: dict[str, list[Any]] = {
             "batch_run1": run1, "batch_run2": run2,
@@ -482,7 +490,8 @@ class TestMainFlow(RunLLMTestCase):
         """Test that a failed item aborts with a non-zero status."""
         client: mock.Mock = self.__make_client(
             run1=[self._make_success_entry("a", "answer a"),
-                  self._make_error_entry("b", "invalid_request")],
+                  self._make_error_entry(
+                      "b", "invalid_request_error")],
             run2=[self._make_success_entry("a", "answer a"),
                   self._make_success_entry("b", "answer b")])
         status: int = self.__run_main(self.__argv, client)[0]
@@ -495,7 +504,8 @@ class TestMainFlow(RunLLMTestCase):
         run1_lines: list[str] = (run_dir / "run1.jsonl") \
             .read_text(encoding="utf-8").splitlines()
         self.assertEqual(json.loads(run1_lines[1]),
-                         {"id": "b", "error": "invalid_request"})
+                         {"id": "b",
+                          "error": "invalid_request_error"})
 
     def test_invalid_input_exits_non_zero(self) -> None:
         """Test that an invalid input file aborts before archiving."""

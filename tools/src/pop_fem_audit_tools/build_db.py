@@ -27,8 +27,9 @@ import csv
 import re
 import sys
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Self
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -37,6 +38,7 @@ from .database import Base, ds
 from .models import (
     Artist,
     ChartEntry,
+    Role,
     Song,
     SongArtist,
 )
@@ -56,7 +58,7 @@ RANKS_PER_YEAR: int = 100
 ARTIST_FIELDS: dict[str, str] = {
     "qid": "wikidata_qid",
     "gender": "gender",
-    "artist_type": "artist_type",
+    "type": "type",
     "genre": "genre",
     "country": "country",
 }
@@ -86,7 +88,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_artist_credit(credit: str) -> list[tuple[str, str]]:
+def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
     """Parse a combined artist credit into artists and roles.
 
     The credit splits into a primary side and a featured side on
@@ -101,13 +103,14 @@ def parse_artist_credit(credit: str) -> list[tuple[str, str]]:
 
     :param credit: The combined artist credit string.
     :return: The (name, role) pairs in credit order, primary side
-        first, with the role "primary" or "featured".
+        first, with the role ``Role.PRIMARY`` or
+        ``Role.FEATURED``.
     """
     sides: list[str] = FEATURING_PATTERN.split(credit, maxsplit=1)
-    pairs: list[tuple[str, str]] = []
-    role: str
+    pairs: list[tuple[str, Role]] = []
+    role: Role
     side: str
-    for side, role in zip(sides, ("primary", "featured")):
+    for side, role in zip(sides, (Role.PRIMARY, Role.FEATURED)):
         token: str
         for token in DELIMITER_PATTERN.split(side):
             name: str = token.strip()
@@ -139,7 +142,7 @@ def create_song(session: Session, song_id: int, title: str,
     seen: set[str] = set()
     position: int = 0
     name: str
-    role: str
+    role: Role
     for name, role in parse_artist_credit(credit):
         if name in seen:
             print(f"warning: {credit}: duplicated artist"
@@ -220,7 +223,7 @@ def apply_artist_csv(session: Session, path: Path) -> None:
     :param session: The database session, with the artists
         flushed.
     :param path: The CSV file with the columns name, qid, gender,
-        artist_type, genre, country, and note.
+        type, genre, country, and note.
     :return: None.
     :raises BuildError: When a name matches no artist.
     :raises OSError: When the file cannot be read.
@@ -275,7 +278,7 @@ def find_violations(session: Session, years: Iterable[int],
             f"unexpected chart entry: year {year} rank {rank}")
     primary_ids: set[int] = set(session.scalars(
         sa.select(SongArtist.song_id)
-        .where(SongArtist.role == "primary")))
+        .where(SongArtist.role == Role.PRIMARY)))
     song: Song
     for song in session.scalars(sa.select(Song).order_by(Song.id)):
         if song.id not in primary_ids:
@@ -290,29 +293,48 @@ def find_violations(session: Session, years: Iterable[int],
     return violations
 
 
-def count_rows(session: Session) -> dict[str, int]:
-    """Count the loaded rows for the build summary.
+@dataclass
+class StoreCounts:
+    """The row counts of the working store, for the build summary."""
 
-    :param session: The database session with the loaded data
-        flushed.
-    :return: The counts of the songs, chart entries, artists,
-        credits, and songs with lyrics, under those keys.
-    """
-    return {
-        "songs": session.scalar(
-            sa.select(sa.func.count()).select_from(Song)) or 0,
-        "chart entries": session.scalar(
-            sa.select(sa.func.count())
-            .select_from(ChartEntry)) or 0,
-        "artists": session.scalar(
-            sa.select(sa.func.count()).select_from(Artist)) or 0,
-        "credits": session.scalar(
-            sa.select(sa.func.count())
-            .select_from(SongArtist)) or 0,
-        "songs with lyrics": session.scalar(
-            sa.select(sa.func.count()).select_from(Song)
-            .where(Song.lyrics.is_not(None))) or 0,
-    }
+    songs: int
+    """The number of the songs."""
+    chart_entries: int
+    """The number of the chart entries."""
+    artists: int
+    """The number of the artists."""
+    credits: int
+    """The number of the song-artist credits."""
+    songs_with_lyrics: int
+    """The number of the songs with lyrics."""
+
+    @classmethod
+    def get_instance(cls, session: Session) -> Self:
+        """Counts the loaded rows and returns the counts.
+
+        :param session: The database session with the loaded data
+            flushed.
+        :return: The row counts of the working store.
+        """
+        def count(selectable: sa.Select[tuple[int]]) -> int:
+            value: int | None = session.scalar(selectable)
+            assert value is not None
+            return value
+
+        return cls(
+            songs=count(
+                sa.select(sa.func.count()).select_from(Song)),
+            chart_entries=count(
+                sa.select(sa.func.count())
+                .select_from(ChartEntry)),
+            artists=count(
+                sa.select(sa.func.count()).select_from(Artist)),
+            credits=count(
+                sa.select(sa.func.count())
+                .select_from(SongArtist)),
+            songs_with_lyrics=count(
+                sa.select(sa.func.count()).select_from(Song)
+                .where(Song.lyrics.is_not(None))))
 
 
 def prepare_engine(engine: sa.Engine) -> None:
@@ -355,7 +377,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_engine(engine)
     Base.metadata.create_all(engine)
     session: Session = ds.get_db()
-    counts: dict[str, int]
+    counts: StoreCounts
     try:
         reset_store(session)
         load_chart(session, CHART_CSV)
@@ -371,7 +393,7 @@ def main(argv: list[str] | None = None) -> int:
             for violation in violations:
                 print(f"error: {violation}", file=sys.stderr)
             return 1
-        counts = count_rows(session)
+        counts = StoreCounts.get_instance(session)
         session.commit()
     except (OSError, BuildError) as error:
         session.rollback()
@@ -379,7 +401,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         session.close()
-    print("done: " + ", ".join(f"{count} {name}"
-                               for name, count in counts.items()),
+    print(f"done: {counts.songs} songs,"
+          f" {counts.chart_entries} chart entries,"
+          f" {counts.artists} artists,"
+          f" {counts.credits} credits,"
+          f" {counts.songs_with_lyrics} songs with lyrics",
           file=sys.stderr)
     return 0

@@ -20,6 +20,7 @@ from pop_fem_audit_tools.database import DataSource
 from pop_fem_audit_tools.models import (
     Artist,
     ChartEntry,
+    Role,
     Song,
 )
 
@@ -30,47 +31,47 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_plain_solo(self) -> None:
         """Test a plain solo artist credit."""
         self.assertEqual(build_db.parse_artist_credit("Adele"),
-                         [("Adele", "primary")])
+                         [("Adele", Role.PRIMARY)])
 
     def test_featuring_with_and(self) -> None:
         """Test a featuring credit with an "and" delimiter."""
         self.assertEqual(
             build_db.parse_artist_credit(
                 "Drake featuring Wizkid and Kyla"),
-            [("Drake", "primary"),
-             ("Wizkid", "featured"),
-             ("Kyla", "featured")])
+            [("Drake", Role.PRIMARY),
+             ("Wizkid", Role.FEATURED),
+             ("Kyla", Role.FEATURED)])
 
     def test_comma_and_ampersand(self) -> None:
         """Test a credit with comma and ampersand delimiters."""
         self.assertEqual(
             build_db.parse_artist_credit(
                 "Lady Gaga, Bradley Cooper & BloodPop"),
-            [("Lady Gaga", "primary"),
-             ("Bradley Cooper", "primary"),
-             ("BloodPop", "primary")])
+            [("Lady Gaga", Role.PRIMARY),
+             ("Bradley Cooper", Role.PRIMARY),
+             ("BloodPop", Role.PRIMARY)])
 
     def test_x_delimiter(self) -> None:
         """Test the "x" delimiter."""
         self.assertEqual(
             build_db.parse_artist_credit("KAROL G x Nicki Minaj"),
-            [("KAROL G", "primary"),
-             ("Nicki Minaj", "primary")])
+            [("KAROL G", Role.PRIMARY),
+             ("Nicki Minaj", Role.PRIMARY)])
 
     def test_plus_delimiter(self) -> None:
         """Test the "+" delimiter."""
         self.assertEqual(
             build_db.parse_artist_credit("Marshmello + Halsey"),
-            [("Marshmello", "primary"),
-             ("Halsey", "primary")])
+            [("Marshmello", Role.PRIMARY),
+             ("Halsey", Role.PRIMARY)])
 
     def test_with_delimiter(self) -> None:
         """Test the "with" delimiter."""
         self.assertEqual(
             build_db.parse_artist_credit(
                 "Kane Brown with Lauren Alaina"),
-            [("Kane Brown", "primary"),
-             ("Lauren Alaina", "primary")])
+            [("Kane Brown", Role.PRIMARY),
+             ("Lauren Alaina", Role.PRIMARY)])
 
     def test_feat_abbreviation(self) -> None:
         """Test that "Feat." splits the featured side."""
@@ -78,17 +79,17 @@ class TestParseArtistCredit(unittest.TestCase):
             build_db.parse_artist_credit(
                 "Ariana Grande Feat. Doja Cat"
                 " & Megan Thee Stallion"),
-            [("Ariana Grande", "primary"),
-             ("Doja Cat", "featured"),
-             ("Megan Thee Stallion", "featured")])
+            [("Ariana Grande", Role.PRIMARY),
+             ("Doja Cat", Role.FEATURED),
+             ("Megan Thee Stallion", Role.FEATURED)])
 
     def test_case_insensitive_featuring(self) -> None:
         """Test that "Featuring" splits case-insensitively."""
         self.assertEqual(
             build_db.parse_artist_credit(
                 "24kGoldn Featuring iann dior"),
-            [("24kGoldn", "primary"),
-             ("iann dior", "featured")])
+            [("24kGoldn", Role.PRIMARY),
+             ("iann dior", Role.FEATURED)])
 
 
 class TestBuildDB(unittest.TestCase):
@@ -183,8 +184,8 @@ class TestBuildDB(unittest.TestCase):
                          [(2016, 2), (2017, 1)])
         self.assertEqual([(x.artist.name, x.role, x.position)
                           for x in song.song_artists],
-                         [("Drake", "primary", 0),
-                          ("Wizkid", "featured", 1)])
+                         [("Drake", Role.PRIMARY, 0),
+                          ("Wizkid", Role.FEATURED, 1)])
         self.assertIn("3 songs", stderr)
         self.assertIn("4 chart entries", stderr)
         self.assertIn("4 artists", stderr)
@@ -244,11 +245,11 @@ class TestBuildDB(unittest.TestCase):
     def test_overrides_apply_over_wikidata(self) -> None:
         """Test that the overrides win over the Wikidata snapshot."""
         Path("data/artists_wikidata.csv").write_text(
-            "name,qid,gender,artist_type,genre,country,note\n"
+            "name,qid,gender,type,genre,country,note\n"
             "Adele,Q2831,female,solo,pop,GB,\n",
             encoding="utf-8")
         Path("data/artists_overrides.csv").write_text(
-            "name,qid,gender,artist_type,genre,country,note\n"
+            "name,qid,gender,type,genre,country,note\n"
             "Adele,,,,soul,,manually checked\n",
             encoding="utf-8")
         self.assertEqual(self.__run_build()[0], 0)
@@ -264,7 +265,7 @@ class TestBuildDB(unittest.TestCase):
     def test_unknown_override_name_fails(self) -> None:
         """Test that an unknown override name fails the build."""
         Path("data/artists_overrides.csv").write_text(
-            "name,qid,gender,artist_type,genre,country,note\n"
+            "name,qid,gender,type,genre,country,note\n"
             "Adel,,female,,,,typo\n", encoding="utf-8")
         status: int
         stderr: str

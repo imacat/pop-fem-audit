@@ -20,14 +20,16 @@ current working directory.
 """
 import argparse
 import csv
+import enum
 import json
 import sys
 import time
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -37,10 +39,6 @@ from .models import Artist
 
 WIKIDATA_CSV: Path = Path("data/artists_wikidata.csv")
 """The Wikidata artist snapshot CSV file."""
-SNAPSHOT_FIELDS: Sequence[str] = (
-    "name", "qid", "gender", "artist_type", "genre", "country",
-    "note")
-"""The header columns of the Wikidata artist snapshot CSV file."""
 API_URL: str = "https://www.wikidata.org/w/api.php"
 """The URL of the Wikidata API endpoint."""
 USER_AGENT: str = ("pop-fem-audit-tools"
@@ -55,6 +53,71 @@ HUMAN_QID: str = "Q5"
 GROUP_KEYWORDS: Sequence[str] = ("band", "group", "duo", "trio")
 """The label keywords that suggest a musical ensemble, covering
 labels like "boy band" and "girl group"."""
+NOTE_NOT_FOUND: str = "not found"
+"""The note sentinel of an artist without a Wikidata search hit,
+written to the snapshot and read back for the classification."""
+
+
+class ArtistType(enum.StrEnum):
+    """The decided artist type of a snapshot row."""
+
+    SOLO = "solo"
+    """A solo artist: a human."""
+    GROUP = "group"
+    """A musical ensemble."""
+    MIXED = "mixed"
+    """A mixed act, assigned manually via the overrides; never
+    derived by the fetcher."""
+
+
+@dataclass
+class ArtistSnapshot:
+    """One row of the Wikidata artist snapshot CSV file."""
+
+    name: str
+    """The artist name."""
+    qid: str = ""
+    """The Wikidata item ID, or empty when unresolved."""
+    gender: str = ""
+    """The gender label, or empty when unresolved."""
+    type: str = ""
+    """The artist type, an ``ArtistType`` value, or empty for the
+    human to decide."""
+    genre: str = ""
+    """The genre labels, joined with ``; ``."""
+    country: str = ""
+    """The country label, or empty when unresolved."""
+    note: str = ""
+    """The note for human verification: the description of the
+    search hit, ``not found``, or ``error: <reason>``."""
+
+    def to_row(self) -> dict[str, str]:
+        """Return this snapshot as a CSV row.
+
+        :return: The row values, keyed by the column name.
+        """
+        return asdict(self)
+
+
+SNAPSHOT_FIELDS: Sequence[str] = tuple(
+    x.name for x in fields(ArtistSnapshot))
+"""The header columns of the Wikidata artist snapshot CSV file."""
+
+
+@dataclass
+class ArtistClaims:
+    """The item-ID claim targets of a Wikidata artist item."""
+
+    gender_ids: list[str] = field(default_factory=list)
+    """The item IDs of the gender targets."""
+    instance_of_ids: list[str] = field(default_factory=list)
+    """The item IDs of the instance-of targets."""
+    genre_ids: list[str] = field(default_factory=list)
+    """The item IDs of the genre targets."""
+    country_ids: list[str] = field(default_factory=list)
+    """The item IDs of the country-of-citizenship targets."""
+    origin_country_ids: list[str] = field(default_factory=list)
+    """The item IDs of the country-of-origin targets."""
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -78,30 +141,29 @@ class ArtistFetcher:
         self.__sent: int = 0
         """The number of the HTTP requests already sent."""
 
-    def fetch(self, name: str) -> dict[str, str]:
+    def fetch(self, name: str) -> ArtistSnapshot:
         """Fetch the metadata of an artist.
 
-        The note column carries the description of the search hit
-        for human verification.  A search miss yields a row with
+        The note carries the description of the search hit for
+        human verification.  A search miss yields a snapshot with
         the note ``not found``.  An HTTP, network, or decoding
-        error yields a row with what was resolved so far and the
-        note ``error: <reason>``.
+        error yields a snapshot with what was resolved so far and
+        the note ``error: <reason>``.
 
         :param name: The artist name to query with.
-        :return: The snapshot CSV row of the artist.
+        :return: The snapshot of the artist.
         """
-        row: dict[str, str] = {x: "" for x in SNAPSHOT_FIELDS}
-        row["name"] = name
+        snapshot: ArtistSnapshot = ArtistSnapshot(name=name)
         try:
             hit: tuple[str, str] | None = self.__search(name)
             if hit is None:
-                row["note"] = "not found"
-                return row
-            row["qid"], row["note"] = hit
-            self.__resolve(row)
+                snapshot.note = NOTE_NOT_FOUND
+                return snapshot
+            snapshot.qid, snapshot.note = hit
+            self.__resolve(snapshot)
         except (OSError, ValueError) as error:
-            row["note"] = f"error: {error}"
-        return row
+            snapshot.note = f"error: {error}"
+        return snapshot
 
     def __search(self, name: str) -> tuple[str, str] | None:
         """Search Wikidata for an artist.
@@ -127,39 +189,36 @@ class ArtistFetcher:
         return hit["id"], \
             description if isinstance(description, str) else ""
 
-    def __resolve(self, row: dict[str, str]) -> None:
-        """Resolve the claims of an artist into the row fields.
+    def __resolve(self, snapshot: ArtistSnapshot) -> None:
+        """Resolve the claims of an artist into the snapshot.
 
-        :param row: The snapshot CSV row, with the QID set.
+        :param snapshot: The snapshot, with the QID set.
         :return: None.
         :raises OSError: On an HTTP or network error.
         :raises ValueError: On a JSON decoding error.
         """
-        claims: dict[str, list[str]] \
-            = self.__get_claims(row["qid"])
-        gender_ids: list[str] = claims.get("P21", [])
-        type_ids: list[str] = claims.get("P31", [])
-        genre_ids: list[str] = claims.get("P136", [])
-        country_ids: list[str] = claims.get("P27", [])
+        claims: ArtistClaims = self.__get_claims(snapshot.qid)
+        country_ids: list[str] = claims.country_ids
         if len(country_ids) == 0:
-            country_ids = claims.get("P495", [])
+            country_ids = claims.origin_country_ids
         labels: dict[str, str] = self.__get_labels(
-            gender_ids + type_ids + genre_ids + country_ids)
-        if len(gender_ids) > 0:
-            row["gender"] = labels.get(gender_ids[0], "")
-        row["artist_type"] = self.__artist_type(type_ids, labels)
-        row["genre"] = "; ".join(
-            labels[x] for x in genre_ids if x in labels)
+            claims.gender_ids + claims.instance_of_ids
+            + claims.genre_ids + country_ids)
+        if len(claims.gender_ids) > 0:
+            snapshot.gender = labels.get(claims.gender_ids[0], "")
+        snapshot.type = self.__artist_type(
+            claims.instance_of_ids, labels)
+        snapshot.genre = "; ".join(
+            labels[x] for x in claims.genre_ids if x in labels)
         if len(country_ids) > 0:
-            row["country"] = labels.get(country_ids[0], "")
+            snapshot.country = labels.get(country_ids[0], "")
 
-    def __get_claims(self, qid: str) -> dict[str, list[str]]:
+    def __get_claims(self, qid: str) -> ArtistClaims:
         """Fetch the item-ID claim targets of a Wikidata item.
 
         :param qid: The item ID.
         :return: The item-ID targets of the gender, instance-of,
-            genre, and country properties, keyed by the property
-            ID.
+            genre, and country properties.
         :raises OSError: On an HTTP or network error.
         :raises ValueError: On a JSON decoding error.
         """
@@ -172,9 +231,13 @@ class ArtistFetcher:
                 and isinstance(data["entities"].get(qid), dict):
             claims = data["entities"][qid].get("claims")
         if not isinstance(claims, dict):
-            return {}
-        return {x: self.__targets(claims.get(x))
-                for x in ("P21", "P31", "P136", "P27", "P495")}
+            return ArtistClaims()
+        return ArtistClaims(
+            gender_ids=self.__targets(claims.get("P21")),
+            instance_of_ids=self.__targets(claims.get("P31")),
+            genre_ids=self.__targets(claims.get("P136")),
+            country_ids=self.__targets(claims.get("P27")),
+            origin_country_ids=self.__targets(claims.get("P495")))
 
     @staticmethod
     def __targets(statements: Any) -> list[str]:
@@ -238,21 +301,23 @@ class ArtistFetcher:
 
     @staticmethod
     def __artist_type(type_ids: Sequence[str],
-                      labels: dict[str, str]) -> str:
+                      labels: dict[str, str]) \
+            -> ArtistType | Literal[""]:
         """Derive the artist type from the instance-of targets.
 
         :param type_ids: The item IDs of the instance-of targets.
         :param labels: The English labels, keyed by the item ID.
-        :return: ``solo`` for a human, ``group`` for a musical
-            ensemble, or empty for the human to decide.
+        :return: ``ArtistType.SOLO`` for a human,
+            ``ArtistType.GROUP`` for a musical ensemble, or the
+            empty string for the human to decide.
         """
         if HUMAN_QID in type_ids:
-            return "solo"
+            return ArtistType.SOLO
         qid: str
         for qid in type_ids:
             label: str = labels.get(qid, "").lower()
             if any(x in label for x in GROUP_KEYWORDS):
-                return "group"
+                return ArtistType.GROUP
         return ""
 
     def __get_json(self, params: dict[str, str]) -> Any:
@@ -288,17 +353,16 @@ def read_snapshot_names() -> set[str]:
     with open(WIKIDATA_CSV, encoding="utf-8",
               newline="") as file:
         reader: csv.DictReader[str] = csv.DictReader(file)
-        return {x["name"] for x in reader
-                if x.get("name") is not None}
+        return {x["name"] for x in reader}
 
 
-def append_row(row: dict[str, str]) -> None:
-    """Append a row to the snapshot CSV file.
+def append_row(snapshot: ArtistSnapshot) -> None:
+    """Append a snapshot row to the snapshot CSV file.
 
     The CSV file is created with the header row when missing; the
     existing rows are preserved.
 
-    :param row: The snapshot CSV row.
+    :param snapshot: The snapshot of an artist.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
@@ -310,7 +374,7 @@ def append_row(row: dict[str, str]) -> None:
             file, SNAPSHOT_FIELDS)
         if is_new:
             writer.writeheader()
-        writer.writerow(row)
+        writer.writerow(snapshot.to_row())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -336,15 +400,15 @@ def main(argv: list[str] | None = None) -> int:
             if name in done:
                 skipped += 1
                 continue
-            row: dict[str, str] = fetcher.fetch(name)
-            append_row(row)
-            status: str = row["qid"]
-            if row["note"] == "not found":
+            snapshot: ArtistSnapshot = fetcher.fetch(name)
+            append_row(snapshot)
+            status: str = snapshot.qid
+            if snapshot.note == NOTE_NOT_FOUND:
                 not_found += 1
                 status = "not found"
-            elif row["note"].startswith("error: "):
+            elif snapshot.note.startswith("error: "):
                 errors += 1
-                status = row["note"]
+                status = snapshot.note
             else:
                 fetched += 1
             print(f"artist \"{name}\": {status}",

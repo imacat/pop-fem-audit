@@ -14,6 +14,7 @@ from pop_fem_audit_tools.database import Base, DataSource
 from pop_fem_audit_tools.models import (
     Artist,
     ChartEntry,
+    Role,
     Song,
     SongArtist,
 )
@@ -42,9 +43,9 @@ class TestModels(unittest.TestCase):
         song.chart_entries = [ChartEntry(year=2016, rank=4)]
         song.song_artists = [
             SongArtist(artist=Artist(name="Drake"),
-                       role="primary", position=0),
+                       role=Role.PRIMARY, position=0),
             SongArtist(artist=Artist(name="Wizkid"),
-                       role="featured", position=1)]
+                       role=Role.FEATURED, position=1)]
         song.lyrics = "Baby, I like your style"
         self.__session.add(song)
         self.__session.commit()
@@ -63,8 +64,8 @@ class TestModels(unittest.TestCase):
                          [(2016, 4)])
         self.assertEqual([(x.artist.name, x.role, x.position)
                           for x in song.song_artists],
-                         [("Drake", "primary", 0),
-                          ("Wizkid", "featured", 1)])
+                         [("Drake", Role.PRIMARY, 0),
+                          ("Wizkid", Role.FEATURED, 1)])
         self.assertEqual(song.lyrics,
                          "Baby, I like your style")
         artist: Artist | None = self.__session.scalar(

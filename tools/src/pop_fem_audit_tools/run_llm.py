@@ -12,26 +12,19 @@ arbitration batch, and archives every artifact self-contained under
 ``runs/<phase>/<YYYYMMDD-HHMM>-<prompt-stem>/``.
 """
 import argparse
+import enum
 import hashlib
 import json
 import sys
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import anthropic
 
 from .config import get_settings
-
-type Item = dict[str, str]
-"""An input item with "id" and "content"."""
-
-type Result = dict[str, Any]
-"""One batch result record."""
-
-type Results = dict[str, Result]
-"""The batch result records, keyed by item ID."""
 
 MODEL: str = "claude-sonnet-4-6"
 TEMPERATURE: float = 0.0
@@ -44,8 +37,132 @@ ARBITRATION_TEMPLATE: str = (
     "<run2>\n{run2}\n</run2>")
 
 
+class Source(enum.StrEnum):
+    """The source of a final record."""
+
+    AGREED = "agreed"
+    """The record takes the run text the two runs agreed on."""
+    ARBITRATION = "arbitration"
+    """The record takes the arbitration output."""
+
+
 class InputFormatError(Exception):
     """An error in the JSONL input file."""
+
+
+@dataclass(frozen=True)
+class InputItem:
+    """An input item of the LLM step."""
+
+    id: str
+    """The item ID."""
+    content: str
+    """The item content."""
+
+    @classmethod
+    def get_instance(cls, data: Any, path: Path,
+                     number: int) -> Self:
+        """Validate one parsed JSONL record as an input item.
+
+        :param data: The parsed JSON value of the line.
+        :param path: The path of the JSONL input file, for the
+            messages.
+        :param number: The line number, for the messages.
+        :return: The validated input item.
+        :raises InputFormatError: When the record is malformed.
+        """
+        if not isinstance(data, dict):
+            raise InputFormatError(
+                f"{path}: line {number}: not a JSON object")
+        if set(data.keys()) != {"id", "content"}:
+            raise InputFormatError(
+                f"{path}: line {number}: keys must be exactly"
+                " \"id\" and \"content\"")
+        if not isinstance(data["id"], str) or data["id"] == "":
+            raise InputFormatError(
+                f"{path}: line {number}: \"id\" must be a"
+                " non-empty string")
+        if not isinstance(data["content"], str):
+            raise InputFormatError(
+                f"{path}: line {number}: \"content\" must be a"
+                " string")
+        return cls(id=data["id"], content=data["content"])
+
+
+@dataclass
+class BatchResult:
+    """One batch result record."""
+
+    id: str
+    """The item ID."""
+    text: str | None = None
+    """The output text of a succeeded result."""
+    stop_reason: str | None = None
+    """The stop reason of a succeeded result."""
+    usage: dict[str, Any] | None = None
+    """The token usage of a succeeded result."""
+    error: str | None = None
+    """The error code of a failed result."""
+
+    @property
+    def is_failure(self) -> bool:
+        """Whether this result is a failure.
+
+        :return: True when the result carries an error, or False
+            when it succeeded.
+        """
+        return self.error is not None
+
+    @classmethod
+    def get_instance(cls, entry: Any) -> Self:
+        """Create the result record of a batch result entry.
+
+        A succeeded entry yields the text, the stop reason, and
+        the usage; any other entry yields the error code.
+
+        :param entry: The batch result entry.
+        :return: The result record.
+        """
+        result: Any = entry.result
+        match result.type:
+            case "succeeded":
+                message: Any = result.message
+                text: str = "".join(
+                    x.text for x in message.content
+                    if x.type == "text")
+                return cls(id=entry.custom_id, text=text,
+                           stop_reason=message.stop_reason,
+                           usage=usage_to_dict(message.usage))
+            case "errored":
+                return cls(id=entry.custom_id,
+                           error=result.error.error.type)
+            case other:
+                return cls(id=entry.custom_id, error=str(other))
+
+    def to_record(self) -> dict[str, Any]:
+        """Return this result as an archive JSONL record.
+
+        :return: The record, with the None fields omitted.
+        """
+        return {k: v for k, v in asdict(self).items()
+                if v is not None}
+
+
+type Results = dict[str, BatchResult]
+"""The batch result records, keyed by item ID."""
+
+
+@dataclass
+class BatchInfo:
+    """The bookkeeping of one submitted message batch."""
+
+    batch_id: str
+    """The batch ID."""
+    submitted_at: str
+    """The submission time, in ISO 8601 format."""
+    ended_at: str | None = None
+    """The end time, in ISO 8601 format, or None while the batch
+    is still processing."""
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -77,43 +194,16 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def validate_item(data: Any, path: Path, number: int) -> Item:
-    """Validate one parsed JSONL record as an input item.
-
-    :param data: The parsed JSON value of the line.
-    :param path: The path of the JSONL input file, for the messages.
-    :param number: The line number, for the messages.
-    :return: The validated item with "id" and "content".
-    :raises InputFormatError: When the record is malformed.
-    """
-    if not isinstance(data, dict):
-        raise InputFormatError(
-            f"{path}: line {number}: not a JSON object")
-    if set(data.keys()) != {"id", "content"}:
-        raise InputFormatError(
-            f"{path}: line {number}: keys must be exactly"
-            " \"id\" and \"content\"")
-    if not isinstance(data["id"], str) or data["id"] == "":
-        raise InputFormatError(
-            f"{path}: line {number}: \"id\" must be a"
-            " non-empty string")
-    if not isinstance(data["content"], str):
-        raise InputFormatError(
-            f"{path}: line {number}: \"content\" must be a"
-            " string")
-    return {"id": data["id"], "content": data["content"]}
-
-
-def load_items(path: Path) -> list[Item]:
+def load_items(path: Path) -> list[InputItem]:
     """Load and validate the JSONL input items.
 
     :param path: The path of the JSONL input file.
-    :return: The items, each with "id" and "content", in file order.
+    :return: The input items, in file order.
     :raises InputFormatError: When a line is malformed, an ID is
         duplicated, or the file contains no item.
     :raises OSError: When the file cannot be read.
     """
-    items: list[Item] = []
+    items: list[InputItem] = []
     seen: set[str] = set()
     with open(path, encoding="utf-8") as file:
         for number, line in enumerate(file, start=1):
@@ -124,29 +214,30 @@ def load_items(path: Path) -> list[Item]:
             except json.JSONDecodeError as error:
                 raise InputFormatError(
                     f"{path}: line {number}: malformed JSON: {error}")
-            item: Item = validate_item(data, path, number)
-            if item["id"] in seen:
+            item: InputItem = InputItem.get_instance(
+                data, path, number)
+            if item.id in seen:
                 raise InputFormatError(
                     f"{path}: line {number}: duplicated ID"
-                    f" \"{item['id']}\"")
-            seen.add(item["id"])
+                    f" \"{item.id}\"")
+            seen.add(item.id)
             items.append(item)
     if len(items) == 0:
         raise InputFormatError(f"{path}: no input items")
     return items
 
 
-def build_request(item: Item, system_prompt: str,
+def build_request(item: InputItem, system_prompt: str,
                   max_tokens: int) -> dict[str, Any]:
     """Build one Message Batches request for an input item.
 
-    :param item: The input item with "id" and "content".
+    :param item: The input item.
     :param system_prompt: The system prompt text.
     :param max_tokens: The maximum output tokens.
     :return: The batch request with "custom_id" and "params".
     """
     return {
-        "custom_id": item["id"],
+        "custom_id": item.id,
         "params": {
             "model": MODEL,
             "max_tokens": max_tokens,
@@ -154,7 +245,7 @@ def build_request(item: Item, system_prompt: str,
             "thinking": THINKING,
             "system": system_prompt,
             "messages": [
-                {"role": "user", "content": item["content"]},
+                {"role": "user", "content": item.content},
             ],
         },
     }
@@ -214,18 +305,13 @@ def usage_to_dict(usage: Any) -> dict[str, Any]:
     :param usage: The usage object of a message.
     :return: The usage as a dictionary, without null entries.
     """
-    if hasattr(usage, "model_dump"):
-        return {k: v for k, v in usage.model_dump().items()
-                if v is not None}
-    return dict(usage)
+    return {k: v for k, v in usage.model_dump().items()
+            if v is not None}
 
 
 def collect_results(client: anthropic.Anthropic,
                     batch_id: str) -> Results:
     """Collect the results of an ended batch.
-
-    A succeeded result carries "text", "stop_reason", and "usage";
-    any other result carries "error" instead.
 
     :param client: The Anthropic client.
     :param batch_id: The batch ID.
@@ -233,26 +319,7 @@ def collect_results(client: anthropic.Anthropic,
     """
     results: Results = {}
     for entry in client.messages.batches.results(batch_id):
-        result: Any = entry.result
-        record: Result
-        match result.type:
-            case "succeeded":
-                message: Any = result.message
-                text: str = "".join(
-                    x.text for x in message.content
-                    if x.type == "text")
-                record = {"id": entry.custom_id, "text": text,
-                          "stop_reason": message.stop_reason,
-                          "usage": usage_to_dict(message.usage)}
-            case "errored":
-                error_type: Any = getattr(
-                    result.error, "type", "unknown")
-                record = {"id": entry.custom_id,
-                          "error": str(error_type)}
-            case other:
-                record = {"id": entry.custom_id,
-                          "error": str(other)}
-        results[entry.custom_id] = record
+        results[entry.custom_id] = BatchResult.get_instance(entry)
     return results
 
 
@@ -261,18 +328,18 @@ def find_failures(item_ids: list[str],
     """Find the item IDs that failed in a result set.
 
     An item failed when it is missing from the results or when its
-    record carries an "error" field.
+    record is a failure.
 
     :param item_ids: The item IDs to check, in order.
     :param results: The result records, keyed by item ID.
     :return: The failed item IDs, in the given order.
     """
     return [x for x in item_ids
-            if x not in results or "error" in results[x]]
+            if x not in results or results[x].is_failure]
 
 
 def split_by_agreement(
-        items: list[Item], run1: Results, run2: Results,
+        items: list[InputItem], run1: Results, run2: Results,
 ) -> tuple[list[str], list[str]]:
     """Split the item IDs into agreed and disagreeing ones.
 
@@ -287,18 +354,18 @@ def split_by_agreement(
     agreed: list[str] = []
     disagreed: list[str] = []
     for item in items:
-        item_id: str = item["id"]
-        text1: str = run1[item_id]["text"].strip()
-        text2: str = run2[item_id]["text"].strip()
-        if text1 == text2:
-            agreed.append(item_id)
+        text1: str | None = run1[item.id].text
+        text2: str | None = run2[item.id].text
+        assert text1 is not None and text2 is not None
+        if text1.strip() == text2.strip():
+            agreed.append(item.id)
         else:
-            disagreed.append(item_id)
+            disagreed.append(item.id)
     return agreed, disagreed
 
 
 def build_final_records(
-        items: list[Item], run1: Results, arbitration: Results,
+        items: list[InputItem], run1: Results, arbitration: Results,
 ) -> list[dict[str, str]]:
     """Assemble the final records, one per item, in input order.
 
@@ -312,15 +379,17 @@ def build_final_records(
     """
     records: list[dict[str, str]] = []
     for item in items:
-        item_id: str = item["id"]
-        if item_id in arbitration:
-            records.append({"id": item_id,
-                            "text": arbitration[item_id]["text"],
-                            "source": "arbitration"})
+        text: str | None
+        if item.id in arbitration:
+            text = arbitration[item.id].text
+            assert text is not None
+            records.append({"id": item.id, "text": text,
+                            "source": Source.ARBITRATION})
         else:
-            records.append({"id": item_id,
-                            "text": run1[item_id]["text"].strip(),
-                            "source": "agreed"})
+            text = run1[item.id].text
+            assert text is not None
+            records.append({"id": item.id, "text": text.strip(),
+                            "source": Source.AGREED})
     return records
 
 
@@ -335,9 +404,7 @@ def create_archive_dir(runs_root: Path, phase: str, prompt_path: Path,
     :return: The created archive directory.
     :raises FileExistsError: When the directory already exists.
     """
-    stem: str = prompt_path.name
-    if stem.endswith(".md"):
-        stem = stem[:-len(".md")]
+    stem: str = prompt_path.stem
     name: str = f"{now.strftime('%Y%m%d-%H%M')}-{stem}"
     directory: Path = runs_root / phase / name
     if directory.exists():
@@ -352,6 +419,7 @@ def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
 
     :param path: The path of the file to write.
     :param records: The records, one per line.
+    :return: None.
     """
     with open(path, "w", encoding="utf-8") as file:
         for record in records:
@@ -363,10 +431,27 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
 
     :param path: The path of the file to write.
     :param data: The data to write.
+    :return: None.
     """
     path.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
+
+
+def write_meta(path: Path, meta: dict[str, Any]) -> None:
+    """Write the metadata to the ``meta.json`` file.
+
+    The ``BatchInfo`` values under ``batches`` are written as
+    plain JSON objects.
+
+    :param path: The path of the ``meta.json`` file.
+    :param meta: The metadata to write.
+    :return: None.
+    """
+    write_json(path, {
+        **meta,
+        "batches": {k: asdict(v)
+                    for k, v in meta["batches"].items()}})
 
 
 def sha256_of(path: Path) -> str:
@@ -387,24 +472,8 @@ def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def format_timestamp(value: Any) -> str:
-    """Format a timestamp value from a batch object as a string.
-
-    :param value: The timestamp: a datetime, a string, or None.
-    :return: The timestamp as a string, or the current local time
-        when the value is missing.
-    """
-    match value:
-        case datetime():
-            return value.isoformat()
-        case str():
-            return value
-        case _:
-            return now_iso()
-
-
 def execute_runs(
-        client: anthropic.Anthropic, items: list[Item],
+        client: anthropic.Anthropic, items: list[InputItem],
         system_prompt: str, max_tokens: int, meta: dict[str, Any],
 ) -> tuple[Results, Results]:
     """Submit the two identical runs and await their results.
@@ -421,26 +490,25 @@ def execute_runs(
     """
     requests: list[dict[str, Any]] = [
         build_request(x, system_prompt, max_tokens) for x in items]
-    batch_ids: dict[str, str] = {}
+    infos: dict[str, BatchInfo] = {}
     for run_name in ("run1", "run2"):
-        batch_id: str = submit_batch(client, requests)
-        batch_ids[run_name] = batch_id
-        meta["batches"][run_name] = {
-            "batch_id": batch_id, "submitted_at": now_iso(),
-            "ended_at": None}
-        print(f"{run_name}: submitted batch {batch_id}",
+        info: BatchInfo = BatchInfo(
+            batch_id=submit_batch(client, requests),
+            submitted_at=now_iso())
+        infos[run_name] = info
+        meta["batches"][run_name] = info
+        print(f"{run_name}: submitted batch {info.batch_id}",
               file=sys.stderr)
     batches: dict[str, Any] = poll_batches(
-        client, list(batch_ids.values()))
-    for run_name, batch_id in batch_ids.items():
-        meta["batches"][run_name]["ended_at"] = format_timestamp(
-            getattr(batches[batch_id], "ended_at", None))
-    return (collect_results(client, batch_ids["run1"]),
-            collect_results(client, batch_ids["run2"]))
+        client, [x.batch_id for x in infos.values()])
+    for info in infos.values():
+        info.ended_at = batches[info.batch_id].ended_at.isoformat()
+    return (collect_results(client, infos["run1"].batch_id),
+            collect_results(client, infos["run2"].batch_id))
 
 
 def execute_arbitration(
-        client: anthropic.Anthropic, items: list[Item],
+        client: anthropic.Anthropic, items: list[InputItem],
         disagreed: list[str], run1: Results, run2: Results,
         system_prompt: str, max_tokens: int, meta: dict[str, Any],
 ) -> Results:
@@ -460,23 +528,26 @@ def execute_arbitration(
     :return: The arbitration results, keyed by item ID.
     """
     content_by_id: dict[str, str] = {
-        x["id"]: x["content"] for x in items}
-    requests: list[dict[str, Any]] = [
-        build_request(
-            {"id": x,
-             "content": build_arbitration_content(
-                 content_by_id[x], run1[x]["text"], run2[x]["text"])},
-            system_prompt, max_tokens)
-        for x in disagreed]
-    batch_id: str = submit_batch(client, requests)
-    meta["batches"]["arbitration"] = {
-        "batch_id": batch_id, "submitted_at": now_iso(),
-        "ended_at": None}
-    print(f"arbitration: submitted batch {batch_id}", file=sys.stderr)
-    batches: dict[str, Any] = poll_batches(client, [batch_id])
-    meta["batches"]["arbitration"]["ended_at"] = format_timestamp(
-        getattr(batches[batch_id], "ended_at", None))
-    return collect_results(client, batch_id)
+        x.id: x.content for x in items}
+    requests: list[dict[str, Any]] = []
+    for item_id in disagreed:
+        text1: str | None = run1[item_id].text
+        text2: str | None = run2[item_id].text
+        assert text1 is not None and text2 is not None
+        requests.append(build_request(
+            InputItem(id=item_id,
+                      content=build_arbitration_content(
+                          content_by_id[item_id], text1, text2)),
+            system_prompt, max_tokens))
+    info: BatchInfo = BatchInfo(
+        batch_id=submit_batch(client, requests),
+        submitted_at=now_iso())
+    meta["batches"]["arbitration"] = info
+    print(f"arbitration: submitted batch {info.batch_id}",
+          file=sys.stderr)
+    batches: dict[str, Any] = poll_batches(client, [info.batch_id])
+    info.ended_at = batches[info.batch_id].ended_at.isoformat()
+    return collect_results(client, info.batch_id)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -487,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
     """
     args: argparse.Namespace = parse_args(argv)
     try:
-        items: list[Item] = load_items(args.input)
+        items: list[InputItem] = load_items(args.input)
         prompt_text: str = args.prompt.read_text(encoding="utf-8")
         arbitration_text: str = args.arbitration_prompt.read_text(
             encoding="utf-8")
@@ -522,7 +593,7 @@ def main(argv: list[str] | None = None) -> int:
         "script_version": SCRIPT_VERSION,
     }
     if args.dry_run:
-        write_json(meta_path, meta)
+        write_meta(meta_path, meta)
         print(json.dumps(
             build_request(items[0], prompt_text, args.max_tokens),
             ensure_ascii=False, indent=2))
@@ -535,15 +606,15 @@ def main(argv: list[str] | None = None) -> int:
     run2: Results
     run1, run2 = execute_runs(
         client, items, prompt_text, args.max_tokens, meta)
-    item_ids: list[str] = [x["id"] for x in items]
+    item_ids: list[str] = [x.id for x in items]
     write_jsonl(run_dir / "run1.jsonl",
-                [run1[x] for x in item_ids if x in run1])
+                [run1[x].to_record() for x in item_ids if x in run1])
     write_jsonl(run_dir / "run2.jsonl",
-                [run2[x] for x in item_ids if x in run2])
+                [run2[x].to_record() for x in item_ids if x in run2])
     failed: set[str] = (set(find_failures(item_ids, run1))
                         | set(find_failures(item_ids, run2)))
     if len(failed) > 0:
-        write_json(meta_path, meta)
+        write_meta(meta_path, meta)
         names: str = ", ".join(x for x in item_ids if x in failed)
         print(f"error: failed items: {names}", file=sys.stderr)
         return 1
@@ -558,18 +629,18 @@ def main(argv: list[str] | None = None) -> int:
             client, items, disagreed, run1, run2, arbitration_text,
             args.max_tokens, meta)
     write_jsonl(run_dir / "arbitration.jsonl",
-                [arbitration[x] for x in disagreed
+                [arbitration[x].to_record() for x in disagreed
                  if x in arbitration])
     arb_failed: list[str] = find_failures(disagreed, arbitration)
     if len(arb_failed) > 0:
-        write_json(meta_path, meta)
+        write_meta(meta_path, meta)
         names = ", ".join(arb_failed)
         print(f"error: failed arbitration items: {names}",
               file=sys.stderr)
         return 1
     write_jsonl(run_dir / "final.jsonl",
                 build_final_records(items, run1, arbitration))
-    write_json(meta_path, meta)
+    write_meta(meta_path, meta)
     print(f"done: {len(items)} items, {len(agreed)} agreed,"
           f" {len(disagreed)} arbitrated; archived to {run_dir}",
           file=sys.stderr)

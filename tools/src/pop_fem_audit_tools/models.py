@@ -9,10 +9,21 @@ lyrics, their yearly chart entries, the individual artists, and
 the song-artist credits with the role and order.
 
 """
+import enum
+
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+class Role(enum.StrEnum):
+    """The role of an artist on a song credit."""
+
+    PRIMARY = "primary"
+    """The primary artist role."""
+    FEATURED = "featured"
+    """The featured artist role."""
 
 
 class Song(Base):
@@ -66,7 +77,7 @@ class Artist(Base):
     """The Wikidata QID of the artist."""
     gender: Mapped[str | None]
     """The gender of the artist."""
-    artist_type: Mapped[str | None]
+    type: Mapped[str | None]
     """The artist type: solo, group, or mixed."""
     genre: Mapped[str | None]
     """The music genre of the artist."""
@@ -89,7 +100,7 @@ class SongArtist(Base):
         sa.ForeignKey(Artist.id), primary_key=True)
     """The ID of the credited artist."""
     role: Mapped[str] = mapped_column()
-    """The role of the artist: primary or featured."""
+    """The role of the artist, a ``Role`` value."""
     position: Mapped[int]
     """The 0-based position of the artist in the credit order."""
     song: Mapped[Song] = relationship(back_populates="song_artists")
@@ -98,6 +109,6 @@ class SongArtist(Base):
         = relationship(back_populates="song_artists")
     """The credited artist."""
     __table_args__ = (
-        sa.CheckConstraint(role.in_(["primary", "featured"]),
+        sa.CheckConstraint(role.in_([x.value for x in Role]),
                            name="ck_song_artists_role"),)
     """The table-level constraints."""

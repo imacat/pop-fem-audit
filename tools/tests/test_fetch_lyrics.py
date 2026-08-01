@@ -21,6 +21,7 @@ from pop_fem_audit_tools import config, fetch_lyrics
 from pop_fem_audit_tools.database import Base, DataSource
 from pop_fem_audit_tools.models import (
     Artist,
+    Role,
     Song,
     SongArtist,
 )
@@ -81,7 +82,7 @@ class TestFetchLyrics(unittest.TestCase):
                 session.add(song)
                 session.add(SongArtist(song=song,
                                        artist=artists[artist],
-                                       role="primary",
+                                       role=Role.PRIMARY,
                                        position=0))
             session.commit()
         finally:

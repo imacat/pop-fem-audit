@@ -31,6 +31,24 @@ Usage
 Runs a specific tool command, where "command" can be:
 
 
+build-db
+--------
+
+Initialize or rebuild the database from the CSV Billboard ranking table, parse songs and its artists, and output song and artist lists for references.  Check ``pop-fem-audit-tools build-db -h`` for complete instructions on its usage.
+
+
+fetch-artists
+-------------
+
+Fetch artist data from Wikidata, for ``build-db`` to merge the fetched data into the database.  Check ``pop-fem-audit-tools fetch-artists -h`` for complete instructions on its usage.
+
+
+fetch-lyrics
+------------
+
+Fetch lyrics, for ``build-db`` to merge the fetched lyrics into the database.  Lyrics are not committed into the repository due to copyright issue.  Check ``pop-fem-audit-tools fetch-lyrics -h`` for complete instructions on its usage.
+
+
 run-llm
 -------
 

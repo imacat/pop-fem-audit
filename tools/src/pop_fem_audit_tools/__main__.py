@@ -15,12 +15,20 @@ from collections.abc import Callable
 from importlib.machinery import ModuleSpec
 from types import ModuleType
 
-from pop_fem_audit_tools import run_llm
+from pop_fem_audit_tools import (
+    build_db,
+    fetch_artists,
+    fetch_lyrics,
+    run_llm,
+)
 
 MODULE_PROG: str = "python -m pop_fem_audit_tools"
 """The program name when run with ``python -m``."""
 
 SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
+    "build-db": build_db.main,
+    "fetch-artists": fetch_artists.main,
+    "fetch-lyrics": fetch_lyrics.main,
     "run-llm": run_llm.main,
 }
 """The dispatch table from the subcommand name to the tool main."""

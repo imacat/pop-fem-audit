@@ -15,6 +15,7 @@ pop-fem-audit/
 │   ├── artists_wikidata.csv           # 捕捉：Wikidata 快照
 │   ├── artists_overrides.csv          # 人工核定 / 深度背景
 │   ├── lyrics_provenance.csv          # 歌詞出處（source + method）
+│   ├── lyrics_missing.csv             # 歌詞缺漏報表（人工補救用）
 │   └── lyrics/                        # 歌詞 .txt 快取
 │                                      #   （gitignored，版權）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
@@ -28,8 +29,15 @@ pop-fem-audit/
 │   │                          #   gitignored；含歌詞全文）
 │   ├── src/pop_fem_audit_tools/
 │   │   ├── __main__.py        # 套件 CLI 進入點（分派子命令）
+│   │   ├── build_db.py        # build the SQLite working store
+│   │   │                      #   from the inputs
 │   │   ├── config.py          # pydantic-settings 設定（.env）
 │   │   ├── database.py        # SQLAlchemy engine / session / Base
+│   │   ├── fetch_artists.py   # fetch artist metadata from
+│   │   │                      #   Wikidata into the snapshot CSV
+│   │   ├── fetch_lyrics.py    # fetch missing lyrics from the
+│   │   │                      #   public APIs into data/lyrics/
+│   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
 │   │                          #   自動寫入 runs/；執行方式
 │   │                          #   pop-fem-audit-tools run-llm

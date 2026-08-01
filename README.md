@@ -14,7 +14,7 @@ Hot 100（2016–2025）為例的內容分析。
 
 ## 重現方式
 
-1. 準備 Python 3.12+ 環境，安裝分析管線套件：
+1. 準備 Python 3.14+ 環境，安裝分析管線套件：
    `pip install -e tools/`。
 2. 將 Anthropic API 金鑰寫入 `.env`（格式見
    `tools/.env.example`）。

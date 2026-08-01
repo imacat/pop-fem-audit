@@ -8,7 +8,7 @@ name = "pop-fem-audit-tools"
 dynamic = ["version"]
 description = "Tools for A Feminist Audit of Pop Music."
 readme = "README.rst"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 authors = [
     {name = "imacat", email = "imacat@mail.imacat.idv.tw"},
 ]
@@ -31,8 +31,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Sociology",

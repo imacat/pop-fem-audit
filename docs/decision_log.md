@@ -73,3 +73,26 @@
   兩層；取得日期不可考者不假造，僅記可證上界。
 - **`run_llm` 改走 pydantic-settings 統一設定**（刪手寫 .env
   parser），與 `config.py` / `database.py` 一致。
+- **`lyrics` 表併入 `songs.lyrics` nullable 欄位**（資料模型由
+  五表改四表）。理由：1—1 關係在此量級下獨立成表只有正規化
+  慣性，nullable 欄位更簡單；「未取得」以 NULL 表達，語意
+  等價。
+
+## 2026-08-01
+
+- **引擎獨立性以 PostgreSQL/SQLite 為範圍**（MySQL 的 VARCHAR
+  長度限制不處理）。
+- **`build-db` 的重置改用逐表 DELETE，不再 drop/create**：
+  schema 生命週期歸 migration 管，build-db 只管資料。連帶
+  效果：重置成為純 DML,全程單一交易、驗證通過才 commit——
+  建置失敗時前一版資料完好。首次執行仍以 create_all
+  （checkfirst）補缺表。
+- **song/artist ID 由 build-db 顯式指派**（首次出現順序 1、2、
+  3…），不依賴 autoincrement——PostgreSQL 的 sequence 在
+  DELETE 後不重置，顯式指派讓重建決定性跨引擎成立。
+- **禁止文字 SQL statement，一律經 SQLAlchemy ORM/Core API**。
+  唯一記錄在案的例外：SQLite 的 `PRAGMA foreign_keys=ON`
+  （官方建議作法，無非文字 API 可用；SQLite 的 FK 旗標為
+  逐連線設定）。裁定其歸屬為連線組態，實作於 `database.py`
+  的 `__create_engine`——建 engine 時對 SQLite 註冊 connect
+  listener，所有消費者全程生效，不再由 build-db 各自註冊。

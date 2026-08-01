@@ -1,5 +1,5 @@
 # Copyrighted lyrics cache — never commit full lyrics
-data/lyrics/
+data/captures/lyrics/
 
 # Secrets
 .env

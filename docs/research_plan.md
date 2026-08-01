@@ -61,7 +61,7 @@
   匯入歌詞快取——只取識別欄位與歌詞本文，以
   (year, rank) 精確匹配 song_id。匯入工具不屬於專案交付物
   （讀者拿不到其輸入），讀者的重現路徑純粹是 `fetch-lyrics`；
-  沿用之**事實**記於 `data/lyrics_provenance.csv`（進 git）：
+  沿用之**事實**記於 `data/captures/lyrics_provenance.csv`（進 git）：
   `source`（原始 API）與 `method`
   （pilot-import / api-fetch / manual）兩層，取得日期不可考者
   不假造，僅記可證上界。
@@ -103,7 +103,7 @@
 
 ## 其他已定案事項
 
-- 歌詞受版權保護：完整歌詞不進 git（`data/lyrics/` gitignored），
+- 歌詞受版權保護：完整歌詞不進 git（`data/captures/lyrics/` gitignored），
   論文與 repo 只留分類所引摘錄。
 - Fable 5 不用於 pipeline：成本高、thinking 無法關閉且不可稽核、
   無 temperature 控制，且會混淆「盲點是提示問題」的核心主張。

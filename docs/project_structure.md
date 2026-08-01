@@ -8,16 +8,20 @@ pop-fem-audit/
 ├── README.md                  # 專案說明、重現步驟
 ├── CLAUDE.md                  # 極簡工作規範（subagent 會讀到，
 │                              #   絕不放理論、codebook、預期結果）
-├── .gitignore                 # data/lyrics/、.env、scratch
+├── .gitignore                 # captures/lyrics/、.env、scratch
 ├── conference_abstract.md     # pilot 摘要（投稿版）
-├── data/                      # 源頭與捕捉層（文字格式，進 git）
-│   ├── yearend_hot100_2016_2025.csv   # 原始榜單（唯一手放原始檔）
-│   ├── artists_wikidata.csv           # 捕捉：Wikidata 快照
-│   ├── artists_overrides.csv          # 人工核定 / 深度背景
-│   ├── lyrics_provenance.csv          # 歌詞出處（source + method）
-│   ├── lyrics_missing.csv             # 歌詞缺漏報表（人工補救用）
-│   └── lyrics/                        # 歌詞 .txt 快取
-│                                      #   （gitignored，版權）
+├── data/                      # 依生命週期分三層（文字格式）
+│   ├── source/                # 源頭：手放後不動
+│   │   └── yearend_hot100_2016_2025.csv   # 原始榜單
+│   ├── captures/              # 外部捕捉：只由 fetch 命令與
+│   │   │                      #   私人匯入腳本寫入
+│   │   ├── artists_wikidata.csv           # Wikidata 快照
+│   │   ├── lyrics_provenance.csv          # 歌詞出處
+│   │   ├── lyrics_missing.csv             # 歌詞缺漏報表
+│   │   └── lyrics/                        # 歌詞 .txt 快取
+│   │                                      #   （gitignored，版權）
+│   └── manual/                # 人工著作：只由研究者手寫
+│       └── artists_overrides.csv          # 人工核定 / 深度背景
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
 │   └── <task>_v<N>.md         #   版本化：screen_v1.md、judge_v2.md…
 ├── tools/                     # 輔助工具子專案（src-layout）
@@ -36,7 +40,7 @@ pop-fem-audit/
 │   │   ├── fetch_artists.py   # fetch artist metadata from
 │   │   │                      #   Wikidata into the snapshot CSV
 │   │   ├── fetch_lyrics.py    # fetch missing lyrics from the
-│   │   │                      #   public APIs into data/lyrics/
+│   │   │                      #   public APIs into the lyrics dir
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
 │   │                          #   寫入引數指定的 runs 目錄；執行

@@ -41,10 +41,13 @@
     設定經 pydantic-settings（`.env` 供應
     `SQLALCHEMY_DATABASE_URL` 與 `ANTHROPIC_API_KEY`）。
     歌詞全文入 DB（不進 git 故無版權疑慮）。
-  - 報表：論文引用的最終表由 export 產出 CSV 進 `results/`
-    ——此為「可再生仍 commit」的唯一例外，理由：引用穩定性
-    （十年尺度的環境會腐化）、審稿人零門檻、撰稿期數字變動
-    可 diff。
+  - 衍生：`build-db` 建置工作儲存的同一動作產出人讀報表
+    （`data/derived/` 的 songs.csv、artists.csv，進 git）——
+    與 SQLite 同交易語意，稽核鏈無中間空缺；不含資料庫 ID。
+  - 報表：論文引用的最終表由 export 產出 CSV 進 `results/`。
+    衍生與報表為「可再生仍 commit」的兩個例外，理由：引用
+    穩定性（十年尺度的環境會腐化）、審稿人零門檻、撰稿期
+    數字變動可 diff、供人工檢視。
 - **資料模型**：`songs`（歌曲實體，含 lyrics nullable 欄位）、
   `chart_entries`（1 歌—N 筆榜單紀錄）、`artists`（歌手實體：
   Wikidata QID、性別、型態、曲風、國籍）、`song_artists`

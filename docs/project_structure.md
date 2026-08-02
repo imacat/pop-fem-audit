@@ -10,7 +10,7 @@ pop-fem-audit/
 │                              #   絕不放理論、codebook、預期結果）
 ├── .gitignore                 # captures/lyrics/、.env、scratch
 ├── conference_abstract.md     # pilot 摘要（投稿版）
-├── data/                      # 依生命週期分三層（文字格式）
+├── data/                      # 依生命週期分層（文字格式）
 │   ├── source/                # 源頭：手放後不動
 │   │   └── yearend_hot100_2016_2025.csv   # 原始榜單
 │   ├── captures/              # 外部捕捉：只由 fetch 命令與
@@ -20,8 +20,11 @@ pop-fem-audit/
 │   │   ├── lyrics_missing.csv             # 歌詞缺漏報表
 │   │   └── lyrics/                        # 歌詞 .txt 快取
 │   │                                      #   （gitignored，版權）
-│   └── manual/                # 人工著作：只由研究者手寫
-│       └── artists_overrides.csv          # 人工核定 / 深度背景
+│   ├── manual/                # 人工著作：只由研究者手寫
+│   │   └── artists_overrides.csv          # 人工核定 / 深度背景
+│   └── derived/               # 衍生：只由 build-db 寫入
+│       ├── songs.csv          # 歌曲報表（人讀；進 git）
+│       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
 │   └── <task>_v<N>.md         #   版本化：screen_v1.md、judge_v2.md…
 ├── tools/                     # 輔助工具子專案（src-layout）
@@ -77,9 +80,10 @@ pop-fem-audit/
   論文附錄的引用單位，須可直接指名（如 judge_v2.md）。
 - **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
   commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
-  一律以文字 commit。`results/` 報表是唯一例外（引用穩定性、
-  審稿人零門檻、撰稿期可 diff）。詳見 `research_plan.md`
-  「資料儲存與模型」。
+  一律以文字 commit。「可再生仍 commit」的例外有二：
+  `results/` 報表（引用穩定性、審稿人零門檻、撰稿期可 diff）
+  與 `data/derived/` 人讀報表（與工作儲存同一動作產出，稽核
+  鏈無中間空缺）。詳見 `research_plan.md`「資料儲存與模型」。
 - **設定**經 pydantic-settings 統一：`.env`（gitignored，範本
   `tools/.env.example`）供應 `SQLALCHEMY_DATABASE_URL` 與
   `ANTHROPIC_API_KEY`，絕不寫入 repo。

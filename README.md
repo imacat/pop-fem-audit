@@ -22,6 +22,7 @@ Hot 100（2016–2025）為例的內容分析。
    執行子命令，必要輸入以位置引數、選擇性輸入以選項給定（如
    `pop-fem-audit-tools build-db
    ../data/source/yearend_hot100_2016_2025.csv
+   ../data/derived
    --lyrics-dir ../data/captures/lyrics
    --wikidata-csv ../data/captures/artists_wikidata.csv
    --overrides-csv ../data/manual/artists_overrides.csv`）。

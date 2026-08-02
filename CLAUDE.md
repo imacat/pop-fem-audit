@@ -24,7 +24,8 @@
 - `data/source/` holds the immutable hand-placed raw files;
   `data/captures/` is written only by the fetch commands and the
   private import script; `data/manual/` is written only by the
-  user's own hand.
+  user's own hand; `data/derived/` is written only by the
+  `build-db` subcommand.
 - Full lyrics are copyrighted: they stay in `data/captures/lyrics/`
   (gitignored) and must never be committed or reproduced in
   full anywhere in the repo.

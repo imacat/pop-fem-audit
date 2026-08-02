@@ -5,13 +5,13 @@
 """The builder of the SQLite working store.
 
 Rebuilds the working store from scratch out of the committed
-inputs: the year-end chart CSV, given as the positional
-command-line argument, and the optional capture inputs, each
-given as an option: the lyrics cache directory, the Wikidata
-artist snapshot CSV, and the manual artist overrides CSV.  An
-omitted option leaves its capture layer unloaded; a given
-option whose path does not exist fails the build.  Missing
-tables
+inputs: the year-end chart CSV and the output directory for the
+review CSV files, given as the two positional command-line
+arguments, and the optional capture inputs, each given as an
+option: the lyrics cache directory, the Wikidata artist snapshot
+CSV, and the manual artist overrides CSV.  An omitted option
+leaves its capture layer unloaded; a given option whose path does
+not exist fails the build.  Missing tables
 are created on a fresh store; existing tables are never altered,
 as the schema lifecycle belongs to the migrations.  Every rebuild
 deletes all the rows, loads the data, and validates it in one
@@ -38,6 +38,12 @@ collapse onto a single artist row.  The stored artist name is the
 first-seen spelling, except for the names listed in
 ``CANONICAL_ARTIST_NAMES``, which always store the canonical
 spelling regardless of which variant is seen first.
+
+On a successful build, two review CSV files, ``songs.csv`` and
+``artists.csv``, are (re)written under the given output directory,
+mirroring the stored songs and artists without their IDs; see
+`CSVExporter`.  A failed build leaves any existing review CSV
+files untouched, matching the store rollback.
 """
 import argparse
 import csv
@@ -46,7 +52,7 @@ import sys
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -156,6 +162,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "chart_csv", type=Path,
         help="the year-end chart CSV file")
+    parser.add_argument(
+        "derived_dir", type=Path,
+        help="the output directory for the review CSV files")
     parser.add_argument(
         "--lyrics-dir", type=Path, default=None,
         help="the lyrics cache directory to load")
@@ -527,6 +536,156 @@ def reset_store(session: Session) -> None:
         session.execute(sa.delete(model))
 
 
+class CSVExporter:
+    """Writes the review CSV files mirroring the working store."""
+
+    __SONGS_HEADER: tuple[str, ...] = ("Title", "Artists", "Positions")
+    """The header row of ``songs.csv``, for human readers."""
+    __ARTISTS_HEADER: tuple[str, ...] = (
+        "Name", "Wikidata QID", "Gender", "Type", "Genre", "Country",
+        "Songs")
+    """The header row of ``artists.csv``, for human readers."""
+
+    def __init__(self, session: Session, derived_dir: Path) -> None:
+        """Initialize the exporter.
+
+        :param session: The database session with the loaded data
+            flushed.
+        :param derived_dir: The output directory for the review CSV
+            files.
+        """
+        self.__session: Session = session
+        self.__derived_dir: Path = derived_dir
+
+    def write(self) -> None:
+        """Write the review CSV files mirroring the loaded data.
+
+        Fully overwrites ``songs.csv`` and ``artists.csv`` under the
+        output directory, creating it when missing, with normal
+        minimal CSV quoting.  Neither file carries a song or an
+        artist ID; a multi-valued field is a plain joined string,
+        itself CSV-quoted as a whole only when its content requires
+        it: "/" joins the chart appearances of one song, and "|"
+        joins the distinct songs credited to one artist.
+
+        :return: None.
+        :raises OSError: When a CSV file cannot be written.
+        """
+        self.__derived_dir.mkdir(parents=True, exist_ok=True)
+        self.__write_csv(
+            self.__derived_dir / "songs.csv", self.__SONGS_HEADER,
+            self.__songs_rows())
+        self.__write_csv(
+            self.__derived_dir / "artists.csv", self.__ARTISTS_HEADER,
+            self.__artists_rows())
+
+    @staticmethod
+    def __write_csv(path: Path, header: Sequence[str],
+                    rows: Iterable[Sequence[str]]) -> None:
+        """Write a CSV file with LF line endings, fully overwritten.
+
+        :param path: The output CSV file.
+        :param header: The header row.
+        :param rows: The data rows, in the given order.
+        :return: None.
+        :raises OSError: When the file cannot be written.
+        """
+        with open(path, "w", encoding="utf-8", newline="") as file:
+            writer: Any = csv.writer(file)
+            writer.writerow(header)
+            writer.writerows(rows)
+
+    @staticmethod
+    def __sorted_chart_entries(song: Song) -> list[ChartEntry]:
+        """Sort the chart entries of a song by year then rank.
+
+        :param song: The song with its chart entries loaded.
+        :return: The chart entries, ordered by year then rank.
+        """
+        return sorted(
+            song.chart_entries, key=lambda x: (x.year, x.rank))
+
+    @classmethod
+    def __song_positions(cls, song: Song) -> str:
+        """Format the chart positions of a song for the songs.csv
+        value.
+
+        :param song: The song with its chart entries loaded.
+        :return: The "YEAR#RANK" tokens, ordered by year then rank,
+            joined by "/".
+        """
+        entries: list[ChartEntry] = cls.__sorted_chart_entries(song)
+        return "/".join(f"{x.year}#{x.rank}" for x in entries)
+
+    @classmethod
+    def __formatted_song_positions(cls, song: Song) -> str:
+        """Format the chart positions of a song for the artists.csv
+        value.
+
+        :param song: The song with its chart entries loaded.
+        :return: The "YEAR#RANK" tokens, ordered by year then rank,
+            joined by "/".
+        """
+        entries: list[ChartEntry] = cls.__sorted_chart_entries(song)
+        return "/".join(f"{x.year}#{x.rank}" for x in entries)
+
+    def __songs_rows(self) -> list[list[str]]:
+        """Build the sorted data rows of ``songs.csv``.
+
+        :return: The rows, sorted by the case-folded title, then
+            the case-folded artist credit.
+        """
+        songs: list[Song] = sorted(
+            self.__session.scalars(sa.select(Song)),
+            key=lambda x: (x.title.casefold(),
+                           x.artist_credit.casefold()))
+        rows: list[list[str]] = []
+        song: Song
+        for song in songs:
+            row: list[str] = [
+                song.title, song.artist_credit,
+                self.__song_positions(song)]
+            rows.append(row)
+        return rows
+
+    @classmethod
+    def __artist_songs(cls, artist: Artist) -> str:
+        """Format the credited songs for the artists.csv value.
+
+        :param artist: The artist with its song credits loaded.
+        :return: The credited songs, each formatted as
+            "TITLE (YEAR#RANK[/YEAR#RANK...])" with its chart
+            appearances, sorted alphabetically case-folded by
+            title, joined by "|".
+        """
+        songs: list[Song] = sorted(
+            (x.song for x in artist.song_artists),
+            key=lambda x: x.title.casefold())
+        entries: list[str] = [
+            f"{song.title} ({cls.__formatted_song_positions(song)})"
+            for song in songs]
+        return "|".join(entries)
+
+    def __artists_rows(self) -> list[list[str]]:
+        """Build the sorted data rows of ``artists.csv``.
+
+        :return: The rows, sorted by the case-folded name.
+        """
+        artists: list[Artist] = sorted(
+            self.__session.scalars(sa.select(Artist)),
+            key=lambda x: x.name.casefold())
+        rows: list[list[str]] = []
+        artist: Artist
+        for artist in artists:
+            row: list[str] = [
+                artist.name, artist.wikidata_qid or "",
+                artist.gender or "", artist.type or "",
+                artist.genre or "", artist.country or "",
+                self.__artist_songs(artist)]
+            rows.append(row)
+        return rows
+
+
 def main(argv: list[str] | None = None) -> int:
     """Rebuild the SQLite working store from the inputs.
 
@@ -562,6 +721,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"error: {violation}", file=sys.stderr)
             return 1
         counts = StoreCounts.get_instance(session)
+        CSVExporter(session, args.derived_dir).write()
         session.commit()
     except (OSError, BuildError) as error:
         session.rollback()

@@ -3,6 +3,7 @@
 # Authors:
 #   imacat@mail.imacat.idv.tw (imacat), 2026/7/31
 """Unit tests for the working store builder module."""
+import csv
 import io
 import tempfile
 import unittest
@@ -253,6 +254,7 @@ class TestBuildDB(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
         self.__chart: Path = self.__dir / "chart.csv"
+        self.__derived: Path = self.__dir / "derived"
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__wikidata: Path = \
             self.__dir / "artists_wikidata.csv"
@@ -290,8 +292,40 @@ class TestBuildDB(unittest.TestCase):
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
             status: int = build_db.main(
-                [str(self.__chart), *options])
+                [str(self.__chart), str(self.__derived), *options])
         return status, stderr.getvalue()
+
+    def __read_csv_rows(self, name: str) -> list[list[str]]:
+        """Read the data rows of a derived CSV file.
+
+        :param name: The CSV file name under the derived directory.
+        :return: The data rows, the header row excluded.
+        """
+        with open(self.__derived / name, encoding="utf-8",
+                  newline="") as file:
+            rows: list[list[str]] = list(csv.reader(file))
+        return rows[1:]
+
+    def __read_csv_header(self, name: str) -> list[str]:
+        """Read the header row of a derived CSV file.
+
+        :param name: The CSV file name under the derived directory.
+        :return: The header row.
+        """
+        with open(self.__derived / name, encoding="utf-8",
+                  newline="") as file:
+            return next(csv.reader(file))
+
+    @staticmethod
+    def __split_joined_field(value: str,
+                             separator: str = "|") -> list[str]:
+        """Split a joined field into its entries.
+
+        :param value: The joined field value.
+        :param separator: The join separator.
+        :return: The entries, in the given order.
+        """
+        return value.split(separator)
 
     def __session(self) -> Session:
         """Open a database session closed on test cleanup.
@@ -594,3 +628,130 @@ class TestBuildDB(unittest.TestCase):
         self.assertIn(str(self.__overrides), stderr)
         session: Session = self.__session()
         self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    REVIEW_CHART_CSV: str = (
+        "year,rank,title,artist\n"
+        "2016,1,banana,Artist B\n"
+        "2016,2,\"Me, Myself & I\",Billie\n"
+        "2017,1,\"Me, Myself & I\",Billie\n"
+        "2017,2,Apple,Artist A\n")
+    """The chart CSV fixture exercising the review CSV ordering,
+    positions, and the outer-field comma quoting."""
+
+    def test_derived_dir_created_when_missing(self) -> None:
+        """Test that the derived directory is created when
+        missing."""
+        self.assertFalse(self.__derived.exists())
+        self.assertEqual(self.__run_build()[0], 0)
+        self.assertTrue(self.__derived.is_dir())
+        self.assertTrue((self.__derived / "songs.csv").is_file())
+        self.assertTrue((self.__derived / "artists.csv").is_file())
+
+    def test_songs_csv_written(self) -> None:
+        """Test the songs.csv header, the rows, the title
+        ordering, and the "/"-joined "positions" value."""
+        self.__write_chart(self.REVIEW_CHART_CSV)
+        self.assertEqual(self.__run_build()[0], 0)
+        self.assertEqual(
+            self.__read_csv_header("songs.csv"),
+            ["Title", "Artists", "Positions"])
+        rows: list[list[str]] = self.__read_csv_rows("songs.csv")
+        self.assertEqual(
+            [row[:2] for row in rows],
+            [["Apple", "Artist A"],
+             ["banana", "Artist B"],
+             ["Me, Myself & I", "Billie"]])
+        self.assertEqual(
+            [self.__split_joined_field(row[2], "/") for row in rows],
+            [["2017#2"], ["2016#1"], ["2016#2", "2017#1"]])
+
+    def test_songs_csv_uses_minimal_quoting(self) -> None:
+        """Test that songs.csv uses normal minimal CSV quoting: a
+        numeric-looking title is written unquoted, like every other
+        field not otherwise requiring quoting."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,679,Artist A\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        self.assertEqual(self.__run_build()[0], 0)
+        content: str = (self.__derived / "songs.csv").read_text(
+            encoding="utf-8")
+        self.assertIn("679,Artist A,2016#1", content)
+
+    def test_artists_csv_written(self) -> None:
+        """Test the artists.csv header, the rows, the name
+        ordering, and the "|"-joined "TITLE (YEAR#RANK...)" song
+        encoding."""
+        self.__write_chart(self.REVIEW_CHART_CSV)
+        self.assertEqual(self.__run_build()[0], 0)
+        self.assertEqual(
+            self.__read_csv_header("artists.csv"),
+            ["Name", "Wikidata QID", "Gender", "Type", "Genre",
+             "Country", "Songs"])
+        rows: list[list[str]] = self.__read_csv_rows("artists.csv")
+        self.assertEqual(
+            [row[0] for row in rows],
+            ["Artist A", "Artist B", "Billie"])
+        self.assertEqual(
+            [self.__split_joined_field(row[6]) for row in rows],
+            [["Apple (2017#2)"],
+             ["banana (2016#1)"],
+             ["Me, Myself & I (2016#2/2017#1)"]])
+
+    def test_artists_csv_songs_field_quoted_for_comma_title(
+            self) -> None:
+        """Test that the outer "Songs" field is CSV-quoted as a
+        whole when the joined value contains a comma, from a
+        comma-bearing credited title."""
+        self.__write_chart(self.REVIEW_CHART_CSV)
+        self.assertEqual(self.__run_build()[0], 0)
+        content: str = (self.__derived / "artists.csv").read_text(
+            encoding="utf-8")
+        self.assertIn(
+            '"Me, Myself & I (2016#2/2017#1)"', content)
+        self.assertIn("Apple (2017#2)\n", content)
+
+    def test_derived_csvs_have_no_ids(self) -> None:
+        """Test that neither derived CSV file exposes a song or an
+        artist ID column."""
+        self.assertEqual(self.__run_build()[0], 0)
+        self.assertNotIn(
+            "id", self.__read_csv_header("songs.csv"))
+        self.assertNotIn(
+            "id", self.__read_csv_header("artists.csv"))
+
+    def test_derived_csvs_have_crlf_line_endings(self) -> None:
+        """Test that the derived CSV files use CRLF line
+        endings."""
+        self.assertEqual(self.__run_build()[0], 0)
+        raw: bytes = (self.__derived / "songs.csv").read_bytes()
+        self.assertGreater(raw.count(b"\r\n"), 0)
+        self.assertEqual(raw.count(b"\r"), raw.count(b"\r\n"))
+        self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
+
+    def test_failed_build_leaves_derived_csvs_untouched(self) -> None:
+        """Test that a failed build does not touch the existing
+        derived CSV files."""
+        self.assertEqual(self.__run_build()[0], 0)
+        songs_before: str = (self.__derived / "songs.csv").read_text(
+            encoding="utf-8")
+        artists_before: str = \
+            (self.__derived / "artists.csv").read_text(
+                encoding="utf-8")
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Hello,Adele\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertNotEqual(status, 0)
+        self.assertEqual(
+            (self.__derived / "songs.csv").read_text(
+                encoding="utf-8"),
+            songs_before)
+        self.assertEqual(
+            (self.__derived / "artists.csv").read_text(
+                encoding="utf-8"),
+            artists_before)

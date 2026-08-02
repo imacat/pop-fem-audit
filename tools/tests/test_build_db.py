@@ -90,6 +90,150 @@ class TestParseArtistCredit(unittest.TestCase):
             [("24kGoldn", Role.PRIMARY),
              ("iann dior", Role.FEATURED)])
 
+    def test_colon_prefix_group(self) -> None:
+        """Test that a colon-prefixed group name is dropped."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "¥$: Ye & Ty Dolla $ign Featuring Rich The Kid"
+                " & Playboi Carti"),
+            [("Ye", Role.PRIMARY),
+             ("Ty Dolla $ign", Role.PRIMARY),
+             ("Rich The Kid", Role.FEATURED),
+             ("Playboi Carti", Role.FEATURED)])
+
+    def test_colon_prefix_with_ampersand_in_prefix(self) -> None:
+        """Test a colon prefix that itself contains "&"."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Rumi & JINU: EJAE & Andrew Choi"),
+            [("EJAE", Role.PRIMARY),
+             ("Andrew Choi", Role.PRIMARY)])
+
+    def test_colon_prefix_comma_list(self) -> None:
+        """Test a colon-prefixed comma-separated member list."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "HUNTR/X: EJAE, Audrey Nuna & REI AMI"),
+            [("EJAE", Role.PRIMARY),
+             ("Audrey Nuna", Role.PRIMARY),
+             ("REI AMI", Role.PRIMARY)])
+
+    def test_colon_prefix_five_members(self) -> None:
+        """Test a colon-prefixed five-member list."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Saja Boys: Andrew Choi, Neckwav, Danny Chung,"
+                " Kevin Woo & samUIL Lee"),
+            [("Andrew Choi", Role.PRIMARY),
+             ("Neckwav", Role.PRIMARY),
+             ("Danny Chung", Role.PRIMARY),
+             ("Kevin Woo", Role.PRIMARY),
+             ("samUIL Lee", Role.PRIMARY)])
+
+    def test_colon_prefix_duo(self) -> None:
+        """Test a colon-prefixed two-member list."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "THE ANXIETY: WILLOW & Tyler Cole"),
+            [("WILLOW", Role.PRIMARY),
+             ("Tyler Cole", Role.PRIMARY)])
+
+    def test_parenthesized_members(self) -> None:
+        """Test that a parenthesized member list replaces the
+        group name spanning the whole credit."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Silk Sonic (Bruno Mars & Anderson .Paak)"),
+            [("Bruno Mars", Role.PRIMARY),
+             ("Anderson .Paak", Role.PRIMARY)])
+
+    def test_duet_with_connector(self) -> None:
+        """Test that "Duet With" is a co-billing connector like
+        "with", dropping the word "Duet" entirely."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Blake Shelton Duet With Gwen Stefani"),
+            [("Blake Shelton", Role.PRIMARY),
+             ("Gwen Stefani", Role.PRIMARY)])
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Keith Urban Duet With P!nk"),
+            [("Keith Urban", Role.PRIMARY),
+             ("P!nk", Role.PRIMARY)])
+
+    def test_slash_delimiter(self) -> None:
+        """Test the " / " co-billing delimiter."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Cole Swindell / Lainey Wilson"),
+            [("Cole Swindell", Role.PRIMARY),
+             ("Lainey Wilson", Role.PRIMARY)])
+        self.assertEqual(
+            build_db.parse_artist_credit("Zayn / Taylor Swift"),
+            [("Zayn", Role.PRIMARY),
+             ("Taylor Swift", Role.PRIMARY)])
+
+    def test_protected_name_lil_nas_x(self) -> None:
+        """Test that "Lil Nas X" is guarded from the " x "
+        delimiter split."""
+        self.assertEqual(
+            build_db.parse_artist_credit("Lil Nas X & Jack Harlow"),
+            [("Lil Nas X", Role.PRIMARY),
+             ("Jack Harlow", Role.PRIMARY)])
+
+    def test_protected_name_tyler_the_creator(self) -> None:
+        """Test that "Tyler, The Creator" is guarded from the
+        comma delimiter split."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Tyler, The Creator Featuring GloRilla, Sexyy Red"
+                " & Lil Wayne"),
+            [("Tyler, The Creator", Role.PRIMARY),
+             ("GloRilla", Role.FEATURED),
+             ("Sexyy Red", Role.FEATURED),
+             ("Lil Wayne", Role.FEATURED)])
+
+    def test_protected_name_tones_and_i(self) -> None:
+        """Test that "Tones And I" is guarded from the " and "
+        delimiter split."""
+        self.assertEqual(
+            build_db.parse_artist_credit("Tones And I"),
+            [("Tones And I", Role.PRIMARY)])
+
+    def test_exception_spotemgottem(self) -> None:
+        """Test the SpotemGottem exception-table credit."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "SpotemGottem Featuring Pooh Shiesty Or DaBaby"),
+            [("SpotemGottem", Role.PRIMARY),
+             ("Pooh Shiesty", Role.FEATURED),
+             ("DaBaby", Role.FEATURED)])
+
+    def test_exception_the_scotts(self) -> None:
+        """Test the THE SCOTTS exception-table credit."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "THE SCOTTS, Travis Scott & Kid Cudi"),
+            [("Travis Scott", Role.PRIMARY),
+             ("Kid Cudi", Role.PRIMARY)])
+
+    def test_exception_drake_featuring_the_throne(self) -> None:
+        """Test the Drake Featuring The Throne exception-table
+        credit."""
+        self.assertEqual(
+            build_db.parse_artist_credit(
+                "Drake Featuring The Throne"),
+            [("Drake", Role.PRIMARY),
+             ("Jay Z", Role.FEATURED),
+             ("Kanye West", Role.FEATURED)])
+
+    def test_plus_delimiter_unaffected(self) -> None:
+        """Test that the existing "+" delimiter split is
+        unaffected by the new rules."""
+        self.assertEqual(
+            build_db.parse_artist_credit("Dan + Shay"),
+            [("Dan", Role.PRIMARY), ("Shay", Role.PRIMARY)])
+
 
 class TestBuildDB(unittest.TestCase):
     """Test cases for the working store build."""
@@ -194,7 +338,8 @@ class TestBuildDB(unittest.TestCase):
     def test_dedup_credit_variant(self) -> None:
         """Test that a credit variant listed in
         ``CANONICAL_ARTIST_CREDITS`` merges into one song, storing
-        the canonical credit."""
+        the canonical credit, with the canonical artist spelling
+        applied to the artist listed in ``CANONICAL_ARTIST_NAMES``."""
         self.__write_chart(
             "year,rank,title,artist\n"
             "2016,1,Eastside,\"benny blanco, Halsey & Khalid\"\n"
@@ -217,7 +362,72 @@ class TestBuildDB(unittest.TestCase):
             [(2016, 1), (2017, 1)])
         self.assertEqual(
             [x.artist.name for x in songs[0].song_artists],
-            ["Benny Blanco", "Halsey", "Khalid"])
+            ["benny blanco", "Halsey", "Khalid"])
+
+    def test_dedup_artist_name_case_variant(self) -> None:
+        """Test that an artist name case variant merges into one
+        artist, keeping the first-seen spelling."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Song One,Marshmello\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,Song Two,marshmello\n"
+            "2017,2,filler,Filler Artist\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        artists: list[Artist] = list(session.scalars(
+            sa.select(Artist).where(Artist.name.ilike("marsh%"))))
+        self.assertEqual(len(artists), 1)
+        self.assertEqual(artists[0].name, "Marshmello")
+        self.assertEqual(
+            {x.title for x in
+             {y.song for y in artists[0].song_artists}},
+            {"Song One", "Song Two"})
+
+    def test_canonical_artist_name_restored(self) -> None:
+        """Test that a canonical spelling is stored even for a
+        single, non-canonically spelled occurrence."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Beggin',Maneskin\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        artist: Artist | None = session.scalar(
+            sa.select(Artist).where(Artist.name.ilike("m%nesk%")))
+        assert artist is not None
+        self.assertEqual(artist.name, "Måneskin")
+
+    def test_canonical_ye_resolves_to_kanye_west(self) -> None:
+        """Test that a "Ye" credit and a "Kanye West" credit merge
+        into a single artist row named "Kanye West", credited on
+        both songs."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Song One,Ye\n"
+            "2016,2,Song Two,Kanye West\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        artists: list[Artist] = list(session.scalars(
+            sa.select(Artist).where(Artist.name == "Kanye West")))
+        self.assertEqual(len(artists), 1)
+        self.assertEqual(
+            {x.title for x in
+             {y.song for y in artists[0].song_artists}},
+            {"Song One", "Song Two"})
 
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""

@@ -23,6 +23,13 @@ The rebuild is deterministic: the builder assigns the song and
 artist IDs itself, as 1, 2, 3, ... in the first-occurrence file
 order, so the IDs are reproducible across rebuilds on every
 database engine, given the frozen input file.
+
+A song is identified by its raw title together with its artist
+credit, the credit canonicalized through
+``CANONICAL_ARTIST_CREDITS``; a credit listed there collapses onto
+the same song as its canonical form, and the stored artist credit
+is always the canonical form.  Artist deduplication is by the
+exact parsed artist name, as printed on the chart.
 """
 import argparse
 import csv
@@ -63,6 +70,11 @@ FEATURING_PATTERN: re.Pattern[str] = re.compile(
 DELIMITER_PATTERN: re.Pattern[str] = re.compile(
     r", | & | \+ |(?i: and | x | with )")
 """The pattern splitting the artist names within a side."""
+CANONICAL_ARTIST_CREDITS: dict[str, str] = {
+    "benny blanco, Halsey & Khalid": "Benny Blanco, Halsey & Khalid",
+}
+"""The canonical artist credit spellings, keyed by a variant
+credit string."""
 
 
 class BuildError(Exception):
@@ -125,6 +137,22 @@ def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
     return pairs
 
 
+def song_identity(title: str, credit: str) -> tuple[str, str]:
+    """Compute the identity key of a chart row.
+
+    The key pairs the raw title with the artist credit,
+    canonicalized through ``CANONICAL_ARTIST_CREDITS``; a credit
+    absent from the table maps to itself.  Two chart rows denote
+    the same song iff their identity keys are equal.
+
+    :param title: The song title as printed on the chart.
+    :param credit: The combined artist credit string.
+    :return: The identity key: the raw title paired with the
+        canonical artist credit.
+    """
+    return title, CANONICAL_ARTIST_CREDITS.get(credit, credit)
+
+
 def create_song(session: Session, song_id: int, title: str,
                 credit: str, artists: dict[str, Artist]) -> Song:
     """Create a song with its parsed artist credits.
@@ -166,10 +194,12 @@ def create_song(session: Session, song_id: int, title: str,
 def load_chart(session: Session, path: Path) -> None:
     """Load the chart CSV into songs, chart entries, and credits.
 
-    A song repeated across the rows is stored once, keyed by its
-    exact title and artist credit; every row yields one chart
-    entry.  The songs and the artists take the IDs 1, 2, 3, ...
-    in the first-occurrence row order.
+    A song repeated across the rows is stored once, matched by its
+    identity key (see `song_identity`); every row yields one chart
+    entry.  The stored title is the raw title; the stored artist
+    credit is the canonical credit from the identity key.  The
+    songs and the artists take the IDs 1, 2, 3, ... in the
+    first-occurrence row order.
 
     :param session: The database session.
     :param path: The chart CSV file with the columns year, rank,
@@ -182,11 +212,15 @@ def load_chart(session: Session, path: Path) -> None:
     with open(path, encoding="utf-8", newline="") as file:
         row: dict[str, str]
         for row in csv.DictReader(file):
-            key: tuple[str, str] = (row["title"], row["artist"])
+            key: tuple[str, str] = song_identity(
+                row["title"], row["artist"])
             if key not in songs:
+                title: str
+                credit: str
+                title, credit = key
                 songs[key] = create_song(
-                    session, len(songs) + 1, row["title"],
-                    row["artist"], artists)
+                    session, len(songs) + 1, title, credit,
+                    artists)
             session.add(ChartEntry(year=int(row["year"]),
                                    rank=int(row["rank"]),
                                    song=songs[key]))

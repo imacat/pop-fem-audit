@@ -191,6 +191,34 @@ class TestBuildDB(unittest.TestCase):
         self.assertIn("4 artists", stderr)
         self.assertIn("4 credits", stderr)
 
+    def test_dedup_credit_variant(self) -> None:
+        """Test that a credit variant listed in
+        ``CANONICAL_ARTIST_CREDITS`` merges into one song, storing
+        the canonical credit."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Eastside,\"benny blanco, Halsey & Khalid\"\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,Eastside,\"Benny Blanco, Halsey & Khalid\"\n"
+            "2017,2,filler,Filler Artist\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        songs: list[Song] = list(session.scalars(
+            sa.select(Song).where(Song.title == "Eastside")))
+        self.assertEqual(len(songs), 1)
+        self.assertEqual(songs[0].artist_credit,
+                         "Benny Blanco, Halsey & Khalid")
+        self.assertEqual(
+            sorted((x.year, x.rank)
+                   for x in songs[0].chart_entries),
+            [(2016, 1), (2017, 1)])
+        self.assertEqual(
+            [x.artist.name for x in songs[0].song_artists],
+            ["Benny Blanco", "Halsey", "Khalid"])
+
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""
         self.assertFalse((self.__dir / "store.sqlite3").exists())

@@ -140,6 +140,23 @@ CANONICAL_ARTIST_NAMES: dict[str, str] = {
     "mo": "MØ",
     "wizkid": "Wizkid",
     "ye": "Kanye West",
+    "amine": "Aminé",
+    "bomba estereo": "Bomba Estéreo",
+    "carolina gaitan": "Carolina Gaitán",
+    "casper magico": "Casper Mágico",
+    "eslabon armado": "Eslabón Armado",
+    "jhene aiko": "Jhené Aiko",
+    "neton vega": "Netón Vega",
+    "nio garcia": "Nio García",
+    "oscar maydon": "Óscar Maydon",
+    "silento": "Silentó",
+    "the marias": "The Marías",
+    "victoria monet": "Victoria Monét",
+    "dan": "Dan Smyers",
+    "shay": "Shay Mooney",
+    "cris mj": "Cris MJ",
+    "mariah the scientist": "Mariah the Scientist",
+    "surf mesa": "Surf Mesa",
 }
 """The canonical artist spellings, keyed by the case-folded
 identity."""

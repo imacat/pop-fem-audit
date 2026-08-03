@@ -463,6 +463,65 @@ class TestBuildDB(unittest.TestCase):
              {y.song for y in artists[0].song_artists}},
             {"Song One", "Song Two"})
 
+    def test_canonical_silento_restores_diacritic(self) -> None:
+        """Test that a "Silento" credit stores the diacritic-
+        restored canonical spelling "Silentó"."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Watch Me,Silento\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        artist: Artist | None = session.scalar(
+            sa.select(Artist).where(Artist.name.ilike("silent%")))
+        assert artist is not None
+        self.assertEqual(artist.name, "Silentó")
+
+    def test_canonical_dan_and_shay_full_names(self) -> None:
+        """Test that a "Dan + Shay" credit stores the canonical
+        full names "Dan Smyers" and "Shay Mooney"."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Tequila,Dan + Shay\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        song: Song | None = session.scalar(
+            sa.select(Song).where(Song.title == "Tequila"))
+        assert song is not None
+        self.assertEqual(
+            [x.artist.name for x in song.song_artists],
+            ["Dan Smyers", "Shay Mooney"])
+
+    def test_canonical_surf_mesa_case_restored(self) -> None:
+        """Test that a "surf mesa" credit stores the canonical
+        case styling "Surf Mesa"."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Ily,surf mesa\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        artist: Artist | None = session.scalar(
+            sa.select(Artist).where(Artist.name.ilike("surf%")))
+        assert artist is not None
+        self.assertEqual(artist.name, "Surf Mesa")
+
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""
         self.assertFalse((self.__dir / "store.sqlite3").exists())

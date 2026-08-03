@@ -148,6 +148,13 @@
   commit」的第二例外。報表不含資料庫 ID（內部參照，資料
   改版會重排，不供引用）；關係以內嵌字串呈現——`/` 連同
   一首歌的多次上榜、`|` 連不同歌曲——欄位一律字母序。
+- **歌手正名表全面改存官方拼法**：變音符號一律恢復
+  （Billboard 印法慣性去符號，共 12 筆，如 Aminé、Jhené
+  Aiko、Silentó）；二人組拆名改存成員全名（Dan Smyers、
+  Shay Mooney）；官方大小寫 3 筆（Cris MJ、Mariah the
+  Scientist、Surf Mesa）。官方拼法逐筆以 DSP 官方頁查證
+  （維基百科／Wikidata 的大小寫是其自家規範，不作準）；
+  查證亦確認 Tones And I 的 chart 印法即官方寫法，不改。
 - **先補完 Wikidata、再捕捉快照**：歌手資料查證做在上游——
   以 subagent（`artist-wikidata-updater` 定義檔）逐位查證
   快照欄位（P21、P31、P136、P27／P495，新條目加 P106）並

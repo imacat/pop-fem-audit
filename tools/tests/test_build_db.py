@@ -258,8 +258,6 @@ class TestBuildDB(unittest.TestCase):
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__wikidata: Path = \
             self.__dir / "artists_wikidata.csv"
-        self.__overrides: Path = \
-            self.__dir / "artists_overrides.csv"
         self.__write_chart(self.CHART_CSV)
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
@@ -573,42 +571,6 @@ class TestBuildDB(unittest.TestCase):
             list(session.scalars(sa.select(ChartEntry))), [])
         self.assertEqual(list(session.scalars(sa.select(Song))), [])
 
-    def test_overrides_apply_over_wikidata(self) -> None:
-        """Test that the overrides win over the Wikidata snapshot."""
-        self.__wikidata.write_text(
-            "name,qid,gender,type,genre,country,note\n"
-            "Adele,Q2831,female,solo,pop,GB,\n",
-            encoding="utf-8")
-        self.__overrides.write_text(
-            "name,qid,gender,type,genre,country,note\n"
-            "Adele,,,,soul,,manually checked\n",
-            encoding="utf-8")
-        self.assertEqual(self.__run_build(
-            "--wikidata-csv", str(self.__wikidata),
-            "--overrides-csv", str(self.__overrides))[0], 0)
-        session: Session = self.__session()
-        artist: Artist | None = session.scalar(
-            sa.select(Artist).where(Artist.name == "Adele"))
-        assert artist is not None
-        self.assertEqual(artist.genre, "soul")
-        self.assertEqual(artist.gender, "female")
-        self.assertEqual(artist.wikidata_qid, "Q2831")
-        self.assertEqual(artist.country, "GB")
-
-    def test_unknown_override_name_fails(self) -> None:
-        """Test that an unknown override name fails the build."""
-        self.__overrides.write_text(
-            "name,qid,gender,type,genre,country,note\n"
-            "Adel,,female,,,,typo\n", encoding="utf-8")
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--overrides-csv", str(self.__overrides))
-        self.assertNotEqual(status, 0)
-        self.assertIn("Adel", stderr)
-        session: Session = self.__session()
-        self.assertEqual(list(session.scalars(sa.select(Song))), [])
-
     def test_lyrics_loaded(self) -> None:
         """Test loading the lyrics cache into the songs."""
         self.__lyrics.mkdir()
@@ -673,18 +635,6 @@ class TestBuildDB(unittest.TestCase):
         self.assertNotEqual(status, 0)
         self.assertIn("error:", stderr)
         self.assertIn(str(self.__wikidata), stderr)
-        session: Session = self.__session()
-        self.assertEqual(list(session.scalars(sa.select(Song))), [])
-
-    def test_missing_overrides_csv_fails(self) -> None:
-        """Test that a given but missing override CSV fails."""
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--overrides-csv", str(self.__overrides))
-        self.assertNotEqual(status, 0)
-        self.assertIn("error:", stderr)
-        self.assertIn(str(self.__overrides), stderr)
         session: Session = self.__session()
         self.assertEqual(list(session.scalars(sa.select(Song))), [])
 

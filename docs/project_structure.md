@@ -21,7 +21,7 @@ pop-fem-audit/
 │   │   └── lyrics/                        # 歌詞 .txt 快取
 │   │                                      #   （gitignored，版權）
 │   ├── manual/                # 人工著作：只由研究者手寫
-│   │   └── artists_overrides.csv          # 人工核定 / 深度背景
+│   │                          #   （黃金標準編碼等）
 │   └── derived/               # 衍生：只由 build-db 寫入
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）

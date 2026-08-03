@@ -8,8 +8,8 @@ Rebuilds the working store from scratch out of the committed
 inputs: the year-end chart CSV and the output directory for the
 review CSV files, given as the two positional command-line
 arguments, and the optional capture inputs, each given as an
-option: the lyrics cache directory, the Wikidata artist snapshot
-CSV, and the manual artist overrides CSV.  An omitted option
+option: the lyrics cache directory and the Wikidata artist
+snapshot CSV.  An omitted option
 leaves its capture layer unloaded; a given option whose path does
 not exist fails the build.  Missing tables
 are created on a fresh store; existing tables are never altered,
@@ -188,9 +188,6 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--wikidata-csv", type=Path, default=None,
         help="the Wikidata artist snapshot CSV file to apply")
-    parser.add_argument(
-        "--overrides-csv", type=Path, default=None,
-        help="the manual artist override CSV file to apply")
     return parser.parse_args(argv)
 
 
@@ -215,8 +212,7 @@ def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
     word or punctuation.
 
     Known limitation: a compound act name that contains one of the
-    delimiters, other than the protected names, is over-split;
-    such cases are corrected later via the human override layer.
+    delimiters, other than the protected names, is over-split.
 
     :param credit: The combined artist credit string.
     :return: The (name, role) pairs in credit order, primary side
@@ -407,8 +403,7 @@ def apply_artist_csv(session: Session, path: Path) -> None:
     """Apply an artist attribute CSV onto the artist rows.
 
     Artists match by exact name.  Only the non-empty cells are
-    applied, so a later CSV overrides an earlier one field by
-    field.  The note column is ignored.
+    applied, field by field.  The note column is ignored.
 
     :param session: The database session, with the artists
         flushed.
@@ -727,8 +722,6 @@ def main(argv: list[str] | None = None) -> int:
             load_lyrics(session, args.lyrics_dir)
         if args.wikidata_csv is not None:
             apply_artist_csv(session, args.wikidata_csv)
-        if args.overrides_csv is not None:
-            apply_artist_csv(session, args.overrides_csv)
         session.flush()
         violations: list[str] = find_violations(
             session, YEARS, RANKS_PER_YEAR)

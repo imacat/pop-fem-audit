@@ -78,7 +78,7 @@ class Artist(Base):
     gender: Mapped[str | None]
     """The gender of the artist."""
     type: Mapped[str | None]
-    """The artist type: solo, group, or mixed."""
+    """The artist type: solo or group."""
     genre: Mapped[str | None]
     """The music genre of the artist."""
     country: Mapped[str | None]

@@ -180,3 +180,18 @@
   推測不確定且無佐證者列疑慮清單；查證屬資料策展而非
   分析，以 Claude Code 輔助、不走分析 API；QS 批次以
   私人工作檔留存，不隨論文發布。
+
+## 2026-08-04
+
+- **移除人工 overrides 層**：`build-db` 刪去
+  `--overrides-csv` 選項與套用邏輯，文件同步移除
+  `data/manual/artists_overrides.csv`。理由：「先補完
+  Wikidata、再捕捉快照」工作流實跑後，469 位歌手全數
+  在上游查證補齊，快照即完整，本地覆蓋層已無存在事實；
+  `data/manual/` 層保留（供日後黃金標準編碼）。
+- **歌手型態刪去 mixed 值**：`ArtistType` 只留 solo／group。
+  mixed 是先導研究「男／女／混合團體」單一欄位的殘留，
+  正式設計拆成 gender＋type 後從未定義其指涉；署名一律
+  拆成個人後，男女混合是歌曲層（song_artists＋各歌手
+  gender）可推導的事實，不屬歌手實體。非人非團體者
+  （Pinkfong）type 留空由人工判定，維持現狀。

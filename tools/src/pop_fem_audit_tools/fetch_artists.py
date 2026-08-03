@@ -106,9 +106,6 @@ class ArtistType(enum.StrEnum):
     """A solo artist: a human."""
     GROUP = "group"
     """A musical ensemble."""
-    MIXED = "mixed"
-    """A mixed act, assigned manually via the overrides; never
-    derived by the fetcher."""
 
 
 @dataclass

@@ -33,7 +33,7 @@
   ——一律以文字格式 commit。格式跟著層次走，不跟著偏好走。
 - **分層**：
   - 源頭：原始榜單 CSV（進 git）。
-  - 捕捉：Wikidata 快照 CSV、人工 overrides CSV、你的編碼
+  - 捕捉：Wikidata 快照 CSV、你的編碼
     CSV、`runs/` JSONL（皆進 git）；歌詞 `.txt` 快取
     （版權因素 gitignored，為已知的稽核缺口）。
   - 工作儲存：SQLite 單檔（`tools/instance/`，generated、
@@ -79,7 +79,7 @@
 | 階段 | 內容 | 方式 | 時程 |
 |---|---|---|---|
 | 0 | 基礎建設：git init、目錄結構、.gitignore、決策日誌、runner script（含 Batch API）、codebook v0 骨架 | script + 討論 | 7/30–7/31 |
-| 1 | 資料準備：`run_llm` 改走統一設定 → `build-db`（解析榜單成 songs/chart_entries/artists/song_artists）→ `import-lyrics`（pilot 2018–2025）→ `fetch-lyrics`（2016–17 與缺漏，Lyrics.ovh / LRCLIB）→ `fetch-artists`（Wikidata 快照 + 人工 overrides）→ `export-llm-input` | 子命令 | 7/31–8/3 |
+| 1 | 資料準備：`run_llm` 改走統一設定 → `build-db`（解析榜單成 songs/chart_entries/artists/song_artists）→ `import-lyrics`（pilot 2018–2025）→ `fetch-lyrics`（2016–17 與缺漏，Lyrics.ovh / LRCLIB）→ `fetch-artists`（Wikidata 快照）→ `export-llm-input` | 子命令 | 7/31–8/3 |
 | 2 | 候選篩選：全部唯一歌曲高召回 women-power 候選篩選（寧可多抓，人工剔除） | API 2+1 | 8/2–8/3 |
 | 3 | 黃金標準：依 codebook 人工逐首判定 genuine/peripheral/fake，附引用歌詞證據表（LLM 只做摘錄，不給判定建議）；先以 10–15 首校準樣本試編並修訂 codebook 後凍結；同批校準樣本實測 Sonnet 4.6 vs Opus 5 一致率 | 人工 + script 輔助 | 8/4–8/8 |
 | 4 | 受控比較（盲點實驗）：條件 A（詞彙層提示）vs 條件 B（框架感知提示），各 2+1，對照黃金標準計算假陽／假陰率 | API | 8/6–8/9 |

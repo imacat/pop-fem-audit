@@ -24,7 +24,7 @@ Hot 100（2016–2025）為例的內容分析。
    ../data/source/yearend_hot100_2016_2025.csv
    ../data/derived
    --lyrics-dir ../data/captures/lyrics
-   --wikidata-csv ../data/captures/artists_wikidata.csv
+   --wikidata-csv ../data/captures/artists-wikidata.csv
    --overrides-csv ../data/manual/artists_overrides.csv`）。
    LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
    thinking 關閉；每步驟獨立執行兩次後由仲裁步驟合併

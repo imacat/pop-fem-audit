@@ -11,9 +11,10 @@ store is only read, never written; the ``build-db`` subcommand
 assembles the captured files into the store on the next rebuild.
 
 Every fetched row is meant for later human verification: the
-description of the search hit is recorded in the note column so
-that a bad match can be spotted.  A search miss or an error on
-one artist is noted on its row and does not fail the run.
+description of the resolved item is recorded in the note column
+so that a bad match can be spotted.  An unresolved artist or an
+error on one artist is noted on its row and does not fail the
+run.
 """
 import argparse
 import csv
@@ -21,6 +22,7 @@ import enum
 import json
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
@@ -31,26 +33,69 @@ from typing import Any, Literal
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from . import VERSION
 from .database import ds
-from .models import Artist
+from .models import Artist, Song, SongArtist
 
 API_URL: str = "https://www.wikidata.org/w/api.php"
 """The URL of the Wikidata API endpoint."""
-USER_AGENT: str = ("pop-fem-audit-tools"
-                   " (https://github.com/imacat/pop-fem-audit)")
+SPARQL_URL: str = "https://query.wikidata.org/sparql"
+"""The URL of the Wikidata Query Service SPARQL endpoint."""
+USER_AGENT: str = (
+    f"pop-fem-audit-tools/{VERSION}"
+    " (https://github.com/imacat/pop-fem-audit;"
+    " mailto:imacat@mail.imacat.idv.tw)")
 """The User-Agent header sent on every HTTP request."""
 TIMEOUT: float = 30.0
-"""The timeout of an HTTP request, in seconds."""
+"""The timeout of an API HTTP request, in seconds."""
+SPARQL_TIMEOUT: float = 90.0
+"""The timeout of a SPARQL HTTP request, in seconds.
+
+Higher than the API timeout: the WDQS server aborts a slow
+query at 60 seconds, and a lower client timeout would race
+that server-side abort and misclassify a slow-but-answerable
+query as a client-side timeout instead of letting the server's
+own HTTP error response arrive and enter the retry path."""
 SLEEP_SECONDS: float = 1.0
 """The delay between consecutive HTTP requests, in seconds."""
+MAX_ATTEMPTS: int = 5
+"""The maximum number of attempts on a transient error."""
+RETRY_SECONDS: float = 15.0
+"""The back-off unit on a transient error, in seconds;
+multiplied by the attempt number already made."""
+RETRY_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503})
+"""The HTTP statuses that are retried with a back-off."""
+MAX_STAGE1_TITLES: int = 3
+"""The maximum number of charted titles used for the stage-1 song
+corroboration."""
 HUMAN_QID: str = "Q5"
 """The Wikidata item ID of "human"."""
+ENSEMBLE_QID: str = "Q2088357"
+"""The Wikidata item ID of "musical ensemble"."""
+ORIGINAL_CAST_QID: str = "Q106497009"
+"""The Wikidata item ID of "original cast"."""
 GROUP_KEYWORDS: Sequence[str] = ("band", "group", "duo", "trio")
 """The label keywords that suggest a musical ensemble, covering
 labels like "boy band" and "girl group"."""
 NOTE_NOT_FOUND: str = "not found"
-"""The note sentinel of an artist without a Wikidata search hit,
-written to the snapshot and read back for the classification."""
+"""The note sentinel of an artist without a resolved Wikidata
+item, written to the snapshot and read back for the
+classification."""
+PINNED_QIDS: dict[str, str] = {
+    "Pinkfong": "Q55735607",
+}
+"""The last-resort pinned item IDs, keyed by the artist name.
+
+Each entry is for an artist the algorithm documented on
+``ArtistFetcher`` is structurally unable to resolve, with its
+justification recorded here:
+
+- "Pinkfong": the only charting act whose item is typed as a
+  brand (P31 = Q431289), which the type gate (human / musical
+  ensemble / original cast) excludes by design.
+
+A pinned name skips the candidate retrieval and corroboration
+steps; its item ID is used directly."""
 
 
 class ArtistType(enum.StrEnum):
@@ -84,7 +129,7 @@ class ArtistSnapshot:
     """The country label, or empty when unresolved."""
     note: str = ""
     """The note for human verification: the description of the
-    search hit, ``not found``, or ``error: <reason>``."""
+    resolved item, ``not found``, or ``error: <reason>``."""
 
     def to_row(self) -> dict[str, str]:
         """Return this snapshot as a CSV row.
@@ -101,7 +146,8 @@ SNAPSHOT_FIELDS: Sequence[str] = tuple(
 
 @dataclass
 class ArtistClaims:
-    """The item-ID claim targets of a Wikidata artist item."""
+    """The item-ID claim targets and description of a Wikidata
+    artist item."""
 
     gender_ids: list[str] = field(default_factory=list)
     """The item IDs of the gender targets."""
@@ -113,6 +159,17 @@ class ArtistClaims:
     """The item IDs of the country-of-citizenship targets."""
     origin_country_ids: list[str] = field(default_factory=list)
     """The item IDs of the country-of-origin targets."""
+    description: str = ""
+    """The English description of the item, or empty when
+    absent."""
+
+
+class RetryExhausted(Exception):
+    """The retries on a transient error are exhausted.
+
+    A transient error is a retryable HTTP status (429, 500,
+    502, or 503) or a read timeout.
+    """
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -132,70 +189,228 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 class ArtistFetcher:
-    """A fetcher of artist metadata from Wikidata."""
+    """A fetcher of artist metadata from Wikidata.
+
+    An artist name is resolved to a Wikidata item ID through the
+    Wikidata Query Service (SPARQL), not the search API, so that
+    every step is a deterministic indexed lookup with no ranking
+    and no case folding of the label text itself:
+
+    1. Candidate retrieval: the items whose ``rdfs:label`` or
+       ``skos:altLabel`` exactly equals the artist name at
+       ``@en`` or ``@mul`` (the multilingual default layer),
+       restricted to a human (P31 = Q5), a musical ensemble
+       (P31/P279* = Q2088357), or an original cast
+       (P31 = Q106497009).
+    2. A single candidate is selected outright.
+    3. With multiple candidates, stage 1 corroborates with up to
+       the first 3 charted titles: the song items whose label or
+       alias exactly equals a title at ``@en`` or ``@mul`` are
+       looked up with their P175 performers and, optionally,
+       those performers' P527 members.  The candidates are
+       intersected with the performers, and, only when that
+       intersection is empty, with the members; a stage succeeds
+       only when the intersection has exactly one item.
+    4. Stage 2 is an anchored, case-insensitive fallback: every
+       song performed by a candidate, directly or via a parent
+       group, is compared against the charted titles with a
+       casefold match on the song label, without a language
+       restriction; a single matching candidate is selected.
+    5. Zero candidates, or no stage narrowing to exactly one
+       item, leaves the artist unresolved.
+
+    As a last resort, a name listed in ``PINNED_QIDS`` uses its
+    pinned item ID directly, skipping every step above.
+    """
 
     def __init__(self) -> None:
         """Construct the fetcher."""
         self.__sent: int = 0
         """The number of the HTTP requests already sent."""
 
-    def fetch(self, name: str) -> ArtistSnapshot:
+    def fetch(self, name: str,
+              titles: Sequence[str]) -> ArtistSnapshot:
         """Fetch the metadata of an artist.
 
-        The note carries the description of the search hit for
-        human verification.  A search miss yields a snapshot with
-        the note ``not found``.  An HTTP, network, or decoding
-        error yields a snapshot with what was resolved so far and
-        the note ``error: <reason>``.
+        The note carries the description of the resolved item
+        for human verification.  ``not found`` is reserved for
+        the algorithm genuinely finding nothing for the artist.
+        Any HTTP, network, or decoding error -- including the
+        retries on a transient error being exhausted -- yields a
+        snapshot with what was resolved so far and the note
+        ``error: <reason>``.
 
-        :param name: The artist name to query with.
+        :param name: The artist name to resolve.
+        :param titles: The charted song titles credited to the
+            artist, used for the multi-candidate resolution.
         :return: The snapshot of the artist.
         """
         snapshot: ArtistSnapshot = ArtistSnapshot(name=name)
         try:
-            hit: tuple[str, str] | None = self.__search(name)
-            if hit is None:
+            qid: str | None = self.__resolve_qid(name, titles)
+            if qid is None:
                 snapshot.note = NOTE_NOT_FOUND
                 return snapshot
-            snapshot.qid, snapshot.note = hit
+            snapshot.qid = qid
             self.__resolve(snapshot)
-        except (OSError, ValueError) as error:
+        except (RetryExhausted, OSError, ValueError) as error:
             snapshot.note = f"error: {error}"
         return snapshot
 
-    def __search(self, name: str) -> tuple[str, str] | None:
-        """Search Wikidata for an artist.
+    def __resolve_qid(self, name: str,
+                      titles: Sequence[str]) -> str | None:
+        """Resolve an artist name to a Wikidata item ID.
 
-        :param name: The artist name to search for.
-        :return: The QID and the description of the first hit, or
-            None when there is no hit.
-        :raises OSError: On an HTTP or network error.
+        :param name: The artist name.
+        :param titles: The charted song titles credited to the
+            artist.
+        :return: The pinned item ID from ``PINNED_QIDS`` when the
+            name is listed there; otherwise the resolved item
+            ID, or None when the algorithm documented on this
+            class does not narrow to exactly one item.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
-        data: Any = self.__get_json({
-            "action": "wbsearchentities", "search": name,
-            "language": "en", "type": "item", "format": "json"})
-        hits: Any = data.get("search") \
-            if isinstance(data, dict) else None
-        if not isinstance(hits, list) or len(hits) == 0:
+        if name in PINNED_QIDS:
+            return PINNED_QIDS[name]
+        candidates: list[str] = self.__candidates(name)
+        if len(candidates) == 0:
             return None
-        hit: Any = hits[0]
-        if not isinstance(hit, dict) \
-                or not isinstance(hit.get("id"), str):
+        if len(candidates) == 1:
+            return candidates[0]
+        selected: str | None = self.__stage1(candidates, titles)
+        if selected is not None:
+            return selected
+        return self.__stage2(candidates, titles)
+
+    def __candidates(self, name: str) -> list[str]:
+        """Retrieve the Wikidata items matching an artist name.
+
+        :param name: The artist name.
+        :return: The item IDs of the human, musical-ensemble, or
+            original-cast items whose label or alias exactly
+            equals the name.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        query: str = f"""
+        SELECT DISTINCT ?item WHERE {{
+          VALUES ?name {{ {self.__literals([name])} }}
+          {{ ?item rdfs:label ?name }}
+          UNION {{ ?item skos:altLabel ?name }}
+          {{
+            ?item wdt:P31 wd:{HUMAN_QID}
+          }} UNION {{
+            ?item wdt:P31/wdt:P279* wd:{ENSEMBLE_QID}
+          }} UNION {{
+            ?item wdt:P31 wd:{ORIGINAL_CAST_QID}
+          }}
+        }}
+        """
+        rows: list[dict[str, str]] = self.__sparql(query)
+        return [self.__qid(x["item"]) for x in rows
+                if "item" in x]
+
+    def __stage1(self, candidates: Sequence[str],
+                 titles: Sequence[str]) -> str | None:
+        """Corroborate the candidates with the charted titles.
+
+        :param candidates: The candidate item IDs.
+        :param titles: The charted song titles credited to the
+            artist.
+        :return: The single candidate among the performers of a
+            matching song, or, only when no such single
+            candidate exists, among those performers' group
+            members; None when neither intersection has exactly
+            one item, or there are no titles to try.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        subset: Sequence[str] = titles[:MAX_STAGE1_TITLES]
+        if len(subset) == 0:
             return None
-        description: Any = hit.get("description")
-        return hit["id"], \
-            description if isinstance(description, str) else ""
+        query: str = f"""
+        SELECT DISTINCT ?performer ?member WHERE {{
+          VALUES ?title {{ {self.__literals(subset)} }}
+          {{ ?song rdfs:label ?title }}
+          UNION {{ ?song skos:altLabel ?title }}
+          ?song wdt:P175 ?performer .
+          OPTIONAL {{ ?performer wdt:P527 ?member . }}
+        }}
+        """
+        rows: list[dict[str, str]] = self.__sparql(query)
+        performers: set[str] = {
+            self.__qid(x["performer"]) for x in rows
+            if "performer" in x}
+        hit: set[str] = set(candidates) & performers
+        if len(hit) == 1:
+            return next(iter(hit))
+        members: set[str] = {
+            self.__qid(x["member"]) for x in rows
+            if "member" in x}
+        hit = set(candidates) & members
+        if len(hit) == 1:
+            return next(iter(hit))
+        return None
+
+    def __stage2(self, candidates: Sequence[str],
+                 titles: Sequence[str]) -> str | None:
+        """Rescue a single candidate by a case-insensitive match.
+
+        :param candidates: The candidate item IDs.
+        :param titles: The charted song titles credited to the
+            artist.
+        :return: The single candidate with a charted song among
+            the songs it, or a parent group, performs, matched
+            case-insensitively against the song label; None when
+            no such single candidate exists.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        values: str = " ".join(f"wd:{x}" for x in candidates)
+        query: str = f"""
+        SELECT DISTINCT ?cand ?label WHERE {{
+          VALUES ?cand {{ {values} }}
+          {{ ?song wdt:P175 ?cand }}
+          UNION {{ ?g wdt:P527 ?cand . ?song wdt:P175 ?g }}
+          ?song rdfs:label ?label .
+        }}
+        """
+        rows: list[dict[str, str]] = self.__sparql(query)
+        folded: set[str] = {x.casefold() for x in titles}
+        hits: set[str] = {
+            self.__qid(x["cand"]) for x in rows
+            if "cand" in x and "label" in x
+            and x["label"].casefold() in folded}
+        if len(hits) == 1:
+            return next(iter(hits))
+        return None
 
     def __resolve(self, snapshot: ArtistSnapshot) -> None:
         """Resolve the claims of an artist into the snapshot.
 
         :param snapshot: The snapshot, with the QID set.
         :return: None.
-        :raises OSError: On an HTTP or network error.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
         claims: ArtistClaims = self.__get_claims(snapshot.qid)
+        snapshot.note = claims.description
         country_ids: list[str] = claims.country_ids
         if len(country_ids) == 0:
             country_ids = claims.origin_country_ids
@@ -212,30 +427,56 @@ class ArtistFetcher:
             snapshot.country = labels.get(country_ids[0], "")
 
     def __get_claims(self, qid: str) -> ArtistClaims:
-        """Fetch the item-ID claim targets of a Wikidata item.
+        """Fetch the claims and the description of a Wikidata
+        item.
 
         :param qid: The item ID.
         :return: The item-ID targets of the gender, instance-of,
-            genre, and country properties.
-        :raises OSError: On an HTTP or network error.
+            genre, and country properties, and the English
+            description.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
         data: Any = self.__get_json({
             "action": "wbgetentities", "ids": qid,
-            "props": "claims", "format": "json"})
-        claims: Any = None
+            "props": "claims|descriptions", "languages": "en",
+            "format": "json"})
+        entity: Any = None
         if isinstance(data, dict) \
-                and isinstance(data.get("entities"), dict) \
-                and isinstance(data["entities"].get(qid), dict):
-            claims = data["entities"][qid].get("claims")
+                and isinstance(data.get("entities"), dict):
+            entity = data["entities"].get(qid)
+        claims: Any = entity.get("claims") \
+            if isinstance(entity, dict) else None
         if not isinstance(claims, dict):
-            return ArtistClaims()
+            claims = {}
         return ArtistClaims(
             gender_ids=self.__targets(claims.get("P21")),
             instance_of_ids=self.__targets(claims.get("P31")),
             genre_ids=self.__targets(claims.get("P136")),
             country_ids=self.__targets(claims.get("P27")),
-            origin_country_ids=self.__targets(claims.get("P495")))
+            origin_country_ids=self.__targets(claims.get("P495")),
+            description=self.__description(entity))
+
+    @staticmethod
+    def __description(entity: Any) -> str:
+        """Extract the English description of a Wikidata entity.
+
+        :param entity: The entity data, or None.
+        :return: The description, or the empty string when
+            absent.
+        """
+        descriptions: Any = entity.get("descriptions") \
+            if isinstance(entity, dict) else None
+        if not isinstance(descriptions, dict):
+            return ""
+        description: Any = descriptions.get("en")
+        if isinstance(description, dict) \
+                and isinstance(description.get("value"), str):
+            return description["value"]
+        return ""
 
     @staticmethod
     def __targets(statements: Any) -> list[str]:
@@ -270,7 +511,10 @@ class ArtistFetcher:
         :param qids: The item IDs, duplicates allowed.
         :return: The English labels, keyed by the item ID; the
             items without an English label are left out.
-        :raises OSError: On an HTTP or network error.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
         unique: list[str] = list(dict.fromkeys(qids))
@@ -318,25 +562,146 @@ class ArtistFetcher:
                 return ArtistType.GROUP
         return ""
 
+    def __sparql(self, query: str) -> list[dict[str, str]]:
+        """Run a SPARQL query against the Wikidata Query Service.
+
+        :param query: The SPARQL query text.
+        :return: The result bindings, each variable name mapped
+            to its bound value.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        url: str = (f"{SPARQL_URL}?"
+                    f"{urllib.parse.urlencode({'query': query})}")
+        request: urllib.request.Request = urllib.request.Request(
+            url, headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "application/sparql-results+json"})
+        body: bytes = self.__send(
+            request, timeout=SPARQL_TIMEOUT)
+        data: Any = json.loads(body)
+        bindings: Any = None
+        if isinstance(data, dict) \
+                and isinstance(data.get("results"), dict):
+            bindings = data["results"].get("bindings")
+        if not isinstance(bindings, list):
+            return []
+        rows: list[dict[str, str]] = []
+        binding: Any
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                continue
+            row: dict[str, str] = {}
+            key: str
+            cell: Any
+            for key, cell in binding.items():
+                if isinstance(cell, dict) \
+                        and isinstance(cell.get("value"), str):
+                    row[key] = cell["value"]
+            rows.append(row)
+        return rows
+
     def __get_json(self, params: dict[str, str]) -> Any:
         """Send a GET request to the API and return the JSON body.
 
-        Consecutive requests are separated by a fixed delay.
-
         :param params: The query parameters.
         :return: The parsed JSON body.
-        :raises OSError: On an HTTP or network error.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
+        """
+        url: str = f"{API_URL}?{urllib.parse.urlencode(params)}"
+        request: urllib.request.Request = urllib.request.Request(
+            url, headers={"User-Agent": USER_AGENT})
+        return json.loads(self.__send(request))
+
+    def __send(self, request: urllib.request.Request,
+               timeout: float = TIMEOUT) -> bytes:
+        """Send an HTTP request, retrying on a transient error.
+
+        Consecutive requests are separated by a fixed delay.  A
+        transient error -- a response with a retryable HTTP
+        status, or a read timeout -- is retried with an
+        increasing back-off, up to ``MAX_ATTEMPTS`` attempts in
+        total.
+
+        :param request: The prepared HTTP request.
+        :param timeout: The read timeout, in seconds.
+        :return: The raw response body.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
         """
         if self.__sent > 0:
             time.sleep(SLEEP_SECONDS)
         self.__sent += 1
-        url: str = f"{API_URL}?{urllib.parse.urlencode(params)}"
-        request: urllib.request.Request = urllib.request.Request(
-            url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(
-                request, timeout=TIMEOUT) as response:
-            return json.load(response)
+        attempt: int = 1
+        reason: str
+        cause: BaseException
+        while True:
+            try:
+                with urllib.request.urlopen(
+                        request, timeout=timeout) as response:
+                    return response.read()
+            except urllib.error.HTTPError as error:
+                if error.code not in RETRY_STATUSES:
+                    raise
+                reason = str(error)
+                cause = error
+            except TimeoutError as error:
+                reason = str(error) or "timed out"
+                cause = error
+            except urllib.error.URLError as error:
+                if not isinstance(error.reason, TimeoutError):
+                    raise
+                reason = str(error.reason) or "timed out"
+                cause = error
+            if attempt >= MAX_ATTEMPTS:
+                raise RetryExhausted(
+                    f"retries exhausted ({reason})") from cause
+            time.sleep(RETRY_SECONDS * attempt)
+            attempt += 1
+
+    @staticmethod
+    def __literals(texts: Sequence[str]) -> str:
+        """Build the SPARQL literals of texts at both languages.
+
+        :param texts: The texts to embed as string literals.
+        :return: The literals, each text once tagged ``@en`` and
+            once tagged ``@mul``, space-separated.
+        """
+        parts: list[str] = []
+        text: str
+        for text in texts:
+            escaped: str = ArtistFetcher.__escape(text)
+            parts.append(f'"{escaped}"@en')
+            parts.append(f'"{escaped}"@mul')
+        return " ".join(parts)
+
+    @staticmethod
+    def __escape(text: str) -> str:
+        """Escape a text for embedding as a SPARQL string literal.
+
+        :param text: The text to embed.
+        :return: The text with the backslashes and double quotes
+            escaped.
+        """
+        return text.replace("\\", "\\\\").replace('"', '\\"')
+
+    @staticmethod
+    def __qid(uri: str) -> str:
+        """Extract the item ID from a Wikidata entity URI.
+
+        :param uri: The entity URI.
+        :return: The item ID, the last path segment of the URI.
+        """
+        return uri.rsplit("/", 1)[-1]
 
 
 def read_snapshot_names(path: Path) -> set[str]:
@@ -353,6 +718,23 @@ def read_snapshot_names(path: Path) -> set[str]:
               newline="") as file:
         reader: csv.DictReader[str] = csv.DictReader(file)
         return {x["name"] for x in reader}
+
+
+def read_artist_titles(session: Session,
+                       artist_id: int) -> list[str]:
+    """Read the charted song titles credited to an artist.
+
+    :param session: The database session.
+    :param artist_id: The artist ID.
+    :return: The song titles credited to the artist, ordered by
+        the song ID, with the duplicate titles removed.
+    """
+    titles: Sequence[str] = session.scalars(
+        sa.select(Song.title)
+        .join(SongArtist, SongArtist.song_id == Song.id)
+        .where(SongArtist.artist_id == artist_id)
+        .order_by(Song.id)).all()
+    return list(dict.fromkeys(titles))
 
 
 def append_row(path: Path, snapshot: ArtistSnapshot) -> None:
@@ -394,13 +776,16 @@ def main(argv: list[str] | None = None) -> int:
     session: Session = ds.get_db()
     try:
         done: set[str] = read_snapshot_names(args.wikidata_csv)
-        name: str
-        for name in session.scalars(
-                sa.select(Artist.name).order_by(Artist.id)):
-            if name in done:
+        artist: Artist
+        for artist in session.scalars(
+                sa.select(Artist).order_by(Artist.id)):
+            if artist.name in done:
                 skipped += 1
                 continue
-            snapshot: ArtistSnapshot = fetcher.fetch(name)
+            titles: list[str] = read_artist_titles(
+                session, artist.id)
+            snapshot: ArtistSnapshot = fetcher.fetch(
+                artist.name, titles)
             append_row(args.wikidata_csv, snapshot)
             status: str = snapshot.qid
             if snapshot.note == NOTE_NOT_FOUND:
@@ -411,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
                 status = snapshot.note
             else:
                 fetched += 1
-            print(f"artist \"{name}\": {status}",
+            print(f"artist \"{artist.name}\": {status}",
                   file=sys.stderr)
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)

@@ -15,7 +15,7 @@ pop-fem-audit/
 │   │   └── yearend_hot100_2016_2025.csv   # 原始榜單
 │   ├── captures/              # 外部捕捉：只由 fetch 命令與
 │   │   │                      #   私人匯入腳本寫入
-│   │   ├── artists_wikidata.csv           # Wikidata 快照
+│   │   ├── artists-wikidata.csv           # Wikidata 快照
 │   │   ├── lyrics_provenance.csv          # 歌詞出處
 │   │   ├── lyrics_missing.csv             # 歌詞缺漏報表
 │   │   └── lyrics/                        # 歌詞 .txt 快取

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from pop_fem_audit_tools import config, fetch_artists
 from pop_fem_audit_tools.database import Base, DataSource
-from pop_fem_audit_tools.models import Artist
+from pop_fem_audit_tools.models import Artist, Role, Song, SongArtist
 
 
 class TestFetchArtists(unittest.TestCase):
@@ -45,26 +45,49 @@ class TestFetchArtists(unittest.TestCase):
         patchers: list[Any] = [
             mock.patch.object(fetch_artists, "ds", self.__ds),
             mock.patch.object(fetch_artists, "SLEEP_SECONDS",
+                              0.0),
+            mock.patch.object(fetch_artists, "RETRY_SECONDS",
                               0.0)]
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def __seed(self, names: list[str]) -> None:
+    def __seed(self, names: list[str]) -> dict[str, int]:
         """Create the schema and the fixture artists.
 
-        The artist IDs are assigned in list order starting from
-        1.
-
         :param names: The artist names.
-        :return: None.
+        :return: The created artist IDs, keyed by the name.
         """
         Base.metadata.create_all(self.__ds.engine)
         session: Session = self.__ds.get_db()
+        ids: dict[str, int] = {}
         try:
             name: str
             for name in names:
-                session.add(Artist(name=name))
+                artist: Artist = Artist(name=name)
+                session.add(artist)
+                session.flush()
+                ids[name] = artist.id
+            session.commit()
+        finally:
+            session.close()
+        return ids
+
+    def __seed_song(self, artist_id: int, title: str) -> None:
+        """Add a charted song credited to an artist.
+
+        :param artist_id: The artist ID.
+        :param title: The song title.
+        :return: None.
+        """
+        session: Session = self.__ds.get_db()
+        try:
+            song: Song = Song(title=title, artist_credit=title)
+            session.add(song)
+            session.flush()
+            session.add(SongArtist(
+                song_id=song.id, artist_id=artist_id,
+                role=Role.PRIMARY.value, position=0))
             session.commit()
         finally:
             session.close()
@@ -83,14 +106,14 @@ class TestFetchArtists(unittest.TestCase):
         return response
 
     @staticmethod
-    def __server_error() -> urllib.error.HTTPError:
-        """Build an HTTP 500 error.
+    def __http_error(status: int) -> urllib.error.HTTPError:
+        """Build an HTTP error.
 
-        :return: The HTTP 500 error.
+        :param status: The HTTP status code.
+        :return: The HTTP error.
         """
         return urllib.error.HTTPError(
-            "https://example.com/", 500,
-            "Internal Server Error", None, None)
+            "https://example.com/", status, "Error", None, None)
 
     @staticmethod
     def __claim(qid: str) -> dict[str, Any]:
@@ -112,6 +135,50 @@ class TestFetchArtists(unittest.TestCase):
         return {"entities": {
             x: {"labels": {"en": {"value": y}}}
             for x, y in labels.items()}}
+
+    @staticmethod
+    def __claims(qid: str, claims: dict[str, Any],
+                 description: str) -> dict[str, Any]:
+        """Build a claims-and-description response payload.
+
+        :param qid: The item ID.
+        :param claims: The claim statements, keyed by the
+            property.
+        :param description: The English description.
+        :return: The response payload.
+        """
+        return {"entities": {qid: {
+            "claims": claims,
+            "descriptions": {"en": {"value": description}}}}}
+
+    @staticmethod
+    def __sparql(rows: list[dict[str, dict[str, str]]]) \
+            -> dict[str, Any]:
+        """Build a SPARQL query response payload.
+
+        :param rows: The result bindings.
+        :return: The response payload.
+        """
+        return {"results": {"bindings": rows}}
+
+    @staticmethod
+    def __uri(qid: str) -> dict[str, str]:
+        """Build a SPARQL URI binding cell for an item ID.
+
+        :param qid: The item ID.
+        :return: The binding cell.
+        """
+        return {"type": "uri",
+                "value": f"http://www.wikidata.org/entity/{qid}"}
+
+    @staticmethod
+    def __literal(value: str) -> dict[str, str]:
+        """Build a SPARQL literal binding cell.
+
+        :param value: The literal value.
+        :return: The binding cell.
+        """
+        return {"type": "literal", "value": value}
 
     def __run_fetch(self) -> tuple[int, str]:
         """Run the fetcher with the standard error captured.
@@ -135,23 +202,25 @@ class TestFetchArtists(unittest.TestCase):
         with open(path, encoding="utf-8", newline="") as file:
             return list(csv.reader(file))
 
-    def test_human_artist(self) -> None:
-        """Test a human artist resolving the full metadata."""
+    def test_unique_candidate_selected(self) -> None:
+        """Test a single candidate resolving the full metadata."""
         self.__seed(["Adele"])
-        search: dict[str, Any] = {"search": [
-            {"id": "Q1", "description": "English singer"}]}
-        claims: dict[str, Any] = {"entities": {"Q1": {"claims": {
-            "P21": [self.__claim("Q2")],
-            "P31": [self.__claim("Q5")],
-            "P136": [self.__claim("Q3"), self.__claim("Q4")],
-            "P27": [self.__claim("Q6")]}}}}
+        candidates: dict[str, Any] = self.__sparql(
+            [{"item": self.__uri("Q1")}])
+        claims: dict[str, Any] = self.__claims(
+            "Q1", {
+                "P21": [self.__claim("Q2")],
+                "P31": [self.__claim("Q5")],
+                "P136": [self.__claim("Q3"), self.__claim("Q4")],
+                "P27": [self.__claim("Q6")]},
+            "English singer")
         labels: dict[str, Any] = self.__labels({
             "Q2": "female", "Q5": "human", "Q3": "pop",
             "Q4": "soul music", "Q6": "United Kingdom"})
         urlopen: mock.Mock
         with mock.patch(
                 "urllib.request.urlopen",
-                side_effect=[self.__response(search),
+                side_effect=[self.__response(candidates),
                              self.__response(claims),
                              self.__response(labels)]) as urlopen:
             status: int
@@ -159,26 +228,14 @@ class TestFetchArtists(unittest.TestCase):
             status, stderr = self.__run_fetch()
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 3)
-        request: Any = urlopen.call_args_list[0][0][0]
-        self.assertEqual(request.get_header("User-agent"),
+        first: Any = urlopen.call_args_list[0][0][0]
+        self.assertEqual(first.get_header("User-agent"),
                          fetch_artists.USER_AGENT)
-        urls: list[str] = [x[0][0].full_url
-                           for x in urlopen.call_args_list]
+        self.assertTrue(
+            first.full_url.startswith(fetch_artists.SPARQL_URL))
         self.assertEqual(
-            urls[0],
-            "https://www.wikidata.org/w/api.php"
-            "?action=wbsearchentities&search=Adele&language=en"
-            "&type=item&format=json")
-        self.assertEqual(
-            urls[1],
-            "https://www.wikidata.org/w/api.php"
-            "?action=wbgetentities&ids=Q1&props=claims"
-            "&format=json")
-        self.assertEqual(
-            urls[2],
-            "https://www.wikidata.org/w/api.php"
-            "?action=wbgetentities&ids=Q2%7CQ5%7CQ3%7CQ4%7CQ6"
-            "&props=labels&languages=en&format=json")
+            first.get_header("Accept"),
+            "application/sparql-results+json")
         rows: list[list[str]] = self.__read_rows(
             self.__snapshot)
         self.assertEqual(len(rows), 2)
@@ -190,70 +247,223 @@ class TestFetchArtists(unittest.TestCase):
             "1 fetched, 0 not found, 0 errors, 0 skipped",
             stderr)
 
-    def test_band(self) -> None:
-        """Test a band resolving the group type and the origin."""
-        self.__seed(["BTS"])
-        search: dict[str, Any] = {"search": [
-            {"id": "Q10",
-             "description": "South Korean boy band"}]}
-        claims: dict[str, Any] = {"entities": {"Q10": {"claims": {
-            "P31": [self.__claim("Q11")],
-            "P136": [self.__claim("Q12")],
-            "P495": [self.__claim("Q13")]}}}}
-        labels: dict[str, Any] = self.__labels({
-            "Q11": "boy band", "Q12": "K-pop",
-            "Q13": "South Korea"})
-        with mock.patch(
-                "urllib.request.urlopen",
-                side_effect=[self.__response(search),
-                             self.__response(claims),
-                             self.__response(labels)]):
-            status: int = self.__run_fetch()[0]
-        self.assertEqual(status, 0)
-        rows: list[list[str]] = self.__read_rows(
-            self.__snapshot)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1], [
-            "BTS", "Q10", "", "group", "K-pop", "South Korea",
-            "South Korean boy band"])
-
-    def test_not_found(self) -> None:
-        """Test that a search miss writes a not-found row."""
-        self.__seed(["Nobody"])
+    def test_pinned_qid_skips_search(self) -> None:
+        """Test that a pinned name short-circuits the search."""
+        self.__seed(["Pinkfong"])
+        qid: str = fetch_artists.PINNED_QIDS["Pinkfong"]
+        claims: dict[str, Any] = self.__claims(
+            qid, {}, "South Korean children's brand")
         urlopen: mock.Mock
         with mock.patch(
                 "urllib.request.urlopen",
-                side_effect=[self.__response({"search": []})]
+                side_effect=[self.__response(claims)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 1)
+        first: Any = urlopen.call_args_list[0][0][0]
+        self.assertTrue(first.full_url.startswith(
+            fetch_artists.API_URL))
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1], [
+            "Pinkfong", qid, "", "", "",
+            "", "South Korean children's brand"])
+
+    def test_stage1_performer_intersection(self) -> None:
+        """Test the multi-candidate resolution via a performer."""
+        ids: dict[str, int] = self.__seed(["Boyz"])
+        self.__seed_song(ids["Boyz"], "Song A")
+        self.__seed_song(ids["Boyz"], "Song B")
+        candidates: dict[str, Any] = self.__sparql([
+            {"item": self.__uri("Q1")},
+            {"item": self.__uri("Q2")}])
+        stage1: dict[str, Any] = self.__sparql(
+            [{"performer": self.__uri("Q2")}])
+        claims: dict[str, Any] = self.__claims(
+            "Q2", {}, "A boy band")
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates),
+                             self.__response(stage1),
+                             self.__response(claims)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 3)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1], [
+            "Boyz", "Q2", "", "", "", "", "A boy band"])
+
+    def test_stage1_member_hop(self) -> None:
+        """Test the multi-candidate resolution via a member."""
+        ids: dict[str, int] = self.__seed(["Trio"])
+        self.__seed_song(ids["Trio"], "Track")
+        candidates: dict[str, Any] = self.__sparql([
+            {"item": self.__uri("Q1")},
+            {"item": self.__uri("Q2")}])
+        stage1: dict[str, Any] = self.__sparql([{
+            "performer": self.__uri("Q9"),
+            "member": self.__uri("Q2")}])
+        claims: dict[str, Any] = self.__claims(
+            "Q2", {}, "A member of a group")
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates),
+                             self.__response(stage1),
+                             self.__response(claims)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 3)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1], [
+            "Trio", "Q2", "", "", "", "", "A member of a group"])
+
+    def test_stage2_casefold_rescue(self) -> None:
+        """Test the case-insensitive stage-2 rescue."""
+        ids: dict[str, int] = self.__seed(["Case"])
+        self.__seed_song(ids["Case"], "Song One")
+        candidates: dict[str, Any] = self.__sparql([
+            {"item": self.__uri("Q1")},
+            {"item": self.__uri("Q2")}])
+        stage1: dict[str, Any] = self.__sparql([])
+        stage2: dict[str, Any] = self.__sparql([{
+            "cand": self.__uri("Q2"),
+            "label": self.__literal("song one")}])
+        claims: dict[str, Any] = self.__claims(
+            "Q2", {}, "Rescued by casefold")
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates),
+                             self.__response(stage1),
+                             self.__response(stage2),
+                             self.__response(claims)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 4)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1], [
+            "Case", "Q2", "", "", "", "", "Rescued by casefold"])
+
+    def test_unresolved_continues_to_next_artist(self) -> None:
+        """Test that an unresolved artist does not stop the run."""
+        self.__seed(["Ambiguous", "Nobody"])
+        candidates_ambiguous: dict[str, Any] = self.__sparql([
+            {"item": self.__uri("Q1")},
+            {"item": self.__uri("Q2")}])
+        stage2_empty: dict[str, Any] = self.__sparql([])
+        candidates_nobody: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates_ambiguous),
+                             self.__response(stage2_empty),
+                             self.__response(candidates_nobody)]
                 ) as urlopen:
             status: int
             stderr: str
             status, stderr = self.__run_fetch()
         self.assertEqual(status, 0)
-        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_count, 3)
         rows: list[list[str]] = self.__read_rows(
             self.__snapshot)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0], self.HEADER)
+        self.assertEqual(len(rows), 3)
         self.assertEqual(rows[1], [
+            "Ambiguous", "", "", "", "", "", "not found"])
+        self.assertEqual(rows[2], [
             "Nobody", "", "", "", "", "", "not found"])
         self.assertIn(
-            "0 fetched, 1 not found, 0 errors, 0 skipped",
+            "0 fetched, 2 not found, 0 errors, 0 skipped",
             stderr)
 
-    def test_http_error_continues(self) -> None:
-        """Test that an HTTP error is noted and the run goes on."""
-        self.__seed(["Broken", "Nobody"])
+    def test_retry_429_then_success(self) -> None:
+        """Test a 429 retry followed by a successful request."""
+        self.__seed(["Retry"])
+        candidates: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
         with mock.patch(
                 "urllib.request.urlopen",
-                side_effect=[self.__server_error(),
-                             self.__response({"search": []})]):
+                side_effect=[self.__http_error(429),
+                             self.__response(candidates)]
+                ) as urlopen:
             status: int
             stderr: str
             status, stderr = self.__run_fetch()
         self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 2)
         rows: list[list[str]] = self.__read_rows(
             self.__snapshot)
-        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[1], [
+            "Retry", "", "", "", "", "", "not found"])
+        self.assertIn(
+            "0 fetched, 1 not found, 0 errors, 0 skipped",
+            stderr)
+
+    def test_timeout_then_success(self) -> None:
+        """Test a read timeout retried into a successful request."""
+        self.__seed(["SlowQuery"])
+        candidates: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[TimeoutError("timed out"),
+                             self.__response(candidates)]
+                ) as urlopen:
+            status: int
+            stderr: str
+            status, stderr = self.__run_fetch()
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 2)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1], [
+            "SlowQuery", "", "", "", "", "", "not found"])
+        self.assertIn(
+            "0 fetched, 1 not found, 0 errors, 0 skipped",
+            stderr)
+
+    def test_retry_exhausted_is_error(self) -> None:
+        """Test that exhausted retries yield an error row."""
+        self.__seed(["Exhausted"])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__http_error(503)] * 5) as urlopen:
+            status: int
+            stderr: str
+            status, stderr = self.__run_fetch()
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 5)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(rows[1][:2], ["Exhausted", ""])
+        self.assertTrue(rows[1][6].startswith(
+            "error: retries exhausted"))
+        self.assertIn(
+            "0 fetched, 0 not found, 1 errors, 0 skipped",
+            stderr)
+
+    def test_non_retryable_error_continues(self) -> None:
+        """Test that a non-retryable HTTP error is noted as an
+        error and does not stop the run."""
+        self.__seed(["Broken", "Nobody"])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__http_error(404),
+                             self.__response(self.__sparql([]))]
+                ) as urlopen:
+            status: int
+            stderr: str
+            status, stderr = self.__run_fetch()
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 2)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
         self.assertEqual(rows[1][:2], ["Broken", ""])
         self.assertTrue(rows[1][6].startswith("error: "))
         self.assertEqual(rows[2], [
@@ -277,7 +487,7 @@ class TestFetchArtists(unittest.TestCase):
         urlopen: mock.Mock
         with mock.patch(
                 "urllib.request.urlopen",
-                side_effect=[self.__response({"search": []})]
+                side_effect=[self.__response(self.__sparql([]))]
                 ) as urlopen:
             status: int
             stderr: str

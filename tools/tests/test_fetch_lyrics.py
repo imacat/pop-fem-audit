@@ -67,17 +67,32 @@ class TestFetchLyrics(unittest.TestCase):
         :param songs: The (title, artist) pairs.
         :return: None.
         """
+        self.__seed_with_credit(
+            [(title, artist, artist) for title, artist in songs])
+
+    def __seed_with_credit(
+            self, songs: list[tuple[str, str, str]]) -> None:
+        """Create the schema and the fixture songs.
+
+        Each song gets a single primary artist at position 0 and
+        an independently given artist credit; the song IDs are
+        assigned in list order starting from 1.
+
+        :param songs: The (title, artist, artist_credit) triples.
+        :return: None.
+        """
         Base.metadata.create_all(self.__ds.engine)
         session: Session = self.__ds.get_db()
         try:
             artists: dict[str, Artist] = {}
             title: str
             artist: str
-            for title, artist in songs:
+            credit: str
+            for title, artist, credit in songs:
                 if artist not in artists:
                     artists[artist] = Artist(name=artist)
                 song: Song = Song(title=title,
-                                  artist_credit=artist)
+                                  artist_credit=credit)
                 session.add(song)
                 session.add(SongArtist(song=song,
                                        artist=artists[artist],
@@ -182,6 +197,46 @@ class TestFetchLyrics(unittest.TestCase):
         rows: list[list[str]] = self.__read_rows(
             self.__provenance)
         self.assertEqual(rows[1][:2], ["1", "lrclib"])
+
+    def test_credit_fallback_hit(self) -> None:
+        """Test that a joint credit is queried after both miss."""
+        self.__seed_with_credit(
+            [("Tequila", "Dan", "Dan + Shay")])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[
+                    self.__not_found(),
+                    self.__not_found(),
+                    self.__not_found(),
+                    self.__response(
+                        {"plainLyrics": "Tequila\n"})]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 4)
+        urls: list[str] = [x[0][0].full_url
+                           for x in urlopen.call_args_list]
+        self.assertIn("Dan%20%2B%20Shay", urls[2])
+        self.assertIn("artist_name=Dan+%2B+Shay", urls[3])
+        self.assertEqual(
+            (self.__lyrics / "1.txt")
+            .read_text(encoding="utf-8"),
+            "Tequila\n")
+        rows: list[list[str]] = self.__read_rows(
+            self.__provenance)
+        self.assertEqual(rows[1][:2], ["1", "lrclib"])
+
+    def test_credit_fallback_skipped_when_same(self) -> None:
+        """Test that a matching credit skips the second round."""
+        self.__seed([("Hello", "Adele")])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__not_found(),
+                             self.__not_found()]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 2)
 
     def test_both_miss(self) -> None:
         """Test that a double miss reports the song as missing."""

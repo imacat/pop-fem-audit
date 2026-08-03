@@ -189,6 +189,12 @@
   Wikidata、再捕捉快照」工作流實跑後，469 位歌手全數
   在上游查證補齊，快照即完整，本地覆蓋層已無存在事實；
   `data/manual/` 層保留（供日後黃金標準編碼）。
+- **`fetch-lyrics` 加原始署名 fallback**：以第一位 primary
+  歌手查詢兩 API 皆落空時，改以拆解前的原始署名字串（缺漏
+  報表既有的 `artist_credit`）重查一次；與主查詢同為精確
+  查詢，API 順序不變。理由：二重唱／雙掛名歌曲在歌詞 API
+  目錄以合體名義建檔（Dan + Shay、Lil Baby & DaBaby），
+  單人名查詢必落空；手動模擬證實 fallback 三首全中。
 - **歌手型態刪去 mixed 值**：`ArtistType` 只留 solo／group。
   mixed 是先導研究「男／女／混合團體」單一欄位的殘留，
   正式設計拆成 gender＋type 後從未定義其指涉；署名一律

@@ -11,10 +11,17 @@ given as a positional command-line argument.  The working store
 is only read, never written; the ``build-db`` subcommand
 assembles the captured files into the store on the next rebuild.
 
-A song that every API misses is reported in the missing lyrics
-CSV, also given as a positional command-line argument, which is
-rewritten on every run to reflect the current status.  Misses
-are expected and do not fail the run.
+Each song is first queried with the name of its primary-role
+artist with the lowest position.  When every API misses that
+query and the song's full artist credit differs from that
+artist name, the same APIs are queried again with the artist
+credit, to catch songs cataloged only under a joint credit such
+as "Dan + Shay".
+
+A song that every API misses on both queries is reported in the
+missing lyrics CSV, also given as a positional command-line
+argument, which is rewritten on every run to reflect the
+current status.  Misses are expected and do not fail the run.
 """
 import argparse
 import csv
@@ -287,6 +294,9 @@ def main(argv: list[str] | None = None) -> int:
             artist: str = query_artist(session, song.id)
             result: tuple[str, str] | None = fetcher.fetch(
                 artist, song.title)
+            if result is None and song.artist_credit != artist:
+                result = fetcher.fetch(
+                    song.artist_credit, song.title)
             if result is None:
                 misses.append(MissingLyrics(
                     song_id=song.id, title=song.title,

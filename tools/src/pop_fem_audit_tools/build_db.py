@@ -26,18 +26,19 @@ database engine, given the frozen input file.
 
 A song is identified by its raw title together with its artist
 credit, the credit canonicalized through
-``CANONICAL_ARTIST_CREDITS``; a credit listed there collapses onto
-the same song as its canonical form, and the stored artist credit
-is always the canonical form.  Artist deduplication is by the
-identity key resolved from the parsed artist name (see
-`resolve_artist_identity`): the case-folded name, or, when that
-case-folded name is listed in ``CANONICAL_ARTIST_NAMES``, the
-case-folded canonical spelling, so letter-case variants and
-alternate spellings mapped to the same canonical name all
-collapse onto a single artist row.  The stored artist name is the
-first-seen spelling, except for the names listed in
-``CANONICAL_ARTIST_NAMES``, which always store the canonical
-spelling regardless of which variant is seen first.
+``SongImporter.CANONICAL_ARTIST_CREDITS``; a credit listed there
+collapses onto the same song as its canonical form, and the
+stored artist credit is always the canonical form.  Artist
+deduplication is by the identity key resolved from the parsed
+artist name (see `ArtistImporter.resolve_artist_identity`): the
+case-folded name, or, when that case-folded name is listed in
+``ArtistImporter.CANONICAL_ARTIST_NAMES``, the case-folded
+canonical spelling, so letter-case variants and alternate
+spellings mapped to the same canonical name all collapse onto a
+single artist row.  The stored artist name is the first-seen
+spelling, except for the names listed in
+``ArtistImporter.CANONICAL_ARTIST_NAMES``, which always store the
+canonical spelling regardless of which variant is seen first.
 
 On a successful build, two review CSV files, ``songs.csv`` and
 ``artists.csv``, are (re)written under the given output directory,
@@ -78,88 +79,6 @@ ARTIST_FIELDS: dict[str, str] = {
     "country": "country",
 }
 """The artist CSV columns mapped to the Artist attributes."""
-FEATURING_PATTERN: re.Pattern[str] = re.compile(
-    r" featuring | feat\. ", re.IGNORECASE)
-"""The pattern splitting the primary and featured sides."""
-DELIMITER_PATTERN: re.Pattern[str] = re.compile(
-    r", | & | \+ | / |(?i: and | x | with )")
-"""The pattern splitting the artist names within a side."""
-COLON_PATTERN: re.Pattern[str] = re.compile(r": ")
-"""The pattern separating a group prefix from its members in a
-"<group>: <members>" credit."""
-PAREN_MEMBERS_PATTERN: re.Pattern[str] = re.compile(
-    r"^.+ \((?P<members>.+)\)$")
-"""The pattern separating a group name from its members in a
-"<group> (<members>)" credit spanning the whole credit."""
-DUET_WITH_PATTERN: re.Pattern[str] = re.compile(
-    r" Duet With ", re.IGNORECASE)
-"""The pattern normalizing the "Duet With" co-billing connector
-to the plain "with" delimiter."""
-PROTECTED_ARTIST_NAMES: tuple[str, ...] = (
-    "Tyler, The Creator",
-    "Lil Nas X",
-    "Tones And I",
-)
-"""The exact artist names guarded from the delimiter splitting,
-because each contains a delimiter word or punctuation as part of
-the name itself."""
-EXCEPTION_CREDITS: dict[str, list[tuple[str, Role]]] = {
-    "SpotemGottem Featuring Pooh Shiesty Or DaBaby": [
-        ("SpotemGottem", Role.PRIMARY),
-        ("Pooh Shiesty", Role.FEATURED),
-        ("DaBaby", Role.FEATURED),
-    ],
-    "THE SCOTTS, Travis Scott & Kid Cudi": [
-        ("Travis Scott", Role.PRIMARY),
-        ("Kid Cudi", Role.PRIMARY),
-    ],
-    "Drake Featuring The Throne": [
-        ("Drake", Role.PRIMARY),
-        ("Jay Z", Role.FEATURED),
-        ("Kanye West", Role.FEATURED),
-    ],
-}
-"""The single-credit exceptions parsed by an explicit lookup
-rather than by the general rules, because the credit text alone
-does not spell out the correct member split."""
-CANONICAL_ARTIST_CREDITS: dict[str, str] = {
-    "benny blanco, Halsey & Khalid": "Benny Blanco, Halsey & Khalid",
-}
-"""The canonical artist credit spellings, keyed by a variant
-credit string."""
-CANONICAL_ARTIST_NAMES: dict[str, str] = {
-    "beyonce": "Beyoncé",
-    "5 seconds of summer": "5 Seconds of Summer",
-    "a boogie wit da hoodie": "A Boogie wit da Hoodie",
-    "benny blanco": "benny blanco",
-    "blackbear": "blackbear",
-    "chance the rapper": "Chance the Rapper",
-    "xxxtentacion": "XXXTENTACION",
-    "maneskin": "Måneskin",
-    "rose": "ROSÉ",
-    "mo": "MØ",
-    "wizkid": "Wizkid",
-    "ye": "Kanye West",
-    "amine": "Aminé",
-    "bomba estereo": "Bomba Estéreo",
-    "carolina gaitan": "Carolina Gaitán",
-    "casper magico": "Casper Mágico",
-    "eslabon armado": "Eslabón Armado",
-    "jhene aiko": "Jhené Aiko",
-    "neton vega": "Netón Vega",
-    "nio garcia": "Nio García",
-    "oscar maydon": "Óscar Maydon",
-    "silento": "Silentó",
-    "the marias": "The Marías",
-    "victoria monet": "Victoria Monét",
-    "dan": "Dan Smyers",
-    "shay": "Shay Mooney",
-    "cris mj": "Cris MJ",
-    "mariah the scientist": "Mariah the Scientist",
-    "surf mesa": "Surf Mesa",
-}
-"""The canonical artist spellings, keyed by the case-folded
-identity."""
 
 
 class BuildError(Exception):
@@ -191,189 +110,319 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
-    """Parse a combined artist credit into artists and roles.
+class SongImporter:
+    """The song-import job: loads the chart CSV into songs and
+    chart entries."""
 
-    A credit listed in ``EXCEPTION_CREDITS`` is looked up verbatim,
-    because its correct split is not derivable from the credit
-    text alone.  Otherwise the credit first reduces to an
-    effective credit: a "<group>: <members>" prefix (split at the
-    first ": ") drops the group and keeps the members; failing
-    that, a "<group> (<members>)" suffix spanning the whole credit
-    drops the group and keeps the members.  The "Duet With"
-    connector, case-insensitively, then normalizes to "with".  The
-    effective credit splits into a primary side and a featured
-    side on the word "featuring" or "feat.", case-insensitively;
-    without them, every artist is primary.  Each side splits into
-    artist names on the delimiters ", ", " & ", " + ", " / "
-    (literally) and " and ", " x ", " with " (case-insensitively),
-    except for the names listed in ``PROTECTED_ARTIST_NAMES``,
-    which are never split even though each contains a delimiter
-    word or punctuation.
+    CANONICAL_ARTIST_CREDITS: dict[str, str] = {
+        "benny blanco, Halsey & Khalid": "Benny Blanco, Halsey"
+                                         " & Khalid",
+    }
+    """The canonical artist credit spellings, keyed by a variant
+    credit string."""
 
-    Known limitation: a compound act name that contains one of the
-    delimiters, other than the protected names, is over-split.
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
 
-    :param credit: The combined artist credit string.
-    :return: The (name, role) pairs in credit order, primary side
-        first, with the role ``Role.PRIMARY`` or
-        ``Role.FEATURED``.
-    """
-    if credit in EXCEPTION_CREDITS:
-        return list(EXCEPTION_CREDITS[credit])
-    effective: str = credit
-    colon_match: re.Match[str] | None = COLON_PATTERN.search(
-        effective)
-    if colon_match is not None:
-        effective = effective[colon_match.end():]
-    else:
-        paren_match: re.Match[str] | None = \
-            PAREN_MEMBERS_PATTERN.match(effective)
-        if paren_match is not None:
-            effective = paren_match.group("members")
-    effective = DUET_WITH_PATTERN.sub(" with ", effective)
-    placeholders: dict[str, str] = {}
-    index: int
-    protected: str
-    for index, protected in enumerate(PROTECTED_ARTIST_NAMES):
-        if protected in effective:
-            placeholder: str = f"{index}"
-            placeholders[placeholder] = protected
-            effective = effective.replace(protected, placeholder)
-    sides: list[str] = FEATURING_PATTERN.split(
-        effective, maxsplit=1)
-    pairs: list[tuple[str, Role]] = []
-    role: Role
-    side: str
-    for side, role in zip(sides, (Role.PRIMARY, Role.FEATURED)):
-        token: str
-        for token in DELIMITER_PATTERN.split(side):
-            name: str = token.strip()
-            placeholder = ""
-            original: str
-            for placeholder, original in placeholders.items():
-                name = name.replace(placeholder, original)
-            if name != "":
-                pairs.append((name, role))
-    return pairs
+        :param session: The database session.
+        """
+        self.__session: Session = session
+        self.__songs: dict[tuple[str, str], Song] = {}
 
+    def import_songs(self, path: Path) -> None:
+        """Load the chart CSV into songs and chart entries.
 
-def song_identity(title: str, credit: str) -> tuple[str, str]:
-    """Compute the identity key of a chart row.
+        A song repeated across the rows is stored once, matched by
+        its identity key (see `song_identity`); every row yields
+        one chart entry.  The stored title is the raw title; the
+        stored artist credit is the canonical credit from the
+        identity key.  The songs take the IDs 1, 2, 3, ... in the
+        first-occurrence row order.  When the method returns, the
+        imported songs and chart entries are queryable in the
+        session.
 
-    The key pairs the raw title with the artist credit,
-    canonicalized through ``CANONICAL_ARTIST_CREDITS``; a credit
-    absent from the table maps to itself.  Two chart rows denote
-    the same song iff their identity keys are equal.
+        :param path: The chart CSV file with the columns year,
+            rank, title, and artist.
+        :return: None.
+        :raises OSError: When the file cannot be read.
+        """
+        with open(path, encoding="utf-8", newline="") as file:
+            row: dict[str, str]
+            for row in csv.DictReader(file):
+                key: tuple[str, str] = self.song_identity(
+                    row["title"], row["artist"])
+                if key not in self.__songs:
+                    title: str
+                    credit: str
+                    title, credit = key
+                    song: Song = Song(
+                        id=len(self.__songs) + 1, title=title,
+                        artist_credit=credit)
+                    self.__session.add(song)
+                    self.__songs[key] = song
+                self.__session.add(ChartEntry(
+                    year=int(row["year"]), rank=int(row["rank"]),
+                    song=self.__songs[key]))
+        self.__session.flush()
 
-    :param title: The song title as printed on the chart.
-    :param credit: The combined artist credit string.
-    :return: The identity key: the raw title paired with the
-        canonical artist credit.
-    """
-    return title, CANONICAL_ARTIST_CREDITS.get(credit, credit)
+    @staticmethod
+    def song_identity(title: str, credit: str) -> tuple[str, str]:
+        """Compute the identity key of a chart row.
+
+        The key pairs the raw title with the artist credit,
+        canonicalized through ``CANONICAL_ARTIST_CREDITS``; a
+        credit absent from the table maps to itself.  Two chart
+        rows denote the same song iff their identity keys are
+        equal.
+
+        :param title: The song title as printed on the chart.
+        :param credit: The combined artist credit string.
+        :return: The identity key: the raw title paired with the
+            canonical artist credit.
+        """
+        return title, SongImporter.CANONICAL_ARTIST_CREDITS.get(
+            credit, credit)
 
 
-def resolve_artist_identity(name: str) -> tuple[str, str]:
-    """Resolve the dedup key and the stored spelling of a name.
+class ArtistImporter:
+    """The artist-import job: parses the stored songs' artist
+    credits into artists and song-artist credits."""
 
-    The name's case-folded form is looked up in
-    ``CANONICAL_ARTIST_NAMES`` first; when it is listed there, the
-    dedup key is the canonical spelling case-folded and the stored
-    spelling is the canonical spelling, so every variant of the
-    name, canonical or not, resolves to the same identity.
-    Otherwise the dedup key is the name case-folded and the stored
-    spelling is the given name.
+    FEATURING_PATTERN: re.Pattern[str] = re.compile(
+        r" featuring | feat\. ", re.IGNORECASE)
+    """The pattern splitting the primary and featured sides."""
+    DELIMITER_PATTERN: re.Pattern[str] = re.compile(
+        r", | & | \+ | / |(?i: and | x | with )")
+    """The pattern splitting the artist names within a side."""
+    COLON_PATTERN: re.Pattern[str] = re.compile(r": ")
+    """The pattern separating a group prefix from its members in a
+    "<group>: <members>" credit."""
+    PAREN_MEMBERS_PATTERN: re.Pattern[str] = re.compile(
+        r"^.+ \((?P<members>.+)\)$")
+    """The pattern separating a group name from its members in a
+    "<group> (<members>)" credit spanning the whole credit."""
+    DUET_WITH_PATTERN: re.Pattern[str] = re.compile(
+        r" Duet With ", re.IGNORECASE)
+    """The pattern normalizing the "Duet With" co-billing connector
+    to the plain "with" delimiter."""
+    PROTECTED_ARTIST_NAMES: tuple[str, ...] = (
+        "Tyler, The Creator",
+        "Lil Nas X",
+        "Tones And I",
+    )
+    """The exact artist names guarded from the delimiter splitting,
+    because each contains a delimiter word or punctuation as part
+    of the name itself."""
+    EXCEPTION_CREDITS: dict[str, list[tuple[str, Role]]] = {
+        "SpotemGottem Featuring Pooh Shiesty Or DaBaby": [
+            ("SpotemGottem", Role.PRIMARY),
+            ("Pooh Shiesty", Role.FEATURED),
+            ("DaBaby", Role.FEATURED),
+        ],
+        "THE SCOTTS, Travis Scott & Kid Cudi": [
+            ("Travis Scott", Role.PRIMARY),
+            ("Kid Cudi", Role.PRIMARY),
+        ],
+        "Drake Featuring The Throne": [
+            ("Drake", Role.PRIMARY),
+            ("Jay Z", Role.FEATURED),
+            ("Kanye West", Role.FEATURED),
+        ],
+    }
+    """The single-credit exceptions parsed by an explicit lookup
+    rather than by the general rules, because the credit text alone
+    does not spell out the correct member split."""
+    CANONICAL_ARTIST_NAMES: dict[str, str] = {
+        "beyonce": "Beyoncé",
+        "5 seconds of summer": "5 Seconds of Summer",
+        "a boogie wit da hoodie": "A Boogie wit da Hoodie",
+        "benny blanco": "benny blanco",
+        "blackbear": "blackbear",
+        "chance the rapper": "Chance the Rapper",
+        "xxxtentacion": "XXXTENTACION",
+        "maneskin": "Måneskin",
+        "rose": "ROSÉ",
+        "mo": "MØ",
+        "wizkid": "Wizkid",
+        "ye": "Kanye West",
+        "amine": "Aminé",
+        "bomba estereo": "Bomba Estéreo",
+        "carolina gaitan": "Carolina Gaitán",
+        "casper magico": "Casper Mágico",
+        "eslabon armado": "Eslabón Armado",
+        "jhene aiko": "Jhené Aiko",
+        "neton vega": "Netón Vega",
+        "nio garcia": "Nio García",
+        "oscar maydon": "Óscar Maydon",
+        "silento": "Silentó",
+        "the marias": "The Marías",
+        "victoria monet": "Victoria Monét",
+        "dan": "Dan Smyers",
+        "shay": "Shay Mooney",
+        "cris mj": "Cris MJ",
+        "mariah the scientist": "Mariah the Scientist",
+        "surf mesa": "Surf Mesa",
+    }
+    """The canonical artist spellings, keyed by the case-folded
+    identity."""
 
-    :param name: An artist name, as parsed from a credit.
-    :return: A tuple of the dedup key and the stored spelling.
-    """
-    folded: str = name.casefold()
-    canonical: str | None = CANONICAL_ARTIST_NAMES.get(folded)
-    if canonical is not None:
-        return canonical.casefold(), canonical
-    return folded, name
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
 
+        :param session: The database session.
+        """
+        self.__session: Session = session
+        self.__artists: dict[str, Artist] = {}
 
-def create_song(session: Session, song_id: int, title: str,
-                credit: str, artists: dict[str, Artist]) -> Song:
-    """Create a song with its parsed artist credits.
+    def import_artists(self) -> None:
+        """Parse the stored songs' credits into artists and
+        song-artist credits.
 
-    The song takes the given ID.  An artist parsed out of the
-    credit is matched against the known artists by its identity
-    key (see `resolve_artist_identity`); a newly seen one takes
-    the ID following the known artists, keyed by its identity key,
-    and its stored name is the resolved stored spelling.  An
-    artist duplicated within the credit, by its identity key, is
-    kept only at its first occurrence, with a warning to the
-    standard error.
+        Reads the songs back from the database in ``Song.id`` order,
+        including any songs pending in the same session, and for
+        each song parses ``Song.artist_credit`` (see
+        `parse_artist_credit`).  An artist parsed out of a credit is
+        matched against the known artists by its identity key (see
+        `resolve_artist_identity`); a newly seen one takes the ID
+        following the known artists, keyed by its identity key,
+        assigned in first-seen order across the songs, and its
+        stored name is the resolved stored spelling.  An artist
+        duplicated within one song's credit, by its identity key,
+        is kept only at its first occurrence within that credit,
+        with a warning to the standard error.  When the method
+        returns, the imported artists and credits are queryable in
+        the session.
 
-    :param session: The database session.
-    :param song_id: The song ID to assign.
-    :param title: The song title.
-    :param credit: The combined artist credit string.
-    :param artists: The known artists by identity key, updated
-        with the newly created ones as an observable side effect.
-    :return: The created song, added to the session.
-    """
-    song: Song = Song(id=song_id, title=title,
-                      artist_credit=credit)
-    session.add(song)
-    seen: set[str] = set()
-    position: int = 0
-    name: str
-    role: Role
-    for name, role in parse_artist_credit(credit):
-        key: str
-        stored_name: str
-        key, stored_name = resolve_artist_identity(name)
-        if key in seen:
-            print(f"warning: {credit}: duplicated artist"
-                  f" \"{name}\"", file=sys.stderr)
-            continue
-        seen.add(key)
-        if key not in artists:
-            artists[key] = Artist(id=len(artists) + 1,
-                                  name=stored_name)
-        session.add(SongArtist(song=song, artist=artists[key],
-                               role=role, position=position))
-        position += 1
-    return song
+        :return: None.
+        """
+        song: Song
+        for song in self.__session.scalars(
+                sa.select(Song).order_by(Song.id)):
+            self.__import_song_artists(song)
+        self.__session.flush()
 
+    def __import_song_artists(self, song: Song) -> None:
+        """Parse and store the artist credits of one song.
 
-def load_chart(session: Session, path: Path) -> None:
-    """Load the chart CSV into songs, chart entries, and credits.
+        :param song: The song with its stored artist credit.
+        :return: None.
+        """
+        seen: set[str] = set()
+        position: int = 0
+        name: str
+        role: Role
+        for name, role in self.parse_artist_credit(
+                song.artist_credit):
+            key: str
+            stored_name: str
+            key, stored_name = self.resolve_artist_identity(name)
+            if key in seen:
+                print(f"warning: {song.artist_credit}: duplicated"
+                      f" artist \"{name}\"", file=sys.stderr)
+                continue
+            seen.add(key)
+            if key not in self.__artists:
+                self.__artists[key] = Artist(
+                    id=len(self.__artists) + 1, name=stored_name)
+            self.__session.add(SongArtist(
+                song=song, artist=self.__artists[key], role=role,
+                position=position))
+            position += 1
 
-    A song repeated across the rows is stored once, matched by its
-    identity key (see `song_identity`); every row yields one chart
-    entry.  The stored title is the raw title; the stored artist
-    credit is the canonical credit from the identity key.  The
-    songs and the artists take the IDs 1, 2, 3, ... in the
-    first-occurrence row order.
+    @staticmethod
+    def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
+        """Parse a combined artist credit into artists and roles.
 
-    :param session: The database session.
-    :param path: The chart CSV file with the columns year, rank,
-        title, and artist.
-    :return: None.
-    :raises OSError: When the file cannot be read.
-    """
-    songs: dict[tuple[str, str], Song] = {}
-    artists: dict[str, Artist] = {}
-    with open(path, encoding="utf-8", newline="") as file:
-        row: dict[str, str]
-        for row in csv.DictReader(file):
-            key: tuple[str, str] = song_identity(
-                row["title"], row["artist"])
-            if key not in songs:
-                title: str
-                credit: str
-                title, credit = key
-                songs[key] = create_song(
-                    session, len(songs) + 1, title, credit,
-                    artists)
-            session.add(ChartEntry(year=int(row["year"]),
-                                   rank=int(row["rank"]),
-                                   song=songs[key]))
+        A credit listed in ``EXCEPTION_CREDITS`` is looked up
+        verbatim, because its correct split is not derivable from
+        the credit text alone.  Otherwise the credit first reduces
+        to an effective credit: a "<group>: <members>" prefix
+        (split at the first ": ") drops the group and keeps the
+        members; failing that, a "<group> (<members>)" suffix
+        spanning the whole credit drops the group and keeps the
+        members.  The "Duet With" connector, case-insensitively,
+        then normalizes to "with".  The effective credit splits
+        into a primary side and a featured side on the word
+        "featuring" or "feat.", case-insensitively; without them,
+        every artist is primary.  Each side splits into artist
+        names on the delimiters ", ", " & ", " + ", " / "
+        (literally) and " and ", " x ", " with "
+        (case-insensitively), except for the names listed in
+        ``PROTECTED_ARTIST_NAMES``, which are never split even
+        though each contains a delimiter word or punctuation.
+
+        Known limitation: a compound act name that contains one of
+        the delimiters, other than the protected names, is
+        over-split.
+
+        :param credit: The combined artist credit string.
+        :return: The (name, role) pairs in credit order, primary
+            side first, with the role ``Role.PRIMARY`` or
+            ``Role.FEATURED``.
+        """
+        if credit in ArtistImporter.EXCEPTION_CREDITS:
+            return list(ArtistImporter.EXCEPTION_CREDITS[credit])
+        effective: str = credit
+        colon_match: re.Match[str] | None = \
+            ArtistImporter.COLON_PATTERN.search(effective)
+        if colon_match is not None:
+            effective = effective[colon_match.end():]
+        else:
+            paren_match: re.Match[str] | None = \
+                ArtistImporter.PAREN_MEMBERS_PATTERN.match(
+                    effective)
+            if paren_match is not None:
+                effective = paren_match.group("members")
+        effective = ArtistImporter.DUET_WITH_PATTERN.sub(
+            " with ", effective)
+        placeholders: dict[str, str] = {}
+        index: int
+        protected: str
+        for index, protected in enumerate(
+                ArtistImporter.PROTECTED_ARTIST_NAMES):
+            if protected in effective:
+                placeholder: str = f"{index}"
+                placeholders[placeholder] = protected
+                effective = effective.replace(protected, placeholder)
+        sides: list[str] = ArtistImporter.FEATURING_PATTERN.split(
+            effective, maxsplit=1)
+        pairs: list[tuple[str, Role]] = []
+        role: Role
+        side: str
+        for side, role in zip(sides, (Role.PRIMARY, Role.FEATURED)):
+            token: str
+            for token in ArtistImporter.DELIMITER_PATTERN.split(
+                    side):
+                name: str = token.strip()
+                placeholder = ""
+                original: str
+                for placeholder, original in placeholders.items():
+                    name = name.replace(placeholder, original)
+                if name != "":
+                    pairs.append((name, role))
+        return pairs
+
+    @staticmethod
+    def resolve_artist_identity(name: str) -> tuple[str, str]:
+        """Resolve the dedup key and the stored spelling of a name.
+
+        The name's case-folded form is looked up in
+        ``CANONICAL_ARTIST_NAMES`` first; when it is listed there,
+        the dedup key is the canonical spelling case-folded and the
+        stored spelling is the canonical spelling, so every variant
+        of the name, canonical or not, resolves to the same
+        identity.  Otherwise the dedup key is the name case-folded
+        and the stored spelling is the given name.
+
+        :param name: An artist name, as parsed from a credit.
+        :return: A tuple of the dedup key and the stored spelling.
+        """
+        folded: str = name.casefold()
+        canonical: str | None = \
+            ArtistImporter.CANONICAL_ARTIST_NAMES.get(folded)
+        if canonical is not None:
+            return canonical.casefold(), canonical
+        return folded, name
 
 
 def load_lyrics(session: Session, directory: Path) -> None:
@@ -713,8 +762,8 @@ def main(argv: list[str] | None = None) -> int:
     counts: StoreCounts
     try:
         reset_store(session)
-        load_chart(session, args.chart_csv)
-        session.flush()
+        SongImporter(session).import_songs(args.chart_csv)
+        ArtistImporter(session).import_artists()
         if args.lyrics_dir is not None:
             if not args.lyrics_dir.is_dir():
                 raise BuildError(

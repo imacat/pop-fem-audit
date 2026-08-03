@@ -30,13 +30,14 @@ class TestParseArtistCredit(unittest.TestCase):
 
     def test_plain_solo(self) -> None:
         """Test a plain solo artist credit."""
-        self.assertEqual(build_db.parse_artist_credit("Adele"),
-                         [("Adele", Role.PRIMARY)])
+        self.assertEqual(
+            build_db.ArtistImporter.parse_artist_credit("Adele"),
+            [("Adele", Role.PRIMARY)])
 
     def test_featuring_with_and(self) -> None:
         """Test a featuring credit with an "and" delimiter."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Drake featuring Wizkid and Kyla"),
             [("Drake", Role.PRIMARY),
              ("Wizkid", Role.FEATURED),
@@ -45,7 +46,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_comma_and_ampersand(self) -> None:
         """Test a credit with comma and ampersand delimiters."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Lady Gaga, Bradley Cooper & BloodPop"),
             [("Lady Gaga", Role.PRIMARY),
              ("Bradley Cooper", Role.PRIMARY),
@@ -54,21 +55,23 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_x_delimiter(self) -> None:
         """Test the "x" delimiter."""
         self.assertEqual(
-            build_db.parse_artist_credit("KAROL G x Nicki Minaj"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "KAROL G x Nicki Minaj"),
             [("KAROL G", Role.PRIMARY),
              ("Nicki Minaj", Role.PRIMARY)])
 
     def test_plus_delimiter(self) -> None:
         """Test the "+" delimiter."""
         self.assertEqual(
-            build_db.parse_artist_credit("Marshmello + Halsey"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "Marshmello + Halsey"),
             [("Marshmello", Role.PRIMARY),
              ("Halsey", Role.PRIMARY)])
 
     def test_with_delimiter(self) -> None:
         """Test the "with" delimiter."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Kane Brown with Lauren Alaina"),
             [("Kane Brown", Role.PRIMARY),
              ("Lauren Alaina", Role.PRIMARY)])
@@ -76,7 +79,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_feat_abbreviation(self) -> None:
         """Test that "Feat." splits the featured side."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Ariana Grande Feat. Doja Cat"
                 " & Megan Thee Stallion"),
             [("Ariana Grande", Role.PRIMARY),
@@ -86,7 +89,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_case_insensitive_featuring(self) -> None:
         """Test that "Featuring" splits case-insensitively."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "24kGoldn Featuring iann dior"),
             [("24kGoldn", Role.PRIMARY),
              ("iann dior", Role.FEATURED)])
@@ -94,7 +97,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_colon_prefix_group(self) -> None:
         """Test that a colon-prefixed group name is dropped."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "¥$: Ye & Ty Dolla $ign Featuring Rich The Kid"
                 " & Playboi Carti"),
             [("Ye", Role.PRIMARY),
@@ -105,7 +108,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_colon_prefix_with_ampersand_in_prefix(self) -> None:
         """Test a colon prefix that itself contains "&"."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Rumi & JINU: EJAE & Andrew Choi"),
             [("EJAE", Role.PRIMARY),
              ("Andrew Choi", Role.PRIMARY)])
@@ -113,7 +116,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_colon_prefix_comma_list(self) -> None:
         """Test a colon-prefixed comma-separated member list."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "HUNTR/X: EJAE, Audrey Nuna & REI AMI"),
             [("EJAE", Role.PRIMARY),
              ("Audrey Nuna", Role.PRIMARY),
@@ -122,7 +125,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_colon_prefix_five_members(self) -> None:
         """Test a colon-prefixed five-member list."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Saja Boys: Andrew Choi, Neckwav, Danny Chung,"
                 " Kevin Woo & samUIL Lee"),
             [("Andrew Choi", Role.PRIMARY),
@@ -134,7 +137,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_colon_prefix_duo(self) -> None:
         """Test a colon-prefixed two-member list."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "THE ANXIETY: WILLOW & Tyler Cole"),
             [("WILLOW", Role.PRIMARY),
              ("Tyler Cole", Role.PRIMARY)])
@@ -143,7 +146,7 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that a parenthesized member list replaces the
         group name spanning the whole credit."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Silk Sonic (Bruno Mars & Anderson .Paak)"),
             [("Bruno Mars", Role.PRIMARY),
              ("Anderson .Paak", Role.PRIMARY)])
@@ -152,12 +155,12 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that "Duet With" is a co-billing connector like
         "with", dropping the word "Duet" entirely."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Blake Shelton Duet With Gwen Stefani"),
             [("Blake Shelton", Role.PRIMARY),
              ("Gwen Stefani", Role.PRIMARY)])
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Keith Urban Duet With P!nk"),
             [("Keith Urban", Role.PRIMARY),
              ("P!nk", Role.PRIMARY)])
@@ -165,12 +168,13 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_slash_delimiter(self) -> None:
         """Test the " / " co-billing delimiter."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Cole Swindell / Lainey Wilson"),
             [("Cole Swindell", Role.PRIMARY),
              ("Lainey Wilson", Role.PRIMARY)])
         self.assertEqual(
-            build_db.parse_artist_credit("Zayn / Taylor Swift"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "Zayn / Taylor Swift"),
             [("Zayn", Role.PRIMARY),
              ("Taylor Swift", Role.PRIMARY)])
 
@@ -178,7 +182,8 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that "Lil Nas X" is guarded from the " x "
         delimiter split."""
         self.assertEqual(
-            build_db.parse_artist_credit("Lil Nas X & Jack Harlow"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "Lil Nas X & Jack Harlow"),
             [("Lil Nas X", Role.PRIMARY),
              ("Jack Harlow", Role.PRIMARY)])
 
@@ -186,7 +191,7 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that "Tyler, The Creator" is guarded from the
         comma delimiter split."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Tyler, The Creator Featuring GloRilla, Sexyy Red"
                 " & Lil Wayne"),
             [("Tyler, The Creator", Role.PRIMARY),
@@ -198,13 +203,14 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that "Tones And I" is guarded from the " and "
         delimiter split."""
         self.assertEqual(
-            build_db.parse_artist_credit("Tones And I"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "Tones And I"),
             [("Tones And I", Role.PRIMARY)])
 
     def test_exception_spotemgottem(self) -> None:
         """Test the SpotemGottem exception-table credit."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "SpotemGottem Featuring Pooh Shiesty Or DaBaby"),
             [("SpotemGottem", Role.PRIMARY),
              ("Pooh Shiesty", Role.FEATURED),
@@ -213,7 +219,7 @@ class TestParseArtistCredit(unittest.TestCase):
     def test_exception_the_scotts(self) -> None:
         """Test the THE SCOTTS exception-table credit."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "THE SCOTTS, Travis Scott & Kid Cudi"),
             [("Travis Scott", Role.PRIMARY),
              ("Kid Cudi", Role.PRIMARY)])
@@ -222,7 +228,7 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test the Drake Featuring The Throne exception-table
         credit."""
         self.assertEqual(
-            build_db.parse_artist_credit(
+            build_db.ArtistImporter.parse_artist_credit(
                 "Drake Featuring The Throne"),
             [("Drake", Role.PRIMARY),
              ("Jay Z", Role.FEATURED),
@@ -232,7 +238,8 @@ class TestParseArtistCredit(unittest.TestCase):
         """Test that the existing "+" delimiter split is
         unaffected by the new rules."""
         self.assertEqual(
-            build_db.parse_artist_credit("Dan + Shay"),
+            build_db.ArtistImporter.parse_artist_credit(
+                "Dan + Shay"),
             [("Dan", Role.PRIMARY), ("Shay", Role.PRIMARY)])
 
 

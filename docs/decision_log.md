@@ -195,6 +195,19 @@
   查詢，API 順序不變。理由：二重唱／雙掛名歌曲在歌詞 API
   目錄以合體名義建檔（Dan + Shay、Lil Baby & DaBaby），
   單人名查詢必落空；手動模擬證實 fallback 三首全中。
+- **`build-db` 匯入重構為兩個 job class**：`SongImporter`
+  （榜單 CSV→歌曲身分去重→songs＋chart_entries）與
+  `ArtistImporter`（自資料庫依 song ID 讀回署名→拆解→正名
+  →去重登記→artists＋song_artists），與 `CSVExporter` 同形
+  （建構子收 session、單一公開入口）；命名取 import／export
+  對稱，不用 loader（有「載入記憶體」聯想，實為寫入持久
+  儲存）。歌手登記改於歌曲全數入庫後第二階段進行，兩塊
+  之間不再共享記憶體狀態；各 job 專用的純函數與規則表
+  （身分判定、拆解、正名）隨行入 class 作公開 staticmethod
+  ／class 常數，「哪個函式屬哪個工作」由 class 歸屬直接
+  表達。flush 定為匯入工作的完工契約——entry method 返回
+  時自身寫入已可查詢，不再由呼叫者補 flush。實測重構前後
+  工作儲存 dump 與衍生報表逐位元組相同。
 - **歌手型態刪去 mixed 值**：`ArtistType` 只留 solo／group。
   mixed 是先導研究「男／女／混合團體」單一欄位的殘留，
   正式設計拆成 gender＋type 後從未定義其指涉；署名一律

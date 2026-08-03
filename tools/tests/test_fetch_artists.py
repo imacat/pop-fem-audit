@@ -260,6 +260,25 @@ class TestFetchArtists(unittest.TestCase):
             "United Kingdom", "English singer"])
         self.__assert_summary(stderr, 1, 1)
 
+    def test_full_run_sorted_by_name(self) -> None:
+        """Test that a full run writes rows sorted by artist
+        name, not by the artist ID order."""
+        self.__seed(["Zed", "Amy", "Mia"])
+        empty: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(empty),
+                             self.__response(empty),
+                             self.__response(empty)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 3)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(
+            [x[0] for x in rows[1:]], ["Amy", "Mia", "Zed"])
+
     def test_pinned_qid_skips_search(self) -> None:
         """Test that a pinned name short-circuits the search."""
         self.__seed(["Pinkfong"])
@@ -505,6 +524,57 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(rows[2], [
             "Nobody", "", "", "", "", "", "not found"])
         self.__assert_summary(stderr, 0, 1)
+
+    def test_topup_inserts_sorted_position(self) -> None:
+        """Test that a top-up inserts the new row in its sorted
+        position, not appended at the end of the file."""
+        self.__seed(["Amy", "Mia", "Zed"])
+        snapshot: Path = self.__snapshot
+        amy_row: list[str] = [
+            "Amy", "Q1", "", "", "", "", "not found"]
+        zed_row: list[str] = [
+            "Zed", "Q2", "", "", "", "", "not found"]
+        with open(snapshot, "w", encoding="utf-8",
+                  newline="") as file:
+            writer: Any = csv.writer(file)
+            writer.writerow(self.HEADER)
+            writer.writerow(amy_row)
+            writer.writerow(zed_row)
+        empty: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(empty)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 1)
+        rows: list[list[str]] = self.__read_rows(snapshot)
+        self.assertEqual(
+            [x[0] for x in rows[1:]], ["Amy", "Mia", "Zed"])
+        self.assertEqual(rows[1], amy_row)
+        self.assertEqual(rows[3], zed_row)
+
+    def test_crash_mid_run_leaves_partial_rows(self) -> None:
+        """Test that a crash mid-run leaves the already-fetched
+        rows on disk for a later top-up run to resume from."""
+        self.__seed(["Alpha", "Zulu"])
+        empty: dict[str, Any] = self.__sparql([])
+        urlopen: mock.Mock
+        with (mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(empty)]) as urlopen,
+              mock.patch.object(
+                  fetch_artists, "read_artist_titles",
+                  side_effect=[[], OSError("boom")])):
+            status: int = self.__run_fetch()[0]
+        self.assertNotEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 1)
+        rows: list[list[str]] = self.__read_rows(
+            self.__snapshot)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], self.HEADER)
+        self.assertEqual(rows[1], [
+            "Alpha", "", "", "", "", "", "not found"])
 
     def test_no_store_fails(self) -> None:
         """Test that a missing working store fails the run."""

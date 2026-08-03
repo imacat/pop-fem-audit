@@ -20,6 +20,7 @@ import argparse
 import csv
 import enum
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -28,7 +29,7 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TextIO
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -704,20 +705,16 @@ class ArtistFetcher:
         return uri.rsplit("/", 1)[-1]
 
 
-def read_snapshot_names(path: Path) -> set[str]:
-    """Read the artist names already in the snapshot CSV file.
+def read_snapshot_rows(file: TextIO) -> list[dict[str, str]]:
+    """Read the current rows of a snapshot CSV file handle.
 
-    :param path: The Wikidata artist snapshot CSV file.
-    :return: The artist names, or an empty set when the file is
-        missing.
+    :param file: The open, seekable snapshot CSV file.
+    :return: The rows, keyed by the column name.
     :raises OSError: When the file cannot be read.
     """
-    if not path.exists():
-        return set()
-    with open(path, encoding="utf-8",
-              newline="") as file:
-        reader: csv.DictReader[str] = csv.DictReader(file)
-        return {x["name"] for x in reader}
+    file.seek(0)
+    reader: csv.DictReader[str] = csv.DictReader(file)
+    return list(reader)
 
 
 def read_artist_titles(session: Session,
@@ -737,26 +734,52 @@ def read_artist_titles(session: Session,
     return list(dict.fromkeys(titles))
 
 
-def append_row(path: Path, snapshot: ArtistSnapshot) -> None:
-    """Append a snapshot row to the snapshot CSV file.
+def ensure_snapshot_header(file: TextIO) -> None:
+    """Write the snapshot CSV header row if the file is empty.
 
-    The CSV file is created with the header row when missing; the
-    existing rows are preserved.
+    :param file: The open, seekable snapshot CSV file.
+    :return: None.
+    :raises OSError: When the file cannot be written.
+    """
+    file.seek(0, os.SEEK_END)
+    if file.tell() == 0:
+        csv.writer(file).writerow(SNAPSHOT_FIELDS)
+        file.flush()
 
-    :param path: The Wikidata artist snapshot CSV file.
+
+def append_row(file: TextIO, snapshot: ArtistSnapshot) -> None:
+    """Append a snapshot row to a snapshot CSV file handle.
+
+    :param file: The open snapshot CSV file, opened for append.
     :param snapshot: The snapshot of an artist.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
-    is_new: bool = not path.exists()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8",
-              newline="") as file:
-        writer: csv.DictWriter[str] = csv.DictWriter(
-            file, SNAPSHOT_FIELDS)
-        if is_new:
-            writer.writeheader()
-        writer.writerow(snapshot.to_row())
+    csv.DictWriter(file, SNAPSHOT_FIELDS).writerow(
+        snapshot.to_row())
+    file.flush()
+
+
+def write_snapshot(file: TextIO) -> None:
+    """Rewrite a snapshot CSV file handle sorted by artist name.
+
+    Reads back the current rows and rewrites the header and the
+    rows ordered by the case-folded artist name, matching the
+    convention of the derived ``artists.csv``.
+
+    :param file: The open, seekable snapshot CSV file.
+    :return: None.
+    :raises OSError: When the file cannot be read or written.
+    """
+    ordered: list[dict[str, str]] = sorted(
+        read_snapshot_rows(file),
+        key=lambda row: row["name"].casefold())
+    file.seek(0)
+    file.truncate()
+    writer: csv.DictWriter[str] = csv.DictWriter(
+        file, SNAPSHOT_FIELDS)
+    writer.writeheader()
+    writer.writerows(ordered)
 
 
 def format_duration(seconds: float) -> str:
@@ -795,29 +818,36 @@ def main(argv: list[str] | None = None) -> int:
     skipped: int = 0
     session: Session = ds.get_db()
     try:
-        done: set[str] = read_snapshot_names(args.wikidata_csv)
-        artist: Artist
-        for artist in session.scalars(
-                sa.select(Artist).order_by(Artist.id)):
-            if artist.name in done:
-                skipped += 1
-                continue
-            titles: list[str] = read_artist_titles(
-                session, artist.id)
-            snapshot: ArtistSnapshot = fetcher.fetch(
-                artist.name, titles)
-            append_row(args.wikidata_csv, snapshot)
-            status: str = snapshot.qid
-            if snapshot.note == NOTE_NOT_FOUND:
-                not_found += 1
-                status = "not found"
-            elif snapshot.note.startswith("error: "):
-                errors += 1
-                status = snapshot.note
-            else:
-                fetched += 1
-            print(f"artist \"{artist.name}\": {status}",
-                  file=sys.stderr)
+        args.wikidata_csv.parent.mkdir(
+            parents=True, exist_ok=True)
+        with open(args.wikidata_csv, "a+", encoding="utf-8",
+                  newline="") as csv_file:
+            done: set[str] = {x["name"] for x in
+                              read_snapshot_rows(csv_file)}
+            ensure_snapshot_header(csv_file)
+            artist: Artist
+            for artist in session.scalars(
+                    sa.select(Artist).order_by(Artist.id)):
+                if artist.name in done:
+                    skipped += 1
+                    continue
+                titles: list[str] = read_artist_titles(
+                    session, artist.id)
+                snapshot: ArtistSnapshot = fetcher.fetch(
+                    artist.name, titles)
+                append_row(csv_file, snapshot)
+                status: str = snapshot.qid
+                if snapshot.note == NOTE_NOT_FOUND:
+                    not_found += 1
+                    status = "not found"
+                elif snapshot.note.startswith("error: "):
+                    errors += 1
+                    status = snapshot.note
+                else:
+                    fetched += 1
+                print(f"artist \"{artist.name}\": {status}",
+                      file=sys.stderr)
+            write_snapshot(csv_file)
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

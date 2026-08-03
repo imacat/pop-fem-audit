@@ -759,6 +759,25 @@ def append_row(path: Path, snapshot: ArtistSnapshot) -> None:
         writer.writerow(snapshot.to_row())
 
 
+def format_duration(seconds: float) -> str:
+    """Format an elapsed duration for the closing summary line.
+
+    :param seconds: The elapsed duration, in seconds.
+    :return: The duration formatted ``mm:ss``, or ``h:mm:ss``
+        once it reaches one hour.
+    """
+    total: int = round(seconds)
+    hours: int
+    remainder: int
+    hours, remainder = divmod(total, 3600)
+    minutes: int
+    secs: int
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
 def main(argv: list[str] | None = None) -> int:
     """Fetch the artist metadata from Wikidata.
 
@@ -767,6 +786,7 @@ def main(argv: list[str] | None = None) -> int:
     :return: The exit status: 0 on success, misses and errors
         included, non-zero on a setup error.
     """
+    started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     fetcher: ArtistFetcher = ArtistFetcher()
     fetched: int = 0
@@ -803,7 +823,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         session.close()
-    print(f"done: {fetched} fetched, {not_found} not found,"
-          f" {errors} errors, {skipped} skipped",
+    attempted: int = fetched + not_found + errors
+    elapsed: str = format_duration(time.monotonic() - started)
+    print(f"Done.  Resolved {fetched}/{attempted} artists."
+          f"  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

@@ -202,6 +202,21 @@ class TestFetchArtists(unittest.TestCase):
         with open(path, encoding="utf-8", newline="") as file:
             return list(csv.reader(file))
 
+    def __assert_summary(self, stderr: str, resolved: int,
+                         attempted: int) -> None:
+        """Assert the closing summary line has the expected shape.
+
+        :param stderr: The captured standard error.
+        :param resolved: The expected count of resolved artists.
+        :param attempted: The expected count of attempted
+            artists.
+        :return: None.
+        """
+        self.assertRegex(
+            stderr,
+            rf"Done\.  Resolved {resolved}/{attempted} artists\."
+            r"  \d{2}:\d{2} elapsed\.")
+
     def test_unique_candidate_selected(self) -> None:
         """Test a single candidate resolving the full metadata."""
         self.__seed(["Adele"])
@@ -243,9 +258,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(rows[1], [
             "Adele", "Q1", "female", "solo", "pop; soul music",
             "United Kingdom", "English singer"])
-        self.assertIn(
-            "1 fetched, 0 not found, 0 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 1, 1)
 
     def test_pinned_qid_skips_search(self) -> None:
         """Test that a pinned name short-circuits the search."""
@@ -376,9 +389,7 @@ class TestFetchArtists(unittest.TestCase):
             "Ambiguous", "", "", "", "", "", "not found"])
         self.assertEqual(rows[2], [
             "Nobody", "", "", "", "", "", "not found"])
-        self.assertIn(
-            "0 fetched, 2 not found, 0 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 2)
 
     def test_retry_429_then_success(self) -> None:
         """Test a 429 retry followed by a successful request."""
@@ -399,9 +410,7 @@ class TestFetchArtists(unittest.TestCase):
             self.__snapshot)
         self.assertEqual(rows[1], [
             "Retry", "", "", "", "", "", "not found"])
-        self.assertIn(
-            "0 fetched, 1 not found, 0 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 1)
 
     def test_timeout_then_success(self) -> None:
         """Test a read timeout retried into a successful request."""
@@ -422,9 +431,7 @@ class TestFetchArtists(unittest.TestCase):
             self.__snapshot)
         self.assertEqual(rows[1], [
             "SlowQuery", "", "", "", "", "", "not found"])
-        self.assertIn(
-            "0 fetched, 1 not found, 0 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 1)
 
     def test_retry_exhausted_is_error(self) -> None:
         """Test that exhausted retries yield an error row."""
@@ -443,9 +450,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(rows[1][:2], ["Exhausted", ""])
         self.assertTrue(rows[1][6].startswith(
             "error: retries exhausted"))
-        self.assertIn(
-            "0 fetched, 0 not found, 1 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 1)
 
     def test_non_retryable_error_continues(self) -> None:
         """Test that a non-retryable HTTP error is noted as an
@@ -468,9 +473,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertTrue(rows[1][6].startswith("error: "))
         self.assertEqual(rows[2], [
             "Nobody", "", "", "", "", "", "not found"])
-        self.assertIn(
-            "0 fetched, 1 not found, 1 errors, 0 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 2)
 
     def test_rerun_skips_existing(self) -> None:
         """Test that the snapshot rows are skipped and preserved."""
@@ -501,9 +504,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(rows[1], old_row)
         self.assertEqual(rows[2], [
             "Nobody", "", "", "", "", "", "not found"])
-        self.assertIn(
-            "0 fetched, 1 not found, 0 errors, 1 skipped",
-            stderr)
+        self.__assert_summary(stderr, 0, 1)
 
     def test_no_store_fails(self) -> None:
         """Test that a missing working store fails the run."""
@@ -515,3 +516,30 @@ class TestFetchArtists(unittest.TestCase):
         self.assertNotEqual(status, 0)
         urlopen.assert_not_called()
         self.assertIn("error:", stderr)
+
+    def test_format_duration_under_hour(self) -> None:
+        """Test the mm:ss format for a duration under one hour."""
+        self.assertEqual(
+            fetch_artists.format_duration(205), "03:25")
+
+    def test_format_duration_over_hour(self) -> None:
+        """Test the h:mm:ss format once the duration reaches an
+        hour."""
+        self.assertEqual(
+            fetch_artists.format_duration(6439), "1:47:19")
+
+    def test_summary_line_exact_shape(self) -> None:
+        """Test the exact wording and timing of the summary
+        line."""
+        self.__seed(["Adele"])
+        candidates: dict[str, Any] = self.__sparql([])
+        with (mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates)]),
+              mock.patch(
+                  "time.monotonic",
+                  side_effect=[1000.0, 1125.0])):
+            stderr: str = self.__run_fetch()[1]
+        self.assertIn(
+            "Done.  Resolved 0/1 artists.  02:05 elapsed.",
+            stderr)

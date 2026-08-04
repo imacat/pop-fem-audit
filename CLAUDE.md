@@ -6,9 +6,10 @@
   Messages API: model `claude-sonnet-4-6`, `temperature=0`,
   thinking disabled, Batch API where possible.
 - Prompt definition files live in
-  `prompts/<track>-<step>-<task>.md` (e.g. 01-01-tag.md; no
-  version suffix -- versions live in git history) and are
-  passed verbatim as the system prompt.
+  `prompts/<track>-<step>-<substep>-<task>.md` (e.g.
+  01-01-01-tag.md; the substep number fixes the execution
+  order; no version suffix -- versions live in git history)
+  and are passed verbatim as the system prompt.
 - LLM steps whose outputs are item-by-item comparable
   (convergence, coding) run the same definition file twice,
   then a separate arbitration step settles only the

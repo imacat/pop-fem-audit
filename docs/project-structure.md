@@ -24,7 +24,8 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <軌>-<步>-<task>.md    #   01-01-tag.md、02-01-screen.md…
+│   └── <軌>-<步>-<次步>-<task>.md  # 01-01-01-tag.md、
+│                              #   01-02-02-merge-arb.md…
 │                              #   不帶版本號，版本即 git 歷史
 ├── tools/                     # 輔助工具子專案（src-layout）
 │   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；

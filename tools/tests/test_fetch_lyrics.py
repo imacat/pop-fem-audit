@@ -41,7 +41,7 @@ class TestFetchLyrics(unittest.TestCase):
         self.__dir: Path = Path(tmp.name)
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__provenance: Path = \
-            self.__dir / "lyrics_provenance.csv"
+            self.__dir / "lyrics-provenance.csv"
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL=url,

@@ -16,7 +16,7 @@ pop-fem-audit/
 │   ├── captures/              # 外部捕捉：只由 fetch 命令與
 │   │   │                      #   私人匯入腳本寫入
 │   │   ├── artists-wikidata.csv           # Wikidata 快照
-│   │   ├── lyrics_provenance.csv          # 歌詞出處
+│   │   ├── lyrics-provenance.csv          # 歌詞出處
 │   │   └── lyrics/                        # 歌詞 .txt 快取
 │   │                                      #   （gitignored，版權）
 │   ├── manual/                # 人工著作：只由研究者手寫

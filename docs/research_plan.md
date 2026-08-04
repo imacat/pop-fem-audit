@@ -64,7 +64,7 @@
   匯入歌詞快取——只取識別欄位與歌詞本文，以
   (year, rank) 精確匹配 song_id。匯入工具不屬於專案交付物
   （讀者拿不到其輸入），讀者的重現路徑純粹是 `fetch-lyrics`；
-  沿用之**事實**記於 `data/captures/lyrics_provenance.csv`（進 git）：
+  沿用之**事實**記於 `data/captures/lyrics-provenance.csv`（進 git）：
   `source`（原始 API）與 `method`
   （pilot-import / api-fetch / manual）兩層，取得日期不可考者
   不假造，僅記可證上界。

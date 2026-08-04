@@ -68,7 +68,7 @@
   偏誤污染條件 A/B 實驗。
 - **沿用先導研究歌詞捕捉**（lyrics.json，684 首，2018–2025）：
   只匯入識別欄位與歌詞本文，pilot 分析欄位不匯入；以
-  (year, rank) 精確匹配。出處記於 `lyrics_provenance.csv`：
+  (year, rank) 精確匹配。出處記於 `lyrics-provenance.csv`：
   source（原始 API）與 method（pilot-import / api-fetch）
   兩層；取得日期不可考者不假造，僅記可證上界。
 - **`run_llm` 改走 pydantic-settings 統一設定**（刪手寫 .env
@@ -102,7 +102,7 @@
 - **`import-lyrics` 不設為子命令，pilot 歌詞改以私人腳本
   匯入**。理由：pilot 捕捉檔不隨論文發布，子命令
   形式會在發布的 CLI 裡留下讀者無法執行的死命令——要交待的
-  是「沿用 pilot 捕捉」的事實（記於 lyrics_provenance.csv 與
+  是「沿用 pilot 捕捉」的事實（記於 lyrics-provenance.csv 與
   論文方法節），不是工具本身；工具移出專案，發布管線即
   「讀者可完整執行的程序」。讀者重現歌詞的路徑為
   `fetch-lyrics`，API 漂移造成的差異屬捕捉層的已承認限制。

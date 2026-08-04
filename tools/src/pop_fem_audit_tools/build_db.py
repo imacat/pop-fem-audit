@@ -633,23 +633,6 @@ class StoreCounts:
                 .where(Song.lyrics.is_not(None))))
 
 
-def prepare_engine(engine: sa.Engine) -> None:
-    """Prepare a SQLite engine for a build.
-
-    For a file-based SQLite engine, the parent directory of the
-    database file is created when missing.  A non-SQLite engine is
-    left untouched.
-
-    :param engine: The database engine.
-    :return: None.
-    """
-    if engine.url.get_backend_name() != "sqlite":
-        return
-    database: str | None = engine.url.database
-    if database is not None and database != ":memory:":
-        Path(database).parent.mkdir(parents=True, exist_ok=True)
-
-
 def reset_store(session: Session) -> None:
     """Delete all the rows from every table of the store.
 
@@ -819,9 +802,7 @@ def main(argv: list[str] | None = None) -> int:
     :return: The exit status: 0 on success, non-zero on failure.
     """
     args: argparse.Namespace = parse_args(argv)
-    engine: sa.Engine = ds.engine
-    prepare_engine(engine)
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(ds.engine)
     session: Session = ds.get_db()
     counts: StoreCounts
     try:

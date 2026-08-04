@@ -317,6 +317,79 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual([x[0] for x in rows[1:]],
                          ["1", "2", "2"])
 
+    def test_normalize_cp1252_mojibake(self) -> None:
+        """Test that cp1252 mojibake codepoints are restored."""
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics("wait"),
+            "wait…")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(
+                "quote"),
+            "‘quote’")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(
+                "quote"),
+            "“quote”")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics("dashline"),
+            "dash—line")
+
+    def test_normalize_undefined_cp1252_removed(self) -> None:
+        """Test that undefined cp1252 byte values are removed."""
+        text: str = ("abcdef")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(text), "abcdef")
+
+    def test_normalize_homoglyphs(self) -> None:
+        """Test that watermark homoglyphs are restored."""
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics("likе that"),
+            "like that")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics("lό que soy"),
+            "ló que soy")
+
+    def test_normalize_space_variants(self) -> None:
+        """Test that exotic space variants become ASCII space."""
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(
+                "a b c d"),
+            "a b c d")
+
+    def test_normalize_zero_width_removed(self) -> None:
+        """Test that zero-width characters are removed."""
+        text: str = (
+            "a​b‌c‍d﻿e")
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(text), "abcde")
+
+    def test_normalize_ascii_unchanged(self) -> None:
+        """Test that plain ASCII text passes through unchanged."""
+        text: str = "Hello, it's me\n"
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(text), text)
+
+    def test_normalize_legitimate_non_ascii_unchanged(self) -> None:
+        """Test that legitimate non-ASCII content is unchanged."""
+        text: str = "¿cómo estás? 안녕하세요\n"
+        self.assertEqual(
+            fetch_lyrics.normalize_lyrics(text), text)
+
+    def test_fetched_lyrics_saved_normalized(self) -> None:
+        """Test that a fetched lyric is normalized before saving."""
+        self.__seed([("Hello", "Adele")])
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(
+                    {"lyrics": "wait likе"
+                               " that now​\n"})]):
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            (self.__lyrics / "1.txt")
+            .read_text(encoding="utf-8"),
+            "wait… like that now\n")
+
     def test_no_store_fails(self) -> None:
         """Test that a missing working store fails the run."""
         urlopen: mock.Mock

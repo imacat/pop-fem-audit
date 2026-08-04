@@ -57,6 +57,49 @@ SLEEP_SECONDS: float = 1.0
 """The delay between consecutive HTTP requests, in seconds."""
 
 
+def _build_normalization() -> dict[int, str | None]:
+    """Build the lyrics normalization translation table.
+
+    :return: The codepoint-to-replacement mapping, a replacement
+        of None meaning removal.
+    """
+    table: dict[int, str | None] = {}
+    codepoint: int
+    for codepoint in range(0x80, 0xa0):
+        try:
+            table[codepoint] = bytes([codepoint]).decode("cp1252")
+        except UnicodeDecodeError:
+            table[codepoint] = None
+    table[0x0435] = "e"
+    table[0x03cc] = "ó"
+    for codepoint in (0x2005, 0x205f, 0x200a):
+        table[codepoint] = " "
+    for codepoint in (0x200b, 0x200c, 0x200d, 0xfeff):
+        table[codepoint] = None
+    return table
+
+
+NORMALIZATION: dict[int, str | None] = _build_normalization()
+"""The codepoint-to-replacement mapping applied to fetched
+lyrics: cp1252-mojibake restoration for U+0080-U+009F (with the
+five byte values undefined in cp1252 removed), homoglyph
+restoration for the Cyrillic "e" and the Greek "o" with tonos,
+ASCII-space restoration for exotic space variants, and removal
+of zero-width characters.  A replacement of None removes the
+codepoint."""
+
+
+def normalize_lyrics(text: str) -> str:
+    """Restore or remove watermark and mojibake characters.
+
+    :param text: The lyrics text as fetched from an API.
+    :return: The text with the codepoints in
+        :data:`NORMALIZATION` replaced or removed; every other
+        character is unchanged.
+    """
+    return text.translate(NORMALIZATION)
+
+
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     """Parse the command-line arguments.
 
@@ -187,6 +230,9 @@ def save_lyrics(lyrics_dir: Path, song_id: int,
 
     The cache directory is created when missing.
 
+    The lyrics text is normalized with :func:`normalize_lyrics`
+    before being written.
+
     :param lyrics_dir: The lyrics cache directory.
     :param song_id: The song ID.
     :param lyrics: The lyrics text.
@@ -195,7 +241,7 @@ def save_lyrics(lyrics_dir: Path, song_id: int,
     """
     lyrics_dir.mkdir(parents=True, exist_ok=True)
     (lyrics_dir / f"{song_id}.txt").write_text(
-        lyrics, encoding="utf-8")
+        normalize_lyrics(lyrics), encoding="utf-8")
 
 
 def append_provenance(path: Path, song_id: int,

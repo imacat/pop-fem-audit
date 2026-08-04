@@ -6,18 +6,18 @@
   Messages API: model `claude-sonnet-4-6`, `temperature=0`,
   thinking disabled, Batch API where possible.
 - Prompt definition files live in
-  `prompts/<track>-<step>-<substep>-<task>.md` (e.g.
-  01-01-01-tag.md; the substep number fixes the execution
-  order; no version suffix -- versions live in git history)
-  and are passed verbatim as the system prompt.
-- LLM steps whose outputs are item-by-item comparable
-  (convergence, coding) run the same definition file twice,
-  then a separate arbitration step settles only the
-  script-computed disagreements ("2 runs + 1 arbitration").
-  Free-generation steps run twice and both outputs are pooled,
-  unarbitrated.  If arbitration output is unexpected, revise
-  the definition file and repeat that cycle; never patch
-  results by hand.
+  `prompts/<track>-<step>-<task>.md` (e.g. 01-01-tag.md; no
+  version suffix -- versions live in git history) and are
+  passed verbatim as the system prompt.
+- Per-song LLM judgments (coding, screening) run the same
+  definition file twice, then a separate arbitration step
+  settles only the script-computed disagreements
+  ("2 runs + 1 arbitration").  Free-generation steps run
+  twice and both outputs are pooled, unarbitrated.
+  Vocabulary-building steps (convergence) run once as a
+  recorded pass.  If an arbitration or validation outcome is
+  unexpected, revise the definition file and repeat that
+  cycle; never patch results by hand.
 - Each run of a step is archived self-contained under the
   destination directory given explicitly on the `run-llm`
   command line (by convention `runs/<definition-file>/run<N>/`):

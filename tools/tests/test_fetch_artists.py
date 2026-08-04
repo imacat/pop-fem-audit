@@ -16,7 +16,8 @@ from unittest import mock
 
 from sqlalchemy.orm import Session
 
-from pop_fem_audit_tools import config, fetch_artists
+from pop_fem_audit_tools import config
+from pop_fem_audit_tools.commands import fetch_artists
 from pop_fem_audit_tools.database import Base, DataSource
 from pop_fem_audit_tools.models import Artist, Role, Song, SongArtist
 

@@ -34,10 +34,10 @@ from typing import Any, Literal, TextIO
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from . import VERSION
-from .database import ds
-from .models import Artist, Song, SongArtist
-from .utils import format_duration
+from .. import VERSION
+from ..database import ds
+from ..models import Artist, Song, SongArtist
+from ..utils import format_duration
 
 API_URL: str = "https://www.wikidata.org/w/api.php"
 """The URL of the Wikidata API endpoint."""

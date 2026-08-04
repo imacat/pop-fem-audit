@@ -34,21 +34,22 @@ pop-fem-audit/
 │   │                          #   gitignored；含歌詞全文）
 │   ├── src/pop_fem_audit_tools/
 │   │   ├── __main__.py        # 套件 CLI 進入點（分派子命令）
-│   │   ├── build_db.py        # build the SQLite working store
-│   │   │                      #   from the inputs
-│   │   ├── config.py          # pydantic-settings 設定（.env）
-│   │   ├── database.py        # SQLAlchemy engine / session / Base
-│   │   ├── export_llm_input.py # export the LLM input JSONL
-│   │   │                       #   (lyrics only) from the working
-│   │   │                       #   store
-│   │   ├── fetch_artists.py   # fetch artist metadata from
-│   │   │                      #   Wikidata into the snapshot CSV
-│   │   ├── fetch_lyrics.py    # fetch missing lyrics from the
-│   │   │                      #   public APIs into the lyrics dir
-│   │   ├── models.py          # SQLAlchemy ORM 資料模型
-│   │   ├── run_llm.py         # API runner：2+1 協定、Batch API、
+│   │   ├── commands/          # CLI 子命令模組（登記於 __init__）
+│   │   │   ├── build_db.py    # build the SQLite working store
+│   │   │   │                  #   from the inputs
+│   │   │   ├── export_llm_input.py # export the LLM input JSONL
+│   │   │   │                       #   (lyrics only) from the
+│   │   │   │                       #   working store
+│   │   │   ├── fetch_artists.py # fetch artist metadata from
+│   │   │   │                    #   Wikidata into the snapshot CSV
+│   │   │   ├── fetch_lyrics.py # fetch missing lyrics from the
+│   │   │   │                   #   public APIs into the lyrics dir
+│   │   │   └── run_llm.py     # API runner：2+1 協定、Batch API、
 │   │   │                      #   寫入引數指定的 runs 目錄；執行
 │   │   │                      #   方式 pop-fem-audit-tools run-llm
+│   │   ├── config.py          # pydantic-settings 設定（.env）
+│   │   ├── database.py        # SQLAlchemy engine / session / Base
+│   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── utils.py           # 共用工具（format_duration）
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 每次執行的完整稽核紀錄（進 git）

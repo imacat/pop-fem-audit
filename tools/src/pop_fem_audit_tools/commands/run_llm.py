@@ -26,7 +26,7 @@ from typing import Any, Self
 
 import anthropic
 
-from .config import get_settings
+from ..config import get_settings
 
 MODEL: str = "claude-sonnet-4-6"
 TEMPERATURE: float = 0.0

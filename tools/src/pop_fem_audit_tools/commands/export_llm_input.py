@@ -19,8 +19,8 @@ from pathlib import Path
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from .database import ds
-from .models import Song
+from ..database import ds
+from ..models import Song
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:

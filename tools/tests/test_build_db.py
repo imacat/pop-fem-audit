@@ -15,7 +15,8 @@ from unittest import mock
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from pop_fem_audit_tools import build_db, config
+from pop_fem_audit_tools import config
+from pop_fem_audit_tools.commands import build_db
 from pop_fem_audit_tools.database import DataSource
 from pop_fem_audit_tools.models import (
     Artist,

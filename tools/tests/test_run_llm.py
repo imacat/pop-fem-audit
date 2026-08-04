@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from pop_fem_audit_tools import config, run_llm
+from pop_fem_audit_tools import config
+from pop_fem_audit_tools.commands import run_llm
 
 
 class RunLLMTestCase(unittest.TestCase):

@@ -36,14 +36,14 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from .database import ds
-from .models import (
+from ..database import ds
+from ..models import (
     Artist,
     Role,
     Song,
     SongArtist,
 )
-from .utils import format_duration
+from ..utils import format_duration
 
 PROVENANCE_FIELDS: Sequence[str] = (
     "song_id", "source", "method", "acquired_at", "note")

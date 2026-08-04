@@ -15,23 +15,23 @@ from collections.abc import Callable
 from importlib.machinery import ModuleSpec
 from types import ModuleType
 
-from pop_fem_audit_tools import (
-    build_db,
-    export_llm_input,
-    fetch_artists,
-    fetch_lyrics,
-    run_llm,
+from .commands import (
+    build_db_command,
+    export_llm_input_command,
+    fetch_artists_command,
+    fetch_lyrics_command,
+    run_llm_command,
 )
 
 MODULE_PROG: str = "python -m pop_fem_audit_tools"
 """The program name when run with ``python -m``."""
 
 SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
-    "build-db": build_db.main,
-    "export-llm-input": export_llm_input.main,
-    "fetch-artists": fetch_artists.main,
-    "fetch-lyrics": fetch_lyrics.main,
-    "run-llm": run_llm.main,
+    "build-db": build_db_command,
+    "export-llm-input": export_llm_input_command,
+    "fetch-artists": fetch_artists_command,
+    "fetch-lyrics": fetch_lyrics_command,
+    "run-llm": run_llm_command,
 }
 """The dispatch table from the subcommand name to the tool main."""
 

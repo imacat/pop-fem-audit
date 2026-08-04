@@ -1,16 +1,16 @@
 pop\_fem\_audit\_tools package
 ==============================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   pop_fem_audit_tools.commands
+
 Submodules
 ----------
-
-pop\_fem\_audit\_tools.build\_db module
----------------------------------------
-
-.. automodule:: pop_fem_audit_tools.build_db
-   :members:
-   :show-inheritance:
-   :undoc-members:
 
 pop\_fem\_audit\_tools.config module
 ------------------------------------
@@ -28,42 +28,10 @@ pop\_fem\_audit\_tools.database module
    :show-inheritance:
    :undoc-members:
 
-pop\_fem\_audit\_tools.export\_llm\_input module
-------------------------------------------------
-
-.. automodule:: pop_fem_audit_tools.export_llm_input
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-pop\_fem\_audit\_tools.fetch\_artists module
---------------------------------------------
-
-.. automodule:: pop_fem_audit_tools.fetch_artists
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-pop\_fem\_audit\_tools.fetch\_lyrics module
--------------------------------------------
-
-.. automodule:: pop_fem_audit_tools.fetch_lyrics
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 pop\_fem\_audit\_tools.models module
 ------------------------------------
 
 .. automodule:: pop_fem_audit_tools.models
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-pop\_fem\_audit\_tools.run\_llm module
---------------------------------------
-
-.. automodule:: pop_fem_audit_tools.run_llm
    :members:
    :show-inheritance:
    :undoc-members:

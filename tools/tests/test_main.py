@@ -11,7 +11,8 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
-from pop_fem_audit_tools import __main__, run_llm
+from pop_fem_audit_tools import __main__
+from pop_fem_audit_tools.commands import run_llm
 
 
 class TestDispatcher(unittest.TestCase):

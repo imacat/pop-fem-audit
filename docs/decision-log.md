@@ -245,3 +245,11 @@
   故檔案可再生，依 commit 判準不進 git（且含歌詞全文，
   版權亦不許）；固定匯出全部歌曲，缺歌詞即失敗；單一
   位置引數收輸出檔路徑，文件範例輸出至 `tools/instance/`。
+- **指令模組集中為 `commands` sub-package**：五個子命令模組
+  移入 `pop_fem_audit_tools.commands`，`__init__` 以
+  `from .run_llm import main as run_llm_command` 逐條登記為
+  指令清單，`__main__` 只消費此 façade；`_command` 後綴避免
+  與子模組同名遮蔽，測試仍以模組屬性風格使用；基礎設施模組
+  （config／database／models／utils）留頂層。理由：「指令
+  vs 共用底層」由目錄結構直接表達，與「哪個函式屬哪個工作」
+  的歸屬原則同型。

@@ -59,8 +59,8 @@ from typing import Any, Self
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from .database import Base, ds
-from .models import (
+from ..database import Base, ds
+from ..models import (
     Artist,
     ChartEntry,
     Role,

@@ -323,3 +323,16 @@
   式化、消滅隱性推導」原則的貫徹。比對子命令驗證兩 run 的定義檔與
   輸入 SHA 一致、缺 run 即失敗。目標目錄已存在即拒絕執行，重跑須明
   示 `--replace`。
+- **screen 標籤詞改為 `women-power`（來歷考據定案）**：
+  考據先導研究的 local agent 存檔：其第一步指令含數十個
+  範例 thematic keywords，其中即有 women-power——為當時
+  協作的 Claude Code 依研究者長期表達的關注主動加入
+  （研究者端播種，非明示指定）；先導標籤
+  women-power-and-empowerment 則是第三步強制合併
+  women-power＋empowerment 兩個關鍵字的管線人工產物
+  （研究者數月來誤以為是 women-power＋women-empowerment
+  之併，至此方明）。修正：探針指向被播種的概念本詞
+  women-power，不用合併假影；research-plan 的「來歷不可
+  考」敘述同步改為考據結果。附帶認清：先導第一步並非零
+  語意提示——此即正式研究「只定格式、不定語意」設計所
+  矯正者。

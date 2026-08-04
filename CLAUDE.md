@@ -5,17 +5,24 @@
 - LLM analysis runs via Python scripts calling the Anthropic
   Messages API: model `claude-sonnet-4-6`, `temperature=0`,
   thinking disabled, Batch API where possible.
-- Prompt definition files live in `prompts/<task>-v<N>.md` and
-  are passed verbatim as the system prompt.
-- Every LLM step runs the same definition file twice, then a
-  separate arbitration step reconciles the two outputs
-  ("2 runs + 1 arbitration").  If arbitration output is
-  unexpected, revise the definition file and repeat the whole
-  cycle; never patch results by hand.
-- Every execution is archived self-contained under
-  `runs/<phase>/<date>-<prompt-version>/`: prompt snapshot,
+- Prompt definition files live in
+  `prompts/<track>-<step>-<task>.md` (e.g. 01-01-tag.md; no
+  version suffix -- versions live in git history) and are
+  passed verbatim as the system prompt.
+- LLM steps whose outputs are item-by-item comparable
+  (convergence, coding) run the same definition file twice,
+  then a separate arbitration step settles only the
+  script-computed disagreements ("2 runs + 1 arbitration").
+  Free-generation steps run twice and both outputs are pooled,
+  unarbitrated.  If arbitration output is unexpected, revise
+  the definition file and repeat that cycle; never patch
+  results by hand.
+- The current execution of each step is archived
+  self-contained under
+  `runs/<definition-file>/`: prompt snapshot,
   raw outputs of both runs, arbitration output, and `meta.json`
-  (model ID, parameters, timestamps, batch IDs).
+  (model ID, parameters, timestamps, batch IDs).  A rerun
+  replaces the directory; superseded runs live in git history.
 - Scripts read the API key from the `ANTHROPIC_API_KEY`
   environment variable (`.env`, gitignored).
 

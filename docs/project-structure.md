@@ -24,7 +24,8 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <task>-v<N>.md         #   版本化：screen-v1.md、judge-v2.md…
+│   └── <軌>-<步>-<task>.md    #   01-01-tag.md、02-01-screen.md…
+│                              #   不帶版本號，版本即 git 歷史
 ├── tools/                     # 輔助工具子專案（src-layout）
 │   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；
 │   │                          #   pip install -e tools/ 安裝
@@ -52,8 +53,9 @@ pop-fem-audit/
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── utils.py           # 共用工具（format_duration）
 │   └── tests/                 # 單元測試（unittest）
-├── runs/                      # 每次執行的完整稽核紀錄（進 git）
-│   └── <階段>/<日期>-<定義檔版本>/
+├── runs/                      # 現行執行的完整稽核紀錄（進 git；
+│   │                          #   重跑即取代，舊執行在 git 歷史）
+│   └── <定義檔名>/
 │       ├── prompt.md          # 當次定義檔快照（自我完備）
 │       ├── run1.jsonl         # 第一次執行原始輸出
 │       ├── run2.jsonl         # 第二次執行原始輸出
@@ -80,8 +82,9 @@ pop-fem-audit/
   meta，讀者不需 git 考古即可稽核任一筆結果。
 - **`runs/`（原始稽核資料）與 `results/`（最終表）分離**：
   論文只引 `results/`，其來源可回溯至 `runs/`。
-- **`prompts/` 用檔名版本化**（不只靠 git 歷史）：定義檔版本是
-  論文附錄的引用單位，須可直接指名（如 judge-v2.md）。
+- **`prompts/` 檔名不帶版本號**：版本即 git 歷史，失敗的
+  版本不保留；論文引用的單位是 `runs/` 內隨執行保存的定義檔
+  快照（每個執行目錄自我完備），不需檔名可指的版本名。
 - **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
   commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
   一律以文字 commit。「可再生仍 commit」的例外有二：

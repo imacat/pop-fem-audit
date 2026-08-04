@@ -18,10 +18,8 @@ artist name, the same APIs are queried again with the artist
 credit, to catch songs cataloged only under a joint credit such
 as "Dan + Shay".
 
-A song that every API misses on both queries is reported in the
-missing lyrics CSV, also given as a positional command-line
-argument, which is rewritten on every run to reflect the
-current status.  Misses are expected and do not fail the run.
+A song that every API misses on both queries is reported on the
+standard error, but does not fail the run; misses are expected.
 """
 import argparse
 import csv
@@ -32,7 +30,6 @@ import time
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -50,9 +47,6 @@ from .models import (
 PROVENANCE_FIELDS: Sequence[str] = (
     "song_id", "source", "method", "acquired_at", "note")
 """The header columns of the lyrics provenance CSV file."""
-MISSING_FIELDS: Sequence[str] = (
-    "song_id", "title", "artist_credit", "reason")
-"""The header columns of the missing lyrics report CSV file."""
 USER_AGENT: str = ("pop-fem-audit-tools"
                    " (https://github.com/imacat/pop-fem-audit)")
 """The User-Agent header sent on every HTTP request."""
@@ -60,28 +54,6 @@ TIMEOUT: float = 30.0
 """The timeout of an HTTP request, in seconds."""
 SLEEP_SECONDS: float = 1.0
 """The delay between consecutive HTTP requests, in seconds."""
-
-
-@dataclass
-class MissingLyrics:
-    """One row of the missing lyrics report CSV file."""
-
-    song_id: int
-    """The song ID."""
-    title: str
-    """The song title."""
-    artist_credit: str
-    """The artist credit of the song."""
-    reason: str
-    """The reason the lyrics are missing."""
-
-    def to_row(self) -> list[str]:
-        """Return this report entry as a CSV row.
-
-        :return: The row values, in the column order.
-        """
-        return [str(self.song_id), self.title,
-                self.artist_credit, self.reason]
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -100,9 +72,6 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "provenance_csv", type=Path,
         help="the lyrics provenance CSV file")
-    parser.add_argument(
-        "missing_csv", type=Path,
-        help="the missing lyrics report CSV file")
     return parser.parse_args(argv)
 
 
@@ -251,27 +220,6 @@ def append_provenance(path: Path, song_id: int,
                          datetime.date.today().isoformat(), ""])
 
 
-def write_missing(path: Path,
-                  misses: Sequence[MissingLyrics]) -> None:
-    """Rewrite the missing lyrics report CSV file.
-
-    The previous content is replaced, so the file reflects the
-    current misses only.
-
-    :param path: The missing lyrics report CSV file.
-    :param misses: The report entries of the songs still without
-        lyrics.
-    :return: None.
-    :raises OSError: When the file cannot be written.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8",
-              newline="") as file:
-        writer: Any = csv.writer(file)
-        writer.writerow(MISSING_FIELDS)
-        writer.writerows(x.to_row() for x in misses)
-
-
 def main(argv: list[str] | None = None) -> int:
     """Fetch the missing song lyrics from the public APIs.
 
@@ -283,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
     args: argparse.Namespace = parse_args(argv)
     fetcher: LyricsFetcher = LyricsFetcher()
     fetched: int = 0
-    misses: list[MissingLyrics] = []
+    missed: int = 0
     session: Session = ds.get_db()
     try:
         song: Song
@@ -298,10 +246,7 @@ def main(argv: list[str] | None = None) -> int:
                 result = fetcher.fetch(
                     song.artist_credit, song.title)
             if result is None:
-                misses.append(MissingLyrics(
-                    song_id=song.id, title=song.title,
-                    artist_credit=song.artist_credit,
-                    reason="not found"))
+                missed += 1
                 print(f"song {song.id} \"{song.title}\": miss",
                       file=sys.stderr)
                 continue
@@ -314,12 +259,11 @@ def main(argv: list[str] | None = None) -> int:
             fetched += 1
             print(f"song {song.id} \"{song.title}\": {source}",
                   file=sys.stderr)
-        write_missing(args.missing_csv, misses)
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     finally:
         session.close()
-    print(f"done: {fetched} fetched, {len(misses)} missed",
+    print(f"done: {fetched} fetched, {missed} missed",
           file=sys.stderr)
     return 0

@@ -17,7 +17,6 @@ pop-fem-audit/
 │   │   │                      #   私人匯入腳本寫入
 │   │   ├── artists-wikidata.csv           # Wikidata 快照
 │   │   ├── lyrics_provenance.csv          # 歌詞出處
-│   │   ├── lyrics_missing.csv             # 歌詞缺漏報表
 │   │   └── lyrics/                        # 歌詞 .txt 快取
 │   │                                      #   （gitignored，版權）
 │   ├── manual/                # 人工著作：只由研究者手寫

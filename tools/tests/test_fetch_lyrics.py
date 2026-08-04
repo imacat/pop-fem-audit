@@ -32,9 +32,6 @@ class TestFetchLyrics(unittest.TestCase):
     PROVENANCE_HEADER: list[str] = [
         "song_id", "source", "method", "acquired_at", "note"]
     """The expected header row of the provenance CSV file."""
-    MISSING_HEADER: list[str] = [
-        "song_id", "title", "artist_credit", "reason"]
-    """The expected header row of the missing report CSV file."""
 
     def setUp(self) -> None:
         """Create a temporary capture directory with the store."""
@@ -45,7 +42,6 @@ class TestFetchLyrics(unittest.TestCase):
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__provenance: Path = \
             self.__dir / "lyrics_provenance.csv"
-        self.__missing: Path = self.__dir / "lyrics_missing.csv"
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL=url,
@@ -133,8 +129,7 @@ class TestFetchLyrics(unittest.TestCase):
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
             status: int = fetch_lyrics.main(
-                [str(self.__lyrics), str(self.__provenance),
-                 str(self.__missing)])
+                [str(self.__lyrics), str(self.__provenance)])
         return status, stderr.getvalue()
 
     @staticmethod
@@ -251,10 +246,7 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertFalse((self.__lyrics / "1.txt").exists())
         self.assertFalse(self.__provenance.exists())
-        rows: list[list[str]] = self.__read_rows(self.__missing)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0], self.MISSING_HEADER)
-        self.assertEqual(rows[1][:3], ["1", "Hello", "Adele"])
+        self.assertIn("song 1 \"Hello\": miss", stderr)
         self.assertIn("0 fetched, 1 missed", stderr)
 
     def test_cached_song_skipped(self) -> None:
@@ -272,8 +264,6 @@ class TestFetchLyrics(unittest.TestCase):
             (self.__lyrics / "1.txt")
             .read_text(encoding="utf-8"),
             "cached\n")
-        rows: list[list[str]] = self.__read_rows(self.__missing)
-        self.assertEqual(rows, [self.MISSING_HEADER])
 
     def test_url_encoding(self) -> None:
         """Test the percent-encoding of the artist and title."""

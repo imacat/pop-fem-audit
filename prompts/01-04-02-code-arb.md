@@ -30,6 +30,8 @@ Rules:
   lines of the lyrics; quote them.
 - Do not add any keyword that is not listed.
 
+Do not wrap the output in a Markdown code fence.
+
 Output a single JSON object mapping each kept keyword to your
 list of quotes, and nothing else.  A dropped keyword is simply
 left out; output an empty object when nothing is kept:

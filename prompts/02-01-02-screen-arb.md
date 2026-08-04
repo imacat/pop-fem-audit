@@ -21,6 +21,8 @@ Rules:
   lines of the lyrics that ground the judgment; if you cannot
   ground it in a quote, the answer is no.
 
+Do not wrap the output in a Markdown code fence.
+
 Output a single JSON array and nothing else: the quoted
 lines when the song expresses the theme, or an empty array
 when it does not:

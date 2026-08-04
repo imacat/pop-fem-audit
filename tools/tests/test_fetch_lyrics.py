@@ -170,7 +170,8 @@ class TestFetchLyrics(unittest.TestCase):
                          ["1", "lyrics.ovh", "api-fetch"])
         self.assertNotEqual(rows[1][3], "")
         self.assertEqual(rows[1][4], "")
-        self.assertIn("1 fetched, 0 missed", stderr)
+        self.assertIn(
+            "Done.  Fetched lyrics for 1/1 songs.", stderr)
 
     def test_lrclib_fallback(self) -> None:
         """Test that an ovh miss falls back to an LRCLIB hit."""
@@ -247,7 +248,8 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertFalse((self.__lyrics / "1.txt").exists())
         self.assertFalse(self.__provenance.exists())
         self.assertIn("song 1 \"Hello\": miss", stderr)
-        self.assertIn("0 fetched, 1 missed", stderr)
+        self.assertIn(
+            "Done.  Fetched lyrics for 0/1 songs.", stderr)
 
     def test_cached_song_skipped(self) -> None:
         """Test that a cached song triggers no HTTP request."""

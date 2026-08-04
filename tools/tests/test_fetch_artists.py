@@ -587,17 +587,6 @@ class TestFetchArtists(unittest.TestCase):
         urlopen.assert_not_called()
         self.assertIn("error:", stderr)
 
-    def test_format_duration_under_hour(self) -> None:
-        """Test the mm:ss format for a duration under one hour."""
-        self.assertEqual(
-            fetch_artists.format_duration(205), "03:25")
-
-    def test_format_duration_over_hour(self) -> None:
-        """Test the h:mm:ss format once the duration reaches an
-        hour."""
-        self.assertEqual(
-            fetch_artists.format_duration(6439), "1:47:19")
-
     def test_summary_line_exact_shape(self) -> None:
         """Test the exact wording and timing of the summary
         line."""

@@ -60,6 +60,14 @@ pop\_fem\_audit\_tools.run\_llm module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.utils module
+-----------------------------------
+
+.. automodule:: pop_fem_audit_tools.utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

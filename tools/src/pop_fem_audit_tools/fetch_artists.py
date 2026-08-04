@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 from . import VERSION
 from .database import ds
 from .models import Artist, Song, SongArtist
+from .utils import format_duration
 
 API_URL: str = "https://www.wikidata.org/w/api.php"
 """The URL of the Wikidata API endpoint."""
@@ -777,25 +778,6 @@ def write_snapshot(file: TextIO) -> None:
         file, SNAPSHOT_FIELDS)
     writer.writeheader()
     writer.writerows(ordered)
-
-
-def format_duration(seconds: float) -> str:
-    """Format an elapsed duration for the closing summary line.
-
-    :param seconds: The elapsed duration, in seconds.
-    :return: The duration formatted ``mm:ss``, or ``h:mm:ss``
-        once it reaches one hour.
-    """
-    total: int = round(seconds)
-    hours: int
-    remainder: int
-    hours, remainder = divmod(total, 3600)
-    minutes: int
-    secs: int
-    minutes, secs = divmod(remainder, 60)
-    if hours > 0:
-        return f"{hours}:{minutes:02d}:{secs:02d}"
-    return f"{minutes:02d}:{secs:02d}"
 
 
 def main(argv: list[str] | None = None) -> int:

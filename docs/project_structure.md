@@ -44,9 +44,10 @@ pop-fem-audit/
 │   │   ├── fetch_lyrics.py    # fetch missing lyrics from the
 │   │   │                      #   public APIs into the lyrics dir
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
-│   │   └── run_llm.py         # API runner：2+1 協定、Batch API、
-│   │                          #   寫入引數指定的 runs 目錄；執行
-│   │                          #   方式 pop-fem-audit-tools run-llm
+│   │   ├── run_llm.py         # API runner：2+1 協定、Batch API、
+│   │   │                      #   寫入引數指定的 runs 目錄；執行
+│   │   │                      #   方式 pop-fem-audit-tools run-llm
+│   │   └── utils.py           # 共用工具（format_duration）
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 每次執行的完整稽核紀錄（進 git）
 │   └── <階段>/<日期>-<定義檔版本>/

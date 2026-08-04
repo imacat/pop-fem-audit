@@ -43,6 +43,7 @@ from .models import (
     Song,
     SongArtist,
 )
+from .utils import format_duration
 
 PROVENANCE_FIELDS: Sequence[str] = (
     "song_id", "source", "method", "acquired_at", "note")
@@ -228,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     :return: The exit status: 0 on success, misses included,
         non-zero on a setup error.
     """
+    started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     fetcher: LyricsFetcher = LyricsFetcher()
     fetched: int = 0
@@ -264,6 +266,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         session.close()
-    print(f"done: {fetched} fetched, {missed} missed",
+    attempted: int = fetched + missed
+    elapsed: str = format_duration(time.monotonic() - started)
+    print(f"Done.  Fetched lyrics for {fetched}/{attempted}"
+          f" songs.  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

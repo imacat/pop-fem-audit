@@ -38,6 +38,9 @@ pop-fem-audit/
 │   │   │                      #   from the inputs
 │   │   ├── config.py          # pydantic-settings 設定（.env）
 │   │   ├── database.py        # SQLAlchemy engine / session / Base
+│   │   ├── export_llm_input.py # export the LLM input JSONL
+│   │   │                       #   (lyrics only) from the working
+│   │   │                       #   store
 │   │   ├── fetch_artists.py   # fetch artist metadata from
 │   │   │                      #   Wikidata into the snapshot CSV
 │   │   ├── fetch_lyrics.py    # fetch missing lyrics from the

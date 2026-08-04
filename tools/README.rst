@@ -49,6 +49,12 @@ fetch-lyrics
 Fetch lyrics, for ``build-db`` to merge the fetched lyrics into the database.  Lyrics are not committed into the repository due to copyright issue.  Check ``pop-fem-audit-tools fetch-lyrics -h`` for complete instructions on its usage.
 
 
+export-llm-input
+----------------
+
+Export song data for ``run-llm`` to talk to LLM.  Check ``pop-fem-audit-tools export-llm-input -h`` for complete instructions on its usage.
+
+
 run-llm
 -------
 

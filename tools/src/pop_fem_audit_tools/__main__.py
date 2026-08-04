@@ -17,6 +17,7 @@ from types import ModuleType
 
 from pop_fem_audit_tools import (
     build_db,
+    export_llm_input,
     fetch_artists,
     fetch_lyrics,
     run_llm,
@@ -27,6 +28,7 @@ MODULE_PROG: str = "python -m pop_fem_audit_tools"
 
 SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
     "build-db": build_db.main,
+    "export-llm-input": export_llm_input.main,
     "fetch-artists": fetch_artists.main,
     "fetch-lyrics": fetch_lyrics.main,
     "run-llm": run_llm.main,

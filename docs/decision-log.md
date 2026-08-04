@@ -237,3 +237,11 @@
   worklist 角色由重跑冪等指令本身承擔；完整性已由 provenance
   CSV 與 build-db 統計數字佐證；該檔案不承載任何無法重新
   產生的資訊。
+- **新增 `export-llm-input` 子命令**：由工作儲存產出
+  `run-llm` 的 JSONL 輸入檔（每筆 `id`＋`content`）；此為
+  「歌手背景絕不進 LLM 輸入、歌詞-only」防火牆的執行點
+  ——內容只有歌詞，歌曲身分以 `song-<ID>` 不透明鍵放
+  `custom_id`，不入訊息本體；ID 由 build-db 決定性指派
+  故檔案可再生，依 commit 判準不進 git（且含歌詞全文，
+  版權亦不許）；固定匯出全部歌曲，缺歌詞即失敗；單一
+  位置引數收輸出檔路徑，文件範例輸出至 `tools/instance/`。

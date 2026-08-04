@@ -28,6 +28,14 @@ pop\_fem\_audit\_tools.database module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.export\_llm\_input module
+------------------------------------------------
+
+.. automodule:: pop_fem_audit_tools.export_llm_input
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 pop\_fem\_audit\_tools.fetch\_artists module
 --------------------------------------------
 

@@ -50,6 +50,7 @@ import argparse
 import csv
 import re
 import sys
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,10 +68,6 @@ from .models import (
     SongArtist,
 )
 
-YEARS: Sequence[int] = range(2016, 2026)
-"""The expected chart years."""
-RANKS_PER_YEAR: int = 100
-"""The expected number of ranks on the chart of each year."""
 ARTIST_FIELDS: dict[str, str] = {
     "qid": "wikidata_qid",
     "gender": "gender",
@@ -114,6 +111,10 @@ class SongImporter:
     """The song-import job: loads the chart CSV into songs and
     chart entries."""
 
+    YEARS: Sequence[int] = range(2016, 2026)
+    """The expected chart years."""
+    RANKS_PER_YEAR: int = 100
+    """The expected number of ranks on the chart of each year."""
     CANONICAL_ARTIST_CREDITS: dict[str, str] = {
         "benny blanco, Halsey & Khalid": "Benny Blanco, Halsey"
                                          " & Khalid",
@@ -144,8 +145,12 @@ class SongImporter:
         :param path: The chart CSV file with the columns year,
             rank, title, and artist.
         :return: None.
+        :raises BuildError: When the chart entries do not cover
+            each of ``YEARS`` and each rank from 1 to
+            ``RANKS_PER_YEAR`` exactly once.
         :raises OSError: When the file cannot be read.
         """
+        counts: Counter[tuple[int, int]] = Counter()
         with open(path, encoding="utf-8", newline="") as file:
             row: dict[str, str]
             for row in csv.DictReader(file):
@@ -160,10 +165,48 @@ class SongImporter:
                         artist_credit=credit)
                     self.__session.add(song)
                     self.__songs[key] = song
-                self.__session.add(ChartEntry(
-                    year=int(row["year"]), rank=int(row["rank"]),
-                    song=self.__songs[key]))
+                year: int = int(row["year"])
+                rank: int = int(row["rank"])
+                counts[(year, rank)] += 1
+                if counts[(year, rank)] == 1:
+                    self.__session.add(ChartEntry(
+                        year=year, rank=rank,
+                        song=self.__songs[key]))
         self.__session.flush()
+        self.__check_chart_coverage(counts)
+
+    @classmethod
+    def __check_chart_coverage(
+            cls, counts: Counter[tuple[int, int]]) -> None:
+        """Verify the chart entries cover the expected grid exactly.
+
+        :param counts: The number of chart entries seen for each
+            (year, rank) pair.
+        :return: None.
+        :raises BuildError: When a (year, rank) pair from the
+            expected grid is missing, an unexpected pair is
+            present, or a pair is duplicated.
+        """
+        expected: set[tuple[int, int]] = {
+            (year, rank) for year in cls.YEARS
+            for rank in range(1, cls.RANKS_PER_YEAR + 1)}
+        actual: set[tuple[int, int]] = set(counts)
+        violations: list[str] = []
+        year: int
+        rank: int
+        for year, rank in sorted(expected - actual):
+            violations.append(
+                f"missing chart entry: year {year} rank {rank}")
+        for year, rank in sorted(actual - expected):
+            violations.append(
+                f"unexpected chart entry: year {year} rank {rank}")
+        for year, rank in sorted(counts):
+            if counts[(year, rank)] > 1:
+                violations.append(
+                    f"duplicated chart entry: year {year} rank"
+                    f" {rank}")
+        if len(violations) > 0:
+            raise BuildError("\n".join(violations))
 
     @staticmethod
     def song_identity(title: str, credit: str) -> tuple[str, str]:
@@ -306,13 +349,18 @@ class ArtistImporter:
 
         :param song: The song with its stored artist credit.
         :return: None.
+        :raises BuildError: When the parsed credit has no primary
+            artist or contains a blank artist name (see
+            `__check_parsed_credit`).
         """
+        parsed: list[tuple[str, Role]] = self.parse_artist_credit(
+            song.artist_credit)
+        self.__check_parsed_credit(song, parsed)
         seen: set[str] = set()
         position: int = 0
         name: str
         role: Role
-        for name, role in self.parse_artist_credit(
-                song.artist_credit):
+        for name, role in parsed:
             key: str
             stored_name: str
             key, stored_name = self.resolve_artist_identity(name)
@@ -328,6 +376,32 @@ class ArtistImporter:
                 song=song, artist=self.__artists[key], role=role,
                 position=position))
             position += 1
+
+    @staticmethod
+    def __check_parsed_credit(
+            song: Song, parsed: list[tuple[str, Role]]) -> None:
+        """Verify a song's parsed artist credit is well-formed.
+
+        :param song: The song whose credit was parsed.
+        :param parsed: The (name, role) pairs parsed from
+            ``song.artist_credit``.
+        :return: None.
+        :raises BuildError: When ``parsed`` is empty, has no
+            ``Role.PRIMARY`` entry, or contains a name blank after
+            stripping.
+        """
+        role: Role
+        if len(parsed) == 0 or not any(
+                role == Role.PRIMARY for _, role in parsed):
+            raise BuildError(
+                f"song {song.id} \"{song.artist_credit}\": no"
+                " primary artist parsed")
+        name: str
+        for name, role in parsed:
+            if name.strip() == "":
+                raise BuildError(
+                    f"song {song.id} \"{song.artist_credit}\":"
+                    " blank artist name parsed")
 
     @staticmethod
     def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
@@ -513,53 +587,6 @@ class CaptureImporter:
                 for column, attribute in ARTIST_FIELDS.items():
                     if row.get(column):
                         setattr(artist, attribute, row[column])
-
-
-def find_violations(session: Session, years: Iterable[int],
-                    ranks_per_year: int) -> list[str]:
-    """Find the invariant violations in the loaded data.
-
-    The invariants: the chart entries cover each expected year
-    and rank exactly once and nothing else, every song has at
-    least one primary artist, and every artist name is non-empty.
-
-    :param session: The database session with the loaded data
-        flushed.
-    :param years: The expected chart years.
-    :param ranks_per_year: The expected number of ranks per year.
-    :return: The violation messages, empty when the data is
-        valid.
-    """
-    violations: list[str] = []
-    expected: set[tuple[int, int]] = {
-        (year, rank) for year in years
-        for rank in range(1, ranks_per_year + 1)}
-    actual: set[tuple[int, int]] = {
-        (x.year, x.rank)
-        for x in session.scalars(sa.select(ChartEntry))}
-    year: int
-    rank: int
-    for year, rank in sorted(expected - actual):
-        violations.append(
-            f"missing chart entry: year {year} rank {rank}")
-    for year, rank in sorted(actual - expected):
-        violations.append(
-            f"unexpected chart entry: year {year} rank {rank}")
-    primary_ids: set[int] = set(session.scalars(
-        sa.select(SongArtist.song_id)
-        .where(SongArtist.role == Role.PRIMARY)))
-    song: Song
-    for song in session.scalars(sa.select(Song).order_by(Song.id)):
-        if song.id not in primary_ids:
-            violations.append(
-                f"song {song.id} \"{song.title}\" has no primary"
-                " artist")
-    artist: Artist
-    for artist in session.scalars(sa.select(Artist)):
-        if artist.name.strip() == "":
-            violations.append(
-                f"artist {artist.id} has an empty name")
-    return violations
 
 
 @dataclass
@@ -803,13 +830,6 @@ def main(argv: list[str] | None = None) -> int:
         ArtistImporter(session).import_artists()
         CaptureImporter(session).import_captures(
             args.lyrics_dir, args.wikidata_csv)
-        violations: list[str] = find_violations(
-            session, YEARS, RANKS_PER_YEAR)
-        if len(violations) > 0:
-            session.rollback()
-            for violation in violations:
-                print(f"error: {violation}", file=sys.stderr)
-            return 1
         counts = StoreCounts.get_instance(session)
         CSVExporter(session, args.derived_dir).write()
         session.commit()

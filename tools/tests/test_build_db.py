@@ -273,8 +273,10 @@ class TestBuildDB(unittest.TestCase):
         self.__ds: DataSource = DataSource()
         patchers: list[Any] = [
             mock.patch.object(build_db, "ds", self.__ds),
-            mock.patch.object(build_db, "YEARS", [2016, 2017]),
-            mock.patch.object(build_db, "RANKS_PER_YEAR", 2)]
+            mock.patch.object(
+                build_db.SongImporter, "YEARS", [2016, 2017]),
+            mock.patch.object(
+                build_db.SongImporter, "RANKS_PER_YEAR", 2)]
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -577,6 +579,53 @@ class TestBuildDB(unittest.TestCase):
         self.assertEqual(
             list(session.scalars(sa.select(ChartEntry))), [])
         self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_duplicate_chart_entry_fails(self) -> None:
+        """Test that a duplicated (year, rank) row fails without
+        partial data, even though the set of distinct (year, rank)
+        pairs still covers the expected grid exactly."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Hello,Adele\n"
+            "2016,1,Hello,Adele\n"
+            "2016,2,One Dance,Drake featuring Wizkid\n"
+            "2017,1,One Dance,Drake featuring Wizkid\n"
+            "2017,2,Shape of You,Ed Sheeran\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertNotEqual(status, 0)
+        self.assertIn(
+            "duplicated chart entry: year 2016 rank 1", stderr)
+        session: Session = self.__session()
+        self.assertEqual(
+            list(session.scalars(sa.select(ChartEntry))), [])
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_blank_artist_name_fails(self) -> None:
+        """Test that a parsed credit with a name blank after
+        stripping fails the build."""
+        with mock.patch.object(
+                build_db.ArtistImporter, "parse_artist_credit",
+                return_value=[("Adele", Role.PRIMARY),
+                              ("  ", Role.FEATURED)]):
+            status: int
+            stderr: str
+            status, stderr = self.__run_build()
+        self.assertNotEqual(status, 0)
+        self.assertIn("blank artist name parsed", stderr)
+
+    def test_no_primary_artist_fails(self) -> None:
+        """Test that a parsed credit without a primary artist
+        fails the build."""
+        with mock.patch.object(
+                build_db.ArtistImporter, "parse_artist_credit",
+                return_value=[("Wizkid", Role.FEATURED)]):
+            status: int
+            stderr: str
+            status, stderr = self.__run_build()
+        self.assertNotEqual(status, 0)
+        self.assertIn("no primary artist parsed", stderr)
 
     def test_lyrics_loaded(self) -> None:
         """Test loading the lyrics cache into the songs."""

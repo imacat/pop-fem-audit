@@ -206,8 +206,10 @@
   （身分判定、拆解、正名）隨行入 class 作公開 staticmethod
   ／class 常數，「哪個函式屬哪個工作」由 class 歸屬直接
   表達。flush 定為匯入工作的完工契約——entry method 返回
-  時自身寫入已可查詢，不再由呼叫者補 flush。實測重構前後
-  工作儲存 dump 與衍生報表逐位元組相同。
+  時自身寫入已可查詢，不再由呼叫者補 flush。捕捉層套用
+  （歌詞、Wikidata 快照）隨後同型打包為 `CaptureImporter`
+  （單一入口收兩個可省略路徑）。實測重構前後工作儲存
+  dump 與衍生報表逐位元組相同。
 - **歌手型態刪去 mixed 值**：`ArtistType` 只留 solo／group。
   mixed 是先導研究「男／女／混合團體」單一欄位的殘留，
   正式設計拆成 gender＋type 後從未定義其指涉；署名一律

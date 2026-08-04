@@ -425,57 +425,94 @@ class ArtistImporter:
         return folded, name
 
 
-def load_lyrics(session: Session, directory: Path) -> None:
-    """Load the cached lyrics files into the matching songs.
+class CaptureImporter:
+    """The capture-import job: applies the optional capture-layer
+    inputs onto the stored songs and artists."""
 
-    A file whose stem is not an existing song ID is skipped with
-    a warning to the standard error.
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
 
-    :param session: The database session, with the songs flushed.
-    :param directory: The existing lyrics cache directory with
-        one ``<song_id>.txt`` file per song.
-    :return: None.
-    :raises OSError: When a lyrics file cannot be read.
-    """
-    for path in sorted(directory.glob("*.txt")):
-        song: Song | None = None
-        if path.stem.isdigit():
-            song = session.get(Song, int(path.stem))
-        if song is None:
-            print(f"warning: {path}: no song with ID"
-                  f" \"{path.stem}\"", file=sys.stderr)
-            continue
-        song.lyrics = path.read_text(encoding="utf-8")
+        :param session: The database session.
+        """
+        self.__session: Session = session
 
+    def import_captures(self, lyrics_dir: Path | None,
+                        wikidata_csv: Path | None) -> None:
+        """Apply the optional capture-layer inputs onto the store.
 
-def apply_artist_csv(session: Session, path: Path) -> None:
-    """Apply an artist attribute CSV onto the artist rows.
+        A None input leaves its capture layer unloaded.  When
+        ``lyrics_dir`` is given, its cached lyrics files load into
+        the matching songs (see `__load_lyrics`).  When
+        ``wikidata_csv`` is given, it applies onto the artist rows
+        (see `__apply_artist_csv`).  When the method returns, the
+        applied changes are queryable in the session.
 
-    Artists match by exact name.  Only the non-empty cells are
-    applied, field by field.  The note column is ignored.
-
-    :param session: The database session, with the artists
-        flushed.
-    :param path: The CSV file with the columns name, qid, gender,
-        type, genre, country, and note.
-    :return: None.
-    :raises BuildError: When a name matches no artist.
-    :raises OSError: When the file cannot be read.
-    """
-    with open(path, encoding="utf-8", newline="") as file:
-        row: dict[str, str]
-        for row in csv.DictReader(file):
-            artist: Artist | None = session.scalar(
-                sa.select(Artist)
-                .where(Artist.name == row["name"]))
-            if artist is None:
+        :param lyrics_dir: The lyrics cache directory to load, or
+            None to skip the lyrics capture layer.
+        :param wikidata_csv: The Wikidata artist snapshot CSV file
+            to apply, or None to skip the artist capture layer.
+        :return: None.
+        :raises BuildError: When ``lyrics_dir`` does not exist, or
+            a name in ``wikidata_csv`` matches no artist.
+        :raises OSError: When a capture file cannot be read.
+        """
+        if lyrics_dir is not None:
+            if not lyrics_dir.is_dir():
                 raise BuildError(
-                    f"{path}: no artist named \"{row['name']}\"")
-            column: str
-            attribute: str
-            for column, attribute in ARTIST_FIELDS.items():
-                if row.get(column):
-                    setattr(artist, attribute, row[column])
+                    f"{lyrics_dir}: no such directory")
+            self.__load_lyrics(lyrics_dir)
+        if wikidata_csv is not None:
+            self.__apply_artist_csv(wikidata_csv)
+        self.__session.flush()
+
+    def __load_lyrics(self, directory: Path) -> None:
+        """Load the cached lyrics files into the matching songs.
+
+        A file whose stem is not an existing song ID is skipped
+        with a warning to the standard error.
+
+        :param directory: The existing lyrics cache directory with
+            one ``<song_id>.txt`` file per song.
+        :return: None.
+        :raises OSError: When a lyrics file cannot be read.
+        """
+        for path in sorted(directory.glob("*.txt")):
+            song: Song | None = None
+            if path.stem.isdigit():
+                song = self.__session.get(Song, int(path.stem))
+            if song is None:
+                print(f"warning: {path}: no song with ID"
+                      f" \"{path.stem}\"", file=sys.stderr)
+                continue
+            song.lyrics = path.read_text(encoding="utf-8")
+
+    def __apply_artist_csv(self, path: Path) -> None:
+        """Apply an artist attribute CSV onto the artist rows.
+
+        Artists match by exact name.  Only the non-empty cells are
+        applied, field by field.  The note column is ignored.
+
+        :param path: The CSV file with the columns name, qid,
+            gender, type, genre, country, and note.
+        :return: None.
+        :raises BuildError: When a name matches no artist.
+        :raises OSError: When the file cannot be read.
+        """
+        with open(path, encoding="utf-8", newline="") as file:
+            row: dict[str, str]
+            for row in csv.DictReader(file):
+                artist: Artist | None = self.__session.scalar(
+                    sa.select(Artist)
+                    .where(Artist.name == row["name"]))
+                if artist is None:
+                    raise BuildError(
+                        f"{path}: no artist named"
+                        f" \"{row['name']}\"")
+                column: str
+                attribute: str
+                for column, attribute in ARTIST_FIELDS.items():
+                    if row.get(column):
+                        setattr(artist, attribute, row[column])
 
 
 def find_violations(session: Session, years: Iterable[int],
@@ -764,14 +801,8 @@ def main(argv: list[str] | None = None) -> int:
         reset_store(session)
         SongImporter(session).import_songs(args.chart_csv)
         ArtistImporter(session).import_artists()
-        if args.lyrics_dir is not None:
-            if not args.lyrics_dir.is_dir():
-                raise BuildError(
-                    f"{args.lyrics_dir}: no such directory")
-            load_lyrics(session, args.lyrics_dir)
-        if args.wikidata_csv is not None:
-            apply_artist_csv(session, args.wikidata_csv)
-        session.flush()
+        CaptureImporter(session).import_captures(
+            args.lyrics_dir, args.wikidata_csv)
         violations: list[str] = find_violations(
             session, YEARS, RANKS_PER_YEAR)
         if len(violations) > 0:

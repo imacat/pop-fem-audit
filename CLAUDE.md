@@ -17,12 +17,15 @@
   unarbitrated.  If arbitration output is unexpected, revise
   the definition file and repeat that cycle; never patch
   results by hand.
-- The current execution of each step is archived
-  self-contained under
-  `runs/<definition-file>/`: prompt snapshot,
-  raw outputs of both runs, arbitration output, and `meta.json`
-  (model ID, parameters, timestamps, batch IDs).  A rerun
-  replaces the directory; superseded runs live in git history.
+- Each run of a step is archived self-contained under the
+  destination directory given explicitly on the `run-llm`
+  command line (by convention `runs/<definition-file>/run<N>/`):
+  prompt snapshot, raw output, and `meta.json` (model ID,
+  parameters, timestamps, batch ID).  The two runs of a step
+  are two separate invocations of `run-llm`.  An arbitration
+  pass is a step of its own with its own archive.  Replacing
+  an existing run archive requires an explicit flag;
+  superseded runs live in git history.
 - Scripts read the API key from the `ANTHROPIC_API_KEY`
   environment variable (`.env`, gitignored).
 

@@ -45,23 +45,23 @@ pop-fem-audit/
 │   │   │   │                    #   Wikidata into the snapshot CSV
 │   │   │   ├── fetch_lyrics.py # fetch missing lyrics from the
 │   │   │   │                   #   public APIs into the lyrics dir
-│   │   │   └── run_llm.py     # API runner：2+1 協定、Batch API、
-│   │   │                      #   寫入引數指定的 runs 目錄；執行
-│   │   │                      #   方式 pop-fem-audit-tools run-llm
+│   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
+│   │   │                      #   →歸檔至指定目錄（Batch API）；
+│   │   │                      #   比對與仲裁編排由獨立子命令承擔
 │   │   ├── config.py          # pydantic-settings 設定（.env）
 │   │   ├── database.py        # SQLAlchemy engine / session / Base
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
 │   │   └── utils.py           # 共用工具（format_duration）
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
-│   │                          #   重跑即取代，舊執行在 git 歷史）
-│   └── <定義檔名>/
-│       ├── prompt.md          # 當次定義檔快照（自我完備）
-│       ├── run1.jsonl         # 第一次執行原始輸出
-│       ├── run2.jsonl         # 第二次執行原始輸出
-│       ├── arbitration.jsonl  # 仲裁輸出
-│       └── meta.json          # model ID、temperature、時間戳、
-│                              #   batch ID、一致率
+│   │                          #   重跑同一 run 須明示 --replace）
+│   └── <定義檔名>/            #   仲裁步驟居自己的 <task>-arb/
+│       └── run<N>/            #   每個 run 一份自我完備歸檔
+│           ├── prompt.md      # 當次定義檔快照（自我完備）
+│           ├── output.jsonl   # 該次執行原始輸出
+│           └── meta.json      # model ID、temperature、時間戳、
+│                              #   batch ID、token 用量
+│                              #   （一致率由比對子命令記錄）
 ├── results/                   # 論文引用的報表 CSV（export 產出；
 │                              #   「可再生仍 commit」的唯一例外）
 ├── docs/

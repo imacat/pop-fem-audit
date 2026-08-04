@@ -26,8 +26,9 @@ Hot 100（2016–2025）為例的內容分析。
    --lyrics-dir ../data/captures/lyrics
    --wikidata-csv ../data/captures/artists-wikidata.csv`）。
    LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
-   thinking 關閉；每步驟獨立執行兩次後由仲裁步驟合併
-   （「2+1」協定）。
+   thinking 關閉；輸出可逐項比對的步驟獨立執行兩次，由
+   比對程式算出分歧、仲裁步驟裁決（「2+1」協定），自由
+   生成步驟兩次執行進池不仲裁。
 4. 每次執行的完整紀錄（定義檔快照、原始輸出、參數）存於
    `runs/`，可逐筆稽核。論文引用的最終資料表在 `results/`。
 

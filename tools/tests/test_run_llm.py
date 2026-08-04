@@ -3,7 +3,7 @@
 # Authors:
 #   imacat@mail.imacat.idv.tw (imacat), 2026/7/30
 # AI assistance: Claude Code (Anthropic)
-"""Unit tests for the run_llm batch runner module."""
+"""Unit tests for the run_llm batch executor module."""
 import io
 import json
 import tempfile
@@ -180,62 +180,6 @@ class TestRequestBuilding(RunLLMTestCase):
         self.assertEqual(params["messages"],
                          [{"role": "user", "content": "the lyrics"}])
 
-    def test_arbitration_content(self) -> None:
-        """Test the arbitration user message format."""
-        content: str = run_llm.build_arbitration_content(
-            "the item", "output one", "output two")
-        self.assertEqual(content,
-                         "<item>\nthe item\n</item>\n"
-                         "<run1>\noutput one\n</run1>\n"
-                         "<run2>\noutput two\n</run2>")
-
-
-class TestAgreement(RunLLMTestCase):
-    """Test cases for the agreement computation."""
-
-    def test_split_by_agreement(self) -> None:
-        """Test splitting items into agreed and disagreeing ones."""
-        items: list[run_llm.InputItem] = [
-            run_llm.InputItem(id="a", content="one"),
-            run_llm.InputItem(id="b", content="two"),
-            run_llm.InputItem(id="c", content="three")]
-        run1: run_llm.Results = {
-            "a": run_llm.BatchResult(id="a", text="same\n"),
-            "b": run_llm.BatchResult(id="b", text="left"),
-            "c": run_llm.BatchResult(id="c", text=" padded ")}
-        run2: run_llm.Results = {
-            "a": run_llm.BatchResult(id="a", text="same"),
-            "b": run_llm.BatchResult(id="b", text="right"),
-            "c": run_llm.BatchResult(id="c", text="padded")}
-        agreed: list[str]
-        disagreed: list[str]
-        agreed, disagreed = run_llm.split_by_agreement(
-            items, run1, run2)
-        self.assertEqual(agreed, ["a", "c"])
-        self.assertEqual(disagreed, ["b"])
-
-
-class TestFinalRecords(RunLLMTestCase):
-    """Test cases for the final record assembly."""
-
-    def test_build_final_records(self) -> None:
-        """Test assembling final records from runs and arbitration."""
-        items: list[run_llm.InputItem] = [
-            run_llm.InputItem(id="a", content="one"),
-            run_llm.InputItem(id="b", content="two")]
-        run1: run_llm.Results = {
-            "a": run_llm.BatchResult(id="a", text="agreed text\n"),
-            "b": run_llm.BatchResult(id="b", text="left")}
-        arbitration: run_llm.Results = {
-            "b": run_llm.BatchResult(id="b",
-                                     text="arbitrated text")}
-        records: list[dict[str, str]] = run_llm.build_final_records(
-            items, run1, arbitration)
-        self.assertEqual(records, [
-            {"id": "a", "text": "agreed text", "source": "agreed"},
-            {"id": "b", "text": "arbitrated text",
-             "source": "arbitration"}])
-
 
 class TestCollectResults(RunLLMTestCase):
     """Test cases for the batch result collection."""
@@ -266,6 +210,20 @@ class TestCollectResults(RunLLMTestCase):
             run_llm.find_failures(["a", "b", "c"], results),
             ["b", "c"])
 
+    def test_sum_usage(self) -> None:
+        """Test summing the token usage across results."""
+        results: run_llm.Results = {
+            "a": run_llm.BatchResult(
+                id="a", text="fine",
+                usage={"input_tokens": 10, "output_tokens": 5}),
+            "b": run_llm.BatchResult(
+                id="b", text="fine",
+                usage={"input_tokens": 3, "output_tokens": 2}),
+            "c": run_llm.BatchResult(id="c", error="errored")}
+        self.assertEqual(
+            run_llm.sum_usage(results),
+            {"input_tokens": 13, "output_tokens": 7})
+
 
 class TestArchive(RunLLMTestCase):
     """Test cases for the archive directory handling."""
@@ -275,23 +233,43 @@ class TestArchive(RunLLMTestCase):
         self.__dir: Path = self._make_temp_dir()
 
     def test_create_archive_dir(self) -> None:
-        """Test the archive directory naming and creation."""
-        now: datetime = datetime(2026, 7, 30, 20, 5)
-        directory: Path = run_llm.create_archive_dir(
-            self.__dir, "coding", Path("prompts/gender_v3.md"), now)
+        """Test the archive directory creation."""
+        target: Path = self.__dir / "01-01-tag" / "run1"
+        directory: Path = run_llm.create_archive_dir(target, False)
         self.assertTrue(directory.is_dir())
-        self.assertEqual(
-            directory,
-            self.__dir / "coding" / "20260730-2005-gender_v3")
+        self.assertEqual(directory, target)
 
-    def test_existing_archive_dir_rejected(self) -> None:
-        """Test that an existing archive directory is rejected."""
-        now: datetime = datetime(2026, 7, 30, 20, 5)
-        run_llm.create_archive_dir(
-            self.__dir, "coding", Path("gender_v3.md"), now)
+    def test_existing_archive_dir_rejected_without_replace(
+            self) -> None:
+        """Test that an existing archive is rejected by default."""
+        target: Path = self.__dir / "01-01-tag" / "run1"
+        run_llm.create_archive_dir(target, False)
         with self.assertRaises(FileExistsError):
-            run_llm.create_archive_dir(
-                self.__dir, "coding", Path("gender_v3.md"), now)
+            run_llm.create_archive_dir(target, False)
+
+    def test_existing_archive_dir_replaced(self) -> None:
+        """Test that --replace replaces an existing archive."""
+        target: Path = self.__dir / "01-01-tag" / "run1"
+        first: Path = run_llm.create_archive_dir(target, False)
+        (first / "stale.txt").write_text("stale", encoding="utf-8")
+        second: Path = run_llm.create_archive_dir(target, True)
+        self.assertEqual(first, second)
+        self.assertFalse((second / "stale.txt").exists())
+
+    def test_replace_leaves_sibling_dir_untouched(self) -> None:
+        """Test that replacing run2 does not touch run1."""
+        run1: Path = run_llm.create_archive_dir(
+            self.__dir / "01-01-tag" / "run1", False)
+        (run1 / "output.jsonl").write_text(
+            "run1 data", encoding="utf-8")
+        run2: Path = run_llm.create_archive_dir(
+            self.__dir / "01-01-tag" / "run2", False)
+        (run2 / "stale.jsonl").write_text("stale", encoding="utf-8")
+        run_llm.create_archive_dir(
+            self.__dir / "01-01-tag" / "run2", True)
+        self.assertEqual(
+            (run1 / "output.jsonl").read_text(encoding="utf-8"),
+            "run1 data")
 
     def test_write_jsonl(self) -> None:
         """Test writing records as JSON Lines."""
@@ -313,54 +291,38 @@ class TestMainFlow(RunLLMTestCase):
         """Create a temporary directory with the input files."""
         directory: Path = self._make_temp_dir()
         self.__runs: Path = directory / "runs"
-        prompt: Path = directory / "task_v1.md"
-        prompt.write_text("The task prompt.\n", encoding="utf-8")
-        arbitration: Path = directory / "task_arbitration_v1.md"
-        arbitration.write_text(
-            "The arbitration prompt.\n", encoding="utf-8")
+        self.__archive_dir: Path = self.__runs / "task_v1" / "run1"
+        self.__prompt: Path = directory / "task_v1.md"
+        self.__prompt.write_text(
+            "The task prompt.\n", encoding="utf-8")
         self.__input: Path = directory / "items.jsonl"
         self.__input.write_text(
             '{"id": "a", "content": "first item"}\n'
             '{"id": "b", "content": "second item"}\n',
             encoding="utf-8")
         self.__argv: list[str] = [
-            str(self.__runs),
-            "--prompt", str(prompt),
-            "--arbitration-prompt", str(arbitration),
-            "--input", str(self.__input),
-            "--phase", "coding"]
+            str(self.__prompt), str(self.__input),
+            str(self.__archive_dir)]
         self.__settings: config.Settings = config.Settings(
             SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key")
         config.set_settings(self.__settings)
 
     @staticmethod
-    def __make_client(run1: list[Any], run2: list[Any],
-                      arbitration: list[Any] | None = None) \
-            -> mock.Mock:
-        """Create a mock Anthropic client serving canned batch results.
+    def __make_client(entries: list[Any]) -> mock.Mock:
+        """Create a mock Anthropic client serving canned results.
 
-        :param run1: The result entries of the run-1 batch.
-        :param run2: The result entries of the run-2 batch.
-        :param arbitration: The result entries of the arbitration
-            batch.
+        :param entries: The result entries of the single run batch.
         :return: The mock client.
         """
         client: mock.Mock = mock.Mock()
-        batch_ids: list[str] = ["batch_run1", "batch_run2",
-                                "batch_arb"]
-        client.messages.batches.create.side_effect = [
-            mock.Mock(id=x) for x in batch_ids]
+        client.messages.batches.create.return_value = mock.Mock(
+            id="batch_run1")
         ended: mock.Mock = mock.Mock()
         ended.processing_status = "ended"
         ended.ended_at = datetime(2026, 7, 30, 20, 0)
         client.messages.batches.retrieve.return_value = ended
-        results: dict[str, list[Any]] = {
-            "batch_run1": run1, "batch_run2": run2,
-            "batch_arb": arbitration if arbitration is not None
-            else []}
-        client.messages.batches.results.side_effect = (
-            lambda batch_id: iter(results[batch_id]))
+        client.messages.batches.results.return_value = iter(entries)
         return client
 
     @staticmethod
@@ -380,16 +342,6 @@ class TestMainFlow(RunLLMTestCase):
             status: int = run_llm.main(argv)
         return status, stdout.getvalue()
 
-    def __archive_dir(self) -> Path:
-        """Locate the single archive directory of the run.
-
-        :return: The archive directory.
-        """
-        directories: list[Path] = list(
-            (self.__runs / "coding").iterdir())
-        self.assertEqual(len(directories), 1)
-        return directories[0]
-
     def test_dry_run(self) -> None:
         """Test the dry-run behavior."""
         status: int
@@ -397,114 +349,107 @@ class TestMainFlow(RunLLMTestCase):
         status, stdout = self.__run_main(
             self.__argv + ["--dry-run"])
         self.assertEqual(status, 0)
-        run_dir: Path = self.__archive_dir()
+        run_dir: Path = self.__archive_dir
         self.assertEqual((run_dir / "prompt.md").read_text(
             encoding="utf-8"), "The task prompt.\n")
-        self.assertEqual(
-            (run_dir / "arbitration_prompt.md").read_text(
-                encoding="utf-8"), "The arbitration prompt.\n")
         meta: dict[str, Any] = json.loads(
             (run_dir / "meta.json").read_text(encoding="utf-8"))
         self.assertTrue(meta["dry_run"])
         self.assertEqual(meta["item_count"], 2)
         self.assertEqual(meta["model"], "claude-sonnet-4-6")
-        self.assertFalse((run_dir / "run1.jsonl").exists())
+        self.assertNotIn("run", meta)
+        self.assertFalse((run_dir / "output.jsonl").exists())
         request: dict[str, Any] = json.loads(stdout)
         self.assertEqual(request["custom_id"], "a")
         self.assertEqual(request["params"]["system"],
                          "The task prompt.\n")
 
-    def test_all_agreed_skips_arbitration(self) -> None:
-        """Test that full agreement skips the arbitration batch."""
+    def test_run_produces_output_file(self) -> None:
+        """Test that a run submits one batch and writes output."""
         client: mock.Mock = self.__make_client(
-            run1=[self._make_success_entry("a", "answer a"),
-                  self._make_success_entry("b", "answer b")],
-            run2=[self._make_success_entry("a", "answer a\n"),
-                  self._make_success_entry("b", "answer b")])
+            [self._make_success_entry("a", "answer a"),
+             self._make_success_entry("b", "answer b")])
         status: int = self.__run_main(self.__argv, client)[0]
         self.assertEqual(status, 0)
         self.assertEqual(
-            client.messages.batches.create.call_count, 2)
-        run_dir: Path = self.__archive_dir()
-        self.assertEqual(
-            (run_dir / "arbitration.jsonl").read_text(
-                encoding="utf-8"), "")
-        final: list[dict[str, Any]] = [
-            json.loads(x) for x in (run_dir / "final.jsonl")
+            client.messages.batches.create.call_count, 1)
+        run_dir: Path = self.__archive_dir
+        self.assertTrue((run_dir / "output.jsonl").exists())
+        output: list[dict[str, Any]] = [
+            json.loads(x) for x in (run_dir / "output.jsonl")
             .read_text(encoding="utf-8").splitlines()]
-        self.assertEqual(final, [
-            {"id": "a", "text": "answer a", "source": "agreed"},
-            {"id": "b", "text": "answer b", "source": "agreed"}])
+        self.assertEqual(output[0]["text"], "answer a")
         meta: dict[str, Any] = json.loads(
             (run_dir / "meta.json").read_text(encoding="utf-8"))
-        self.assertEqual(meta["agreed_count"], 2)
-        self.assertEqual(meta["agreement_rate"], 1.0)
-        self.assertNotIn("arbitration", meta["batches"])
+        self.assertNotIn("run", meta)
+        self.assertEqual(meta["batch"]["batch_id"], "batch_run1")
+        self.assertEqual(meta["usage"],
+                         {"input_tokens": 20, "output_tokens": 10})
 
-    def test_disagreement_triggers_arbitration(self) -> None:
-        """Test that disagreeing items go through arbitration."""
+    def test_existing_archive_rejected_without_replace(self) -> None:
+        """Test that an existing archive without --replace fails."""
+        run_dir: Path = self.__archive_dir
+        run_dir.mkdir(parents=True)
+        (run_dir / "stale.jsonl").write_text(
+            "stale", encoding="utf-8")
+        status: int = self.__run_main(
+            self.__argv + ["--dry-run"])[0]
+        self.assertEqual(status, 1)
+        self.assertTrue((run_dir / "stale.jsonl").exists())
+
+    def test_rerun_replaces_archive_with_flag(self) -> None:
+        """Test that --replace replaces a pre-existing archive."""
+        run_dir: Path = self.__archive_dir
+        run_dir.mkdir(parents=True)
+        (run_dir / "stale.jsonl").write_text(
+            "stale", encoding="utf-8")
         client: mock.Mock = self.__make_client(
-            run1=[self._make_success_entry("a", "answer a"),
-                  self._make_success_entry("b", "answer b1")],
-            run2=[self._make_success_entry("a", "answer a"),
-                  self._make_success_entry("b", "answer b2")],
-            arbitration=[
-                self._make_success_entry("b", "answer b final")])
-        status: int = self.__run_main(self.__argv, client)[0]
+            [self._make_success_entry("a", "answer a"),
+             self._make_success_entry("b", "answer b")])
+        status: int = self.__run_main(
+            self.__argv + ["--replace"], client)[0]
+        self.assertEqual(status, 0)
+        self.assertFalse((run_dir / "stale.jsonl").exists())
+        self.assertTrue((run_dir / "output.jsonl").exists())
+
+    def test_replace_leaves_sibling_dir_untouched(self) -> None:
+        """Test that replacing run2 does not affect run1's archive."""
+        run1_dir: Path = self.__archive_dir
+        run1_dir.mkdir(parents=True)
+        (run1_dir / "output.jsonl").write_text(
+            "run1 data", encoding="utf-8")
+        run2_dir: Path = self.__runs / "task_v1" / "run2"
+        run2_dir.mkdir(parents=True)
+        (run2_dir / "output.jsonl").write_text(
+            "stale run2 data", encoding="utf-8")
+        client: mock.Mock = self.__make_client(
+            [self._make_success_entry("a", "answer a"),
+             self._make_success_entry("b", "answer b")])
+        argv: list[str] = [
+            str(self.__prompt), str(self.__input),
+            str(run2_dir), "--replace"]
+        status: int = self.__run_main(argv, client)[0]
         self.assertEqual(status, 0)
         self.assertEqual(
-            client.messages.batches.create.call_count, 3)
-        arb_call: mock.call = \
-            client.messages.batches.create.call_args_list[2]
-        arb_requests: list[dict[str, Any]] = \
-            arb_call.kwargs["requests"]
-        self.assertEqual(len(arb_requests), 1)
-        self.assertEqual(arb_requests[0]["custom_id"], "b")
-        self.assertEqual(arb_requests[0]["params"]["system"],
-                         "The arbitration prompt.\n")
-        self.assertEqual(
-            arb_requests[0]["params"]["messages"][0]["content"],
-            "<item>\nsecond item\n</item>\n"
-            "<run1>\nanswer b1\n</run1>\n"
-            "<run2>\nanswer b2\n</run2>")
-        run_dir: Path = self.__archive_dir()
-        arb_lines: list[str] = (run_dir / "arbitration.jsonl") \
-            .read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(arb_lines), 1)
-        self.assertEqual(json.loads(arb_lines[0])["text"],
-                         "answer b final")
-        final: list[dict[str, Any]] = [
-            json.loads(x) for x in (run_dir / "final.jsonl")
-            .read_text(encoding="utf-8").splitlines()]
-        self.assertEqual(final, [
-            {"id": "a", "text": "answer a", "source": "agreed"},
-            {"id": "b", "text": "answer b final",
-             "source": "arbitration"}])
-        meta: dict[str, Any] = json.loads(
-            (run_dir / "meta.json").read_text(encoding="utf-8"))
-        self.assertEqual(meta["agreed_count"], 1)
-        self.assertEqual(meta["agreement_rate"], 0.5)
-        self.assertEqual(meta["batches"]["arbitration"]["batch_id"],
-                         "batch_arb")
+            (run1_dir / "output.jsonl").read_text(encoding="utf-8"),
+            "run1 data")
+        self.assertNotEqual(
+            (run2_dir / "output.jsonl").read_text(encoding="utf-8"),
+            "stale run2 data")
 
     def test_run_failure_exits_non_zero(self) -> None:
         """Test that a failed item aborts with a non-zero status."""
         client: mock.Mock = self.__make_client(
-            run1=[self._make_success_entry("a", "answer a"),
-                  self._make_error_entry(
-                      "b", "invalid_request_error")],
-            run2=[self._make_success_entry("a", "answer a"),
-                  self._make_success_entry("b", "answer b")])
+            [self._make_success_entry("a", "answer a"),
+             self._make_error_entry("b", "invalid_request_error")])
         status: int = self.__run_main(self.__argv, client)[0]
         self.assertEqual(status, 1)
-        run_dir: Path = self.__archive_dir()
-        self.assertTrue((run_dir / "run1.jsonl").exists())
-        self.assertTrue((run_dir / "run2.jsonl").exists())
+        run_dir: Path = self.__archive_dir
+        self.assertTrue((run_dir / "output.jsonl").exists())
         self.assertTrue((run_dir / "meta.json").exists())
-        self.assertFalse((run_dir / "final.jsonl").exists())
-        run1_lines: list[str] = (run_dir / "run1.jsonl") \
+        output_lines: list[str] = (run_dir / "output.jsonl") \
             .read_text(encoding="utf-8").splitlines()
-        self.assertEqual(json.loads(run1_lines[1]),
+        self.assertEqual(json.loads(output_lines[1]),
                          {"id": "b",
                           "error": "invalid_request_error"})
 

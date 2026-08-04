@@ -9,7 +9,6 @@ pop-fem-audit/
 ├── CLAUDE.md                  # 極簡工作規範（subagent 會讀到，
 │                              #   絕不放理論、codebook、預期結果）
 ├── .gitignore                 # captures/lyrics/、.env、scratch
-├── conference_abstract.md     # pilot 摘要（投稿版）
 ├── data/                      # 依生命週期分層（文字格式）
 │   ├── source/                # 源頭：手放後不動
 │   │   └── yearend_hot100_2016_2025.csv   # 原始榜單
@@ -25,7 +24,7 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <task>_v<N>.md         #   版本化：screen_v1.md、judge_v2.md…
+│   └── <task>-v<N>.md         #   版本化：screen-v1.md、judge-v2.md…
 ├── tools/                     # 輔助工具子專案（src-layout）
 │   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；
 │   │                          #   pip install -e tools/ 安裝
@@ -60,14 +59,15 @@ pop-fem-audit/
 ├── results/                   # 論文引用的報表 CSV（export 產出；
 │                              #   「可再生仍 commit」的唯一例外）
 ├── docs/
-│   ├── research_plan.md       # 研究步驟規劃（本檔之姊妹篇）
-│   ├── project_structure.md   # 本檔
+│   ├── research-plan.md       # 研究步驟規劃（本檔之姊妹篇）
+│   ├── project-structure.md   # 本檔
 │   ├── codebook.md            # 人工編碼手冊（版本由 git 管理）
-│   ├── decision_log.md        # 決策日誌：每次改定義檔的原因
+│   ├── decision-log.md        # 決策日誌：每次改定義檔的原因
 │   └── methodology.md         # 方法細節（全文方法節底稿；
 │                              #   映射分析方法須在看結果前寫定）
 └── paper/
-    └── full_paper.md          # 全文
+    ├── abstract.md            # 摘要
+    └── full-paper.md          # 全文
 ```
 
 ## 設計理由
@@ -77,13 +77,13 @@ pop-fem-audit/
 - **`runs/`（原始稽核資料）與 `results/`（最終表）分離**：
   論文只引 `results/`，其來源可回溯至 `runs/`。
 - **`prompts/` 用檔名版本化**（不只靠 git 歷史）：定義檔版本是
-  論文附錄的引用單位，須可直接指名（如 judge_v2.md）。
+  論文附錄的引用單位，須可直接指名（如 judge-v2.md）。
 - **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
   commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
   一律以文字 commit。「可再生仍 commit」的例外有二：
   `results/` 報表（引用穩定性、審稿人零門檻、撰稿期可 diff）
   與 `data/derived/` 人讀報表（與工作儲存同一動作產出，稽核
-  鏈無中間空缺）。詳見 `research_plan.md`「資料儲存與模型」。
+  鏈無中間空缺）。詳見 `research-plan.md`「資料儲存與模型」。
 - **設定**經 pydantic-settings 統一：`.env`（gitignored，範本
   `tools/.env.example`）供應 `SQLALCHEMY_DATABASE_URL` 與
   `ANTHROPIC_API_KEY`，絕不寫入 repo。

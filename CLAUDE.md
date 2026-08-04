@@ -5,7 +5,7 @@
 - LLM analysis runs via Python scripts calling the Anthropic
   Messages API: model `claude-sonnet-4-6`, `temperature=0`,
   thinking disabled, Batch API where possible.
-- Prompt definition files live in `prompts/<task>_v<N>.md` and
+- Prompt definition files live in `prompts/<task>-v<N>.md` and
   are passed verbatim as the system prompt.
 - Every LLM step runs the same definition file twice, then a
   separate arbitration step reconciles the two outputs
@@ -36,4 +36,4 @@
   cites); `runs/` holds raw audit records.  The paper cites
   `results/` only.
 - Any change to a definition file, the codebook, or the plan is
-  recorded in `docs/decision_log.md` with date and reason.
+  recorded in `docs/decision-log.md` with date and reason.

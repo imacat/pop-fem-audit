@@ -224,6 +224,13 @@
   `find_violations` 刪除。理由：檢查跟著產生資料的工作走，
   main 不再有驗證分支；逐筆即時失敗使錯誤指向出錯的那筆
   署名。
+- **Markdown 檔名一律以 dash 連接**（decision-log.md、
+  research-plan.md、project-structure.md 等；與 data/ 層
+  CSV 檔名慣例一致），定義檔命名慣例同步改為
+  `prompts/<task>-v<N>.md`（如 screen-v1.md），版本庫外的
+  私人工作檔一併改名；`conference_abstract.md` 改名並搬入
+  `paper/`——它是本次年會實際送出的摘要，與全文同屬投稿
+  血脈，不是 `docs/` 的內部工作文件。全 repo 指涉同步更新。
 - **fetch-lyrics 移除缺漏報表**：刪去 `missing_csv` 位置引數
   與缺漏報表 CSV 輸出。理由：該報表只寫不讀（指令從未讀取
   它），缺漏數字每次執行皆由工作儲存比對歌詞目錄重新算出；

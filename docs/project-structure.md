@@ -24,9 +24,12 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <軌>-<步>-<次步>-<task>.md  # 01-01-01-tag.md、
-│                              #   01-04-02-code-arb.md…
+│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-01-code.md、
+│                              #   03-02-code-arb.md
 │                              #   不帶版本號，版本即 git 歷史
+│                              #   （編號的所指是工序：確定性
+│                              #   的步驟 2 無定義檔仍佔一號；
+│                              #   補零只為排序）
 ├── tools/                     # 輔助工具子專案（src-layout）
 │   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；
 │   │                          #   pip install -e tools/ 安裝
@@ -46,6 +49,10 @@ pop-fem-audit/
 │   │   │   │                    #   Wikidata into the snapshot CSV
 │   │   │   ├── fetch_lyrics.py # fetch missing lyrics from the
 │   │   │   │                   #   public APIs into the lyrics dir
+│   │   │   ├── pool_keywords.py # pool the two tagging runs'
+│   │   │   │                    #   keywords (step 2-1)
+│   │   │   ├── cluster_keywords.py # build the vocabulary by
+│   │   │   │                       #   embedding + clustering (step 2-2)
 │   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
 │   │   │                      #   →歸檔至指定目錄（Batch API）；
 │   │   │                      #   比對與仲裁編排由獨立子命令承擔
@@ -56,13 +63,14 @@ pop-fem-audit/
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
 │   │                          #   重跑同一 run 須明示 --replace）
-│   └── <定義檔名>/            #   仲裁步驟居自己的 <task>-arb/
-│       └── run<N>/            #   每個 run 一份自我完備歸檔
-│           ├── prompt.md      # 當次定義檔快照（自我完備）
-│           ├── output.jsonl   # 該次執行原始輸出
-│           └── meta.json      # model ID、temperature、時間戳、
-│                              #   batch ID、token 用量
-│                              #   （一致率由比對子命令記錄）
+│   ├── <步驟名>/              #   仲裁步驟居自己的 <task>-arb/
+│   │   └── run<N>/            #   LLM 步驟：每個 run 一份自我
+│   │       ├── prompt.md      #   完備歸檔（定義檔快照）
+│   │       ├── output.jsonl   #   該次執行原始輸出
+│   │       └── meta.json      #   model ID、temperature、時間戳、
+│   │                          #   batch ID、token 用量
+│   └── 02-01-pool/  02-02-cluster/  # 確定性步驟：無執行變異，
+│                              #   不分 run<N> 層
 ├── results/                   # 論文引用的報表 CSV（export 產出；
 │                              #   「可再生仍 commit」的唯一例外）
 ├── docs/
@@ -70,6 +78,7 @@ pop-fem-audit/
 │   ├── project-structure.md   # 本檔
 │   ├── codebook.md            # 人工編碼手冊（版本由 git 管理）
 │   ├── decision-log.md        # 決策日誌：每次改定義檔的原因
+│   ├── run-costs.md           # 每次執行的 token 用量與費用
 │   └── methodology.md         # 方法細節（全文方法節底稿；
 │                              #   映射分析方法須在看結果前寫定）
 └── paper/

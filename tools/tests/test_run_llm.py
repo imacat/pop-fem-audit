@@ -326,13 +326,15 @@ class TestMainFlow(RunLLMTestCase):
         return client
 
     @staticmethod
-    def __run_main(argv: list[str],
-                   client: mock.Mock | None = None) -> tuple[int, str]:
+    def __run_main(
+            argv: list[str],
+            client: mock.Mock | None = None) -> tuple[int, str, str]:
         """Run main() with a mocked client and captured output.
 
         :param argv: The command-line arguments.
         :param client: The mock client, or None for dry runs.
-        :return: A tuple of the exit status and the standard output.
+        :return: A tuple of the exit status, the standard output,
+            and the standard error.
         """
         stdout: io.StringIO = io.StringIO()
         stderr: io.StringIO = io.StringIO()
@@ -340,13 +342,14 @@ class TestMainFlow(RunLLMTestCase):
                                return_value=client), \
                 redirect_stdout(stdout), redirect_stderr(stderr):
             status: int = run_llm.main(argv)
-        return status, stdout.getvalue()
+        return status, stdout.getvalue(), stderr.getvalue()
 
     def test_dry_run(self) -> None:
         """Test the dry-run behavior."""
         status: int
         stdout: str
-        status, stdout = self.__run_main(
+        stderr: str
+        status, stdout, stderr = self.__run_main(
             self.__argv + ["--dry-run"])
         self.assertEqual(status, 0)
         run_dir: Path = self.__archive_dir
@@ -363,13 +366,18 @@ class TestMainFlow(RunLLMTestCase):
         self.assertEqual(request["custom_id"], "a")
         self.assertEqual(request["params"]["system"],
                          "The task prompt.\n")
+        self.assertNotRegex(stderr, r"\d{2}:\d{2} elapsed\.")
 
     def test_run_produces_output_file(self) -> None:
         """Test that a run submits one batch and writes output."""
         client: mock.Mock = self.__make_client(
             [self._make_success_entry("a", "answer a"),
              self._make_success_entry("b", "answer b")])
-        status: int = self.__run_main(self.__argv, client)[0]
+        status: int
+        stderr: str
+        with mock.patch(
+                "time.monotonic", side_effect=[1000.0, 1125.0]):
+            status, _, stderr = self.__run_main(self.__argv, client)
         self.assertEqual(status, 0)
         self.assertEqual(
             client.messages.batches.create.call_count, 1)
@@ -385,6 +393,9 @@ class TestMainFlow(RunLLMTestCase):
         self.assertEqual(meta["batch"]["batch_id"], "batch_run1")
         self.assertEqual(meta["usage"],
                          {"input_tokens": 20, "output_tokens": 10})
+        self.assertTrue(stderr.rstrip("\n").endswith(
+            "done: 2 items; archived to"
+            f" {run_dir}  02:05 elapsed."))
 
     def test_existing_archive_rejected_without_replace(self) -> None:
         """Test that an existing archive without --replace fails."""

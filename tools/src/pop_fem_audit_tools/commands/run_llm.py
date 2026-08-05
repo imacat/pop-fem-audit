@@ -33,6 +33,7 @@ from typing import Any, Self
 import anthropic
 
 from ..config import get_settings
+from ..utils import format_duration
 
 MODEL: str = "claude-sonnet-4-6"
 TEMPERATURE: float = 0.0
@@ -450,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
     :param argv: The command-line arguments, or None for ``sys.argv``.
     :return: The exit status: 0 on success, non-zero on failure.
     """
+    started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     try:
         items: list[InputItem] = load_items(args.input)
@@ -504,6 +506,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: failed items: {', '.join(failed)}",
               file=sys.stderr)
         return 1
+    elapsed: str = format_duration(time.monotonic() - started)
     print(f"done: {len(items)} items;"
-          f" archived to {archive_dir}", file=sys.stderr)
+          f" archived to {archive_dir}  {elapsed} elapsed.",
+          file=sys.stderr)
     return 0

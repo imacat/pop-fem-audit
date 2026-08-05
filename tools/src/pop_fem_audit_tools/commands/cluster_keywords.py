@@ -22,9 +22,12 @@ result alone, as :data:`RESULT_GROUPS_CSV`.  The group name
 keywords alone are written as a text file, one per line, as
 :data:`RESULT_KEYWORDS_TXT`.  The coding keyword set for
 ``export-llm-input --extras`` is written as a JSON file holding the
-group name keywords plus the researcher's a-priori topic term (see
-:data:`EXTRA_KEYWORD`), as :data:`KEYWORDS_TO_MERGE_JSON`.  The
-step is fully deterministic; no LLM call is made.
+group name keywords plus every extra a-priori keyword the caller
+gives with the repeatable ``--extra-keyword`` command-line option,
+as :data:`KEYWORDS_TO_MERGE_JSON`; with no ``--extra-keyword``, it
+holds the group names alone.  No default extra keyword is ever
+injected; the caller supplies each one consciously.  The step is
+fully deterministic; no LLM call is made.
 """
 import argparse
 import csv
@@ -44,9 +47,6 @@ CLUSTER_EXTRA_MESSAGE: str = (
     " pip install -e \"tools/[cluster]\"")
 """The error message shown when the heavy clustering dependencies
 are not installed."""
-EXTRA_KEYWORD: str = "women-power"
-"""The researcher's a-priori topic term, included in the coding
-keyword set although it is not a clustering result."""
 SOURCE_KEYWORDS_TXT: str = "source-keywords.txt"
 """The pooled keyword text file's fixed name under the output
 directory."""
@@ -103,6 +103,14 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--clusters", type=int, default=DEFAULT_CLUSTERS,
         help=f"the number of clusters (default {DEFAULT_CLUSTERS})")
+    parser.add_argument(
+        "--extra-keyword", dest="extra_keywords", action="append",
+        default=None,
+        help="an extra a-priori keyword to add to"
+             f" {KEYWORDS_TO_MERGE_JSON} alongside the clustered"
+             " group names; repeatable; may be given any number"
+             " of times; not added to any other output file"
+             " (default: none)")
     return parser.parse_args(argv)
 
 
@@ -363,7 +371,7 @@ def write_groups(path: Path, groups: dict[str, list[str]]) -> None:
     row per member keyword.  Rows are sorted by group name
     lexicographically, then by keyword lexicographically.  The
     file records the clustering result alone; it holds no row for
-    :data:`EXTRA_KEYWORD`.
+    any ``--extra-keyword`` given on the command line.
 
     :param path: The path of the group membership CSV file to
         write.
@@ -389,7 +397,8 @@ def write_keyword_names(path: Path,
     Writes a text file holding the lexicographically sorted
     group names, one per line, UTF-8, LF line endings, with a
     trailing newline.  The file records the clustering result
-    alone; it holds no :data:`EXTRA_KEYWORD` line.
+    alone; it holds no line for any ``--extra-keyword`` given on
+    the command line.
 
     :param path: The path of the keyword text file to write.
     :param groups: The keyword members of every group, keyed by
@@ -402,24 +411,56 @@ def write_keyword_names(path: Path,
         "".join(f"{x}\n" for x in names), encoding="utf-8")
 
 
+def validate_extra_keywords(
+        extra_keywords: list[str],
+        groups: dict[str, list[str]]) -> None:
+    """Validate the extra keywords given on the command line.
+
+    :param extra_keywords: The extra keywords given via
+        ``--extra-keyword``, in the given order.
+    :param groups: The keyword members of every group, keyed by
+        the group's medoid name.
+    :return: None.
+    :raises ValueError: When an extra keyword duplicates a
+        clustered group name or another extra keyword.
+    """
+    seen: set[str] = set()
+    keyword: str
+    for keyword in extra_keywords:
+        if keyword in groups:
+            raise ValueError(
+                f"extra keyword \"{keyword}\" duplicates a"
+                " clustered group name")
+        if keyword in seen:
+            raise ValueError(
+                f"extra keyword \"{keyword}\" given more than"
+                " once")
+        seen.add(keyword)
+
+
 def write_keywords_to_merge(path: Path,
-                            groups: dict[str, list[str]]) -> None:
+                            groups: dict[str, list[str]],
+                            extra_keywords: list[str]) -> None:
     """Write the coding keyword set JSON file.
 
     Writes a JSON file holding a single object with one
     ``keywords`` key, whose value is the lexicographically
-    sorted list of the group names plus :data:`EXTRA_KEYWORD`,
-    UTF-8, with a trailing newline.  This is the file
-    ``export-llm-input --extras`` consumes.
+    sorted list of the group names plus every given extra
+    keyword, UTF-8, with a trailing newline.  With no extra
+    keyword, the list holds the group names alone.  This is the
+    file ``export-llm-input --extras`` consumes.
 
     :param path: The path of the keyword JSON file to write.
     :param groups: The keyword members of every group, keyed by
         the group's medoid name.
+    :param extra_keywords: The extra a-priori keywords given via
+        ``--extra-keyword``, to include alongside the group
+        names.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
     keywords: list[str] = sorted(
-        [*groups.keys(), EXTRA_KEYWORD])
+        [*groups.keys(), *extra_keywords])
     data: dict[str, list[str]] = {"keywords": keywords}
     path.write_text(
         json.dumps(data, ensure_ascii=False, indent=1) + "\n",
@@ -436,8 +477,10 @@ def main(argv: list[str] | None = None) -> int:
     clustering result alone; the group name keyword text file,
     holding the same group names as a readable list; and the
     coding keyword set JSON file, holding the group names plus
-    :data:`EXTRA_KEYWORD`.  When the input is rejected, none of
-    the five files is written.
+    every extra keyword given via ``--extra-keyword``.  When the
+    input is rejected, or an extra keyword duplicates a group
+    name or another extra keyword, none of the five files is
+    written.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -465,6 +508,12 @@ def main(argv: list[str] | None = None) -> int:
     except (RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
+    extra_keywords: list[str] = args.extra_keywords or []
+    try:
+        validate_extra_keywords(extra_keywords, groups)
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_pool(
         args.output_dir / SOURCE_KEYWORDS_TXT, keywords)
@@ -474,7 +523,8 @@ def main(argv: list[str] | None = None) -> int:
     write_keyword_names(
         args.output_dir / RESULT_KEYWORDS_TXT, groups)
     write_keywords_to_merge(
-        args.output_dir / KEYWORDS_TO_MERGE_JSON, groups)
+        args.output_dir / KEYWORDS_TO_MERGE_JSON, groups,
+        extra_keywords)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
         f"done: {len(keywords)} keywords pooled from"

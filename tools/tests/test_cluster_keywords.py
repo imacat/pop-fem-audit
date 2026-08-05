@@ -184,7 +184,7 @@ class TestClusterKeywords(unittest.TestCase):
     def __read_keywords_to_merge(self) -> list[str]:
         """Read the coding keyword set JSON file.
 
-        :return: The group names plus :data:`EXTRA_KEYWORD`
+        :return: The group names plus every given extra keyword,
             under the "keywords" key.
         """
         data: dict[str, list[str]] = json.loads(
@@ -391,8 +391,7 @@ class TestClusterKeywords(unittest.TestCase):
 
     def test_keywords_txt_sorted_medoids(self) -> None:
         """Test that the result keyword text file holds the
-        sorted medoid group names without the extra a-priori
-        keyword."""
+        sorted medoid group names alone."""
         self.__write_output(self.__run1, [
             {"id": "song-1", "text": json.dumps(
                 {"a-left": 1, "a-center": 1, "a-right": 1})},
@@ -407,12 +406,12 @@ class TestClusterKeywords(unittest.TestCase):
         names: list[str] = self.__read_result_keywords()
         self.assertEqual(names, ["a-center", "b-middle"])
         self.assertEqual(names, sorted(names))
-        self.assertNotIn(cluster_keywords.EXTRA_KEYWORD, names)
 
-    def test_keywords_to_merge_json_sorted_medoids(self) -> None:
-        """Test that the coding keyword set JSON file holds the
-        sorted medoid group names plus the extra a-priori
-        keyword."""
+    def test_no_extra_keyword_merge_json_equals_group_names(
+            self) -> None:
+        """Test that with no ``--extra-keyword`` given, the
+        coding keyword set JSON file holds exactly the sorted
+        medoid group names."""
         self.__write_output(self.__run1, [
             {"id": "song-1", "text": json.dumps(
                 {"a-left": 1, "a-center": 1, "a-right": 1})},
@@ -425,15 +424,14 @@ class TestClusterKeywords(unittest.TestCase):
         status, _ = self.__run_cluster()
         self.assertEqual(status, 0)
         keywords: list[str] = self.__read_keywords_to_merge()
-        self.assertEqual(
-            keywords,
-            ["a-center", "b-middle", cluster_keywords.EXTRA_KEYWORD])
+        self.assertEqual(keywords, ["a-center", "b-middle"])
         self.assertEqual(keywords, sorted(keywords))
-        self.assertEqual(len(keywords), 2 + 1)
 
-    def test_extra_keyword_absent_from_groups_csv(self) -> None:
-        """Test that the extra a-priori keyword appears in no row
-        of the group membership CSV file."""
+    def test_extra_keyword_included_in_merge_json(self) -> None:
+        """Test that a single ``--extra-keyword`` is added to the
+        coding keyword set JSON file, sorted with the group
+        names, while the group name text file and the group
+        membership CSV file hold no trace of it."""
         self.__write_output(self.__run1, [
             {"id": "song-1", "text": json.dumps(
                 {"a-left": 1, "a-center": 1, "a-right": 1})},
@@ -443,8 +441,88 @@ class TestClusterKeywords(unittest.TestCase):
                 {"b-north": 1, "b-middle": 1, "b-south": 1})},
         ])
         status: int
-        status, _ = self.__run_cluster()
+        status, _ = self.__run_cluster(
+            extra_args=["--extra-keyword", "zzz-extra"])
         self.assertEqual(status, 0)
+        self.assertEqual(
+            self.__read_keywords_to_merge(),
+            ["a-center", "b-middle", "zzz-extra"])
+        self.assertEqual(
+            self.__read_result_keywords(),
+            ["a-center", "b-middle"])
         rows: list[list[str]] = self.__read_groups()
+        row: list[str]
         for row in rows:
-            self.assertNotIn(cluster_keywords.EXTRA_KEYWORD, row)
+            self.assertNotIn("zzz-extra", row)
+
+    def test_multiple_extra_keywords_sorted_union(self) -> None:
+        """Test that several ``--extra-keyword`` options are all
+        added, and the whole coding keyword set is
+        lexicographically sorted."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        status, _ = self.__run_cluster(extra_args=[
+            "--extra-keyword", "zzz-extra",
+            "--extra-keyword", "aaa-extra"])
+        self.assertEqual(status, 0)
+        keywords: list[str] = self.__read_keywords_to_merge()
+        self.assertEqual(
+            keywords,
+            ["a-center", "aaa-extra", "b-middle", "zzz-extra"])
+        self.assertEqual(keywords, sorted(keywords))
+
+    def test_duplicate_extra_keyword_rejected(self) -> None:
+        """Test that repeating the same ``--extra-keyword`` value
+        fails the run without writing any output file."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        stderr: str
+        status, stderr = self.__run_cluster(extra_args=[
+            "--extra-keyword", "zzz-extra",
+            "--extra-keyword", "zzz-extra"])
+        self.assertEqual(status, 1)
+        self.assertIn("zzz-extra", stderr)
+        self.assertFalse(self.__source_keywords_txt.exists())
+        self.assertFalse(self.__source_provenance_csv.exists())
+        self.assertFalse(self.__result_groups_csv.exists())
+        self.assertFalse(self.__result_keywords_txt.exists())
+        self.assertFalse(self.__keywords_to_merge_json.exists())
+
+    def test_extra_keyword_duplicating_group_name_rejected(
+            self) -> None:
+        """Test that an ``--extra-keyword`` matching a clustered
+        group name fails the run without writing any output
+        file."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        stderr: str
+        status, stderr = self.__run_cluster(
+            extra_args=["--extra-keyword", "a-center"])
+        self.assertEqual(status, 1)
+        self.assertIn("a-center", stderr)
+        self.assertFalse(self.__source_keywords_txt.exists())
+        self.assertFalse(self.__source_provenance_csv.exists())
+        self.assertFalse(self.__result_groups_csv.exists())
+        self.assertFalse(self.__result_keywords_txt.exists())
+        self.assertFalse(self.__keywords_to_merge_json.exists())

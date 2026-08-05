@@ -31,6 +31,8 @@ Rules:
 - Do not add any keyword that is not listed.
 
 Do not wrap the output in a Markdown code fence.
+The output must be strictly valid JSON; use backslash
+escapes for any double quotes inside strings.
 
 Output a single JSON object mapping each kept keyword to your
 list of quotes, and nothing else.  A dropped keyword is simply

@@ -34,5 +34,6 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-05 | 03-01-code | 101 碼樹狀探測（148 首）| claude-sonnet-4-6 | msgbatch_017jo3E5gWVks9b39iWMTqz3 | 2 小時 11 分 | 385,270 | 79,690 | $0.87 | 實驗：k=100 葉碼＋women-power；零違規碼； 歸檔不入 repo |
 | 2026-08-06 | 命名實驗（100 組）| — | claude-sonnet-4-6 | msgbatch_01XSi1YtWzdVyYUzYh7DQRWg | 3 分 5 秒 | 55,090 | 1,168 | $0.09 | 實驗：LLM 命名對照 medoid，未採用；歸檔不入 repo |
 | 2026-08-06 | 命名實驗（100 組）| — | claude-fable-5 | msgbatch_01Y8SJj1h1ZuSQRErhqkvgZE | 3 分 2 秒 | 76,211 | 2,049 | $0.43 | 實驗：同上，加禁用 themes；未採用；歸檔不入 repo |
+| 2026-08-06 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01GS1opvurvsf62oknnQxhtx | 3 分 46 秒 | 1,625,458 | 362,759 | $5.16 | 現行（101 碼；883 首全數有效，零攔阻） |
 
-累計支出：$44.79。
+累計支出：$55.12。

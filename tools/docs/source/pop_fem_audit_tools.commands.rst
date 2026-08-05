@@ -12,6 +12,14 @@ pop\_fem\_audit\_tools.commands.build\_db module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.commands.cluster\_keywords module
+--------------------------------------------------------
+
+.. automodule:: pop_fem_audit_tools.commands.cluster_keywords
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 pop\_fem\_audit\_tools.commands.export\_llm\_input module
 ---------------------------------------------------------
 

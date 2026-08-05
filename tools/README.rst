@@ -67,6 +67,12 @@ pool-keywords
 Deterministically pool the keywords of the two tagging runs into the clustering step's input, per the project's handoff contract.  Check ``pop-fem-audit-tools pool-keywords -h`` for complete instructions on its usage.
 
 
+cluster-keywords
+----------------
+
+Deterministically build the coding vocabulary from the pooled keywords by sentence-embedding and clustering them.  Requires the optional ``cluster`` dependency group.  Check ``pop-fem-audit-tools cluster-keywords -h`` for complete instructions on its usage.
+
+
 Copyright
 =========
 

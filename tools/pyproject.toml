@@ -42,6 +42,13 @@ dependencies = [
     "anthropic",
 ]
 
+[project.optional-dependencies]
+cluster = [
+    "torch",
+    "sentence-transformers",
+    "scikit-learn",
+]
+
 [project.scripts]
 pop-fem-audit-tools = "pop_fem_audit_tools.__main__:main"
 

@@ -625,8 +625,7 @@ def main(argv: list[str] | None = None) -> int:
     write_meta(args.output_dir / META_JSON, meta)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
-        f"done: {len(keywords)} keywords pooled from"
-        f" {len(run1[1])}+{len(run2[1])} records, clustered into"
-        f" {len(groups)} groups.  {elapsed} elapsed.",
+        f"Done.  Clustered {len(keywords)} keywords into"
+        f" {len(groups)}.  {elapsed} elapsed.",
         file=sys.stderr)
     return 0

@@ -245,7 +245,7 @@ class TestClusterKeywords(unittest.TestCase):
             self.__read_source_keywords(),
             ["a-left", "b-middle", "shared"])
         self.assertIn(
-            "done: 3 keywords pooled from 1+1 records", stderr)
+            "Done.  Clustered 3 keywords into 2.", stderr)
 
     def test_skips_error_records(self) -> None:
         """Test that records carrying an "error" field are
@@ -265,7 +265,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(
             self.__read_source_keywords(), ["a-left", "b-middle"])
         self.assertIn(
-            "done: 2 keywords pooled from 1+1 records", stderr)
+            "Done.  Clustered 2 keywords into 2.", stderr)
 
     def test_skips_non_json_text_records(self) -> None:
         """Test that a refusal, whose "text" does not parse as
@@ -285,7 +285,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(
             self.__read_source_keywords(), ["a-left", "b-middle"])
         self.assertIn(
-            "done: 2 keywords pooled from 1+1 records", stderr)
+            "Done.  Clustered 2 keywords into 2.", stderr)
 
     def test_duplicate_key_in_text_rejected(self) -> None:
         """Test that a "text" JSON object with a duplicate key

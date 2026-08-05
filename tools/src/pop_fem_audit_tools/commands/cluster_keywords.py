@@ -8,11 +8,14 @@ Builds the coding groups from the pooled keyword list, given as
 the first positional command-line argument, by sentence-embedding
 every keyword and clustering the embeddings: the group membership,
 given as the second positional argument, is written as a CSV file
-holding the clustering result alone.  The coding keyword set,
-given as the third positional argument, is written as a JSON file
-holding the group name keywords plus the researcher's a-priori
-topic term (see :data:`EXTRA_KEYWORD`).  The step is fully
-deterministic; no LLM call is made.
+holding the clustering result alone.  The group name keywords
+alone, given as the third positional argument, are written as a
+text file, one per line.  The coding keyword set for
+``export-llm-input --extras``, given as the fourth positional
+argument, is written as a JSON file holding the group name
+keywords plus the researcher's a-priori topic term (see
+:data:`EXTRA_KEYWORD`).  The step is fully deterministic; no LLM
+call is made.
 """
 import argparse
 import csv
@@ -49,14 +52,17 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                     " sentence embeddings of the pooled"
                     " keywords.")
     parser.add_argument(
-        "keywords_txt", type=Path,
+        "pool_txt", type=Path,
         help="the pooled keyword list, one keyword per line")
     parser.add_argument(
         "groups_csv", type=Path,
         help="the group membership CSV output file")
     parser.add_argument(
-        "keywords_json", type=Path,
-        help="the group name keyword JSON output file")
+        "keywords_txt", type=Path,
+        help="the group name keyword text output file")
+    parser.add_argument(
+        "keywords_to_merge_json", type=Path,
+        help="the coding keyword set JSON output file")
     parser.add_argument(
         "--model", default=MODEL,
         help=f"the sentence embedding model (default \"{MODEL}\")")
@@ -221,14 +227,35 @@ def write_groups(path: Path, groups: dict[str, list[str]]) -> None:
                 writer.writerow([group, keyword])
 
 
-def write_keywords(path: Path,
-                   groups: dict[str, list[str]]) -> None:
+def write_keyword_names(path: Path,
+                        groups: dict[str, list[str]]) -> None:
+    """Write the group name keyword text file.
+
+    Writes a text file holding the lexicographically sorted
+    group names, one per line, UTF-8, LF line endings, with a
+    trailing newline.  The file records the clustering result
+    alone; it holds no :data:`EXTRA_KEYWORD` line.
+
+    :param path: The path of the keyword text file to write.
+    :param groups: The keyword members of every group, keyed by
+        the group's medoid name.
+    :return: None.
+    :raises OSError: When the file cannot be written.
+    """
+    names: list[str] = sorted(groups.keys())
+    path.write_text(
+        "".join(f"{x}\n" for x in names), encoding="utf-8")
+
+
+def write_keywords_to_merge(path: Path,
+                            groups: dict[str, list[str]]) -> None:
     """Write the coding keyword set JSON file.
 
     Writes a JSON file holding a single object with one
     ``keywords`` key, whose value is the lexicographically
     sorted list of the group names plus :data:`EXTRA_KEYWORD`,
-    UTF-8, with a trailing newline.
+    UTF-8, with a trailing newline.  This is the file
+    ``export-llm-input --extras`` consumes.
 
     :param path: The path of the keyword JSON file to write.
     :param groups: The keyword members of every group, keyed by
@@ -248,8 +275,10 @@ def main(argv: list[str] | None = None) -> int:
     """Cluster the pooled keywords into the coding groups.
 
     Writes the group membership CSV file, holding the clustering
-    result alone, and the coding keyword set JSON file, holding
-    the group names plus :data:`EXTRA_KEYWORD`.
+    result alone; the group name keyword text file, holding the
+    same group names as a readable list; and the coding keyword
+    set JSON file, holding the group names plus
+    :data:`EXTRA_KEYWORD`.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -258,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     try:
-        keywords: list[str] = load_keywords(args.keywords_txt)
+        keywords: list[str] = load_keywords(args.pool_txt)
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -272,9 +301,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 1
     args.groups_csv.parent.mkdir(parents=True, exist_ok=True)
-    args.keywords_json.parent.mkdir(parents=True, exist_ok=True)
+    args.keywords_txt.parent.mkdir(parents=True, exist_ok=True)
+    args.keywords_to_merge_json.parent.mkdir(
+        parents=True, exist_ok=True)
     write_groups(args.groups_csv, groups)
-    write_keywords(args.keywords_json, groups)
+    write_keyword_names(args.keywords_txt, groups)
+    write_keywords_to_merge(args.keywords_to_merge_json, groups)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
         f"done: {len(keywords)} keywords clustered into"

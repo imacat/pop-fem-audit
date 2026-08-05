@@ -31,9 +31,11 @@ class TestClusterKeywords(unittest.TestCase):
             = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
-        self.__keywords_txt: Path = self.__dir / "keywords.txt"
+        self.__pool_txt: Path = self.__dir / "pool.txt"
         self.__groups_csv: Path = self.__dir / "groups.csv"
-        self.__keywords_json: Path = self.__dir / "keywords.json"
+        self.__keywords_txt: Path = self.__dir / "keywords.txt"
+        self.__keywords_to_merge_json: Path \
+            = self.__dir / "keywords-to-merge.json"
 
     @staticmethod
     def __two_cluster_vectors() -> Vectors:
@@ -56,13 +58,13 @@ class TestClusterKeywords(unittest.TestCase):
             "b-south": (-0.9396926, -0.3420201),
         }
 
-    def __write_keywords(self, keywords: list[str]) -> None:
+    def __write_pool(self, keywords: list[str]) -> None:
         """Write the pooled keyword input file.
 
         :param keywords: The keywords, one per line.
         :return: None.
         """
-        self.__keywords_txt.write_text(
+        self.__pool_txt.write_text(
             "".join(f"{x}\n" for x in keywords), encoding="utf-8")
 
     @staticmethod
@@ -95,15 +97,16 @@ class TestClusterKeywords(unittest.TestCase):
         standard error.
 
         :param extra_args: Extra command-line arguments appended
-            after the three positional arguments.
+            after the four positional arguments.
         :param vectors: The fixed embedding to encode with; the
             two-cluster fixture is used when None.
         :return: A tuple of the exit status and the standard
             error.
         """
         argv: list[str] = [
-            str(self.__keywords_txt), str(self.__groups_csv),
-            str(self.__keywords_json)]
+            str(self.__pool_txt), str(self.__groups_csv),
+            str(self.__keywords_txt),
+            str(self.__keywords_to_merge_json)]
         argv.extend(extra_args or [])
         fake: Any = self.__fake_encode(
             vectors if vectors is not None
@@ -126,19 +129,33 @@ class TestClusterKeywords(unittest.TestCase):
                   newline="") as file:
             return list(csv.reader(file))
 
-    def __read_keywords(self) -> list[str]:
-        """Read the group name keyword JSON file.
+    def __read_keyword_names(self) -> list[str]:
+        """Read the group name keyword text file.
 
-        :return: The group names under the "keywords" key.
+        :return: The group names, in file order.
+        """
+        text: str = self.__keywords_txt.read_text(
+            encoding="utf-8")
+        lines: list[str] = text.split("\n")
+        if len(lines) > 0 and lines[-1] == "":
+            lines = lines[:-1]
+        return lines
+
+    def __read_keywords_to_merge(self) -> list[str]:
+        """Read the coding keyword set JSON file.
+
+        :return: The group names plus :data:`EXTRA_KEYWORD`
+            under the "keywords" key.
         """
         data: dict[str, list[str]] = json.loads(
-            self.__keywords_json.read_text(encoding="utf-8"))
+            self.__keywords_to_merge_json.read_text(
+                encoding="utf-8"))
         return data["keywords"]
 
     def test_groups_csv_header_and_ordering(self) -> None:
         """Test the header row and the group/keyword ordering of
         the group membership CSV file."""
-        self.__write_keywords([
+        self.__write_pool([
             "a-left", "a-center", "a-right",
             "b-north", "b-middle", "b-south"])
         status: int
@@ -161,7 +178,7 @@ class TestClusterKeywords(unittest.TestCase):
         keywords: list[str] = [
             "a-left", "a-center", "a-right",
             "b-north", "b-middle", "b-south"]
-        self.__write_keywords(keywords)
+        self.__write_pool(keywords)
         status: int
         status, _ = self.__run_cluster()
         self.assertEqual(status, 0)
@@ -169,16 +186,31 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(
             sorted(x[1] for x in rows), sorted(keywords))
 
-    def test_keywords_json_sorted_medoids(self) -> None:
-        """Test that the keyword JSON file holds the sorted medoid
-        group names plus the extra a-priori keyword."""
-        self.__write_keywords([
+    def test_keywords_txt_sorted_medoids(self) -> None:
+        """Test that the keyword text file holds the sorted medoid
+        group names without the extra a-priori keyword."""
+        self.__write_pool([
             "a-left", "a-center", "a-right",
             "b-north", "b-middle", "b-south"])
         status: int
         status, _ = self.__run_cluster()
         self.assertEqual(status, 0)
-        keywords: list[str] = self.__read_keywords()
+        names: list[str] = self.__read_keyword_names()
+        self.assertEqual(names, ["a-center", "b-middle"])
+        self.assertEqual(names, sorted(names))
+        self.assertNotIn(cluster_keywords.EXTRA_KEYWORD, names)
+
+    def test_keywords_to_merge_json_sorted_medoids(self) -> None:
+        """Test that the coding keyword set JSON file holds the
+        sorted medoid group names plus the extra a-priori
+        keyword."""
+        self.__write_pool([
+            "a-left", "a-center", "a-right",
+            "b-north", "b-middle", "b-south"])
+        status: int
+        status, _ = self.__run_cluster()
+        self.assertEqual(status, 0)
+        keywords: list[str] = self.__read_keywords_to_merge()
         self.assertEqual(
             keywords,
             ["a-center", "b-middle", cluster_keywords.EXTRA_KEYWORD])
@@ -188,7 +220,7 @@ class TestClusterKeywords(unittest.TestCase):
     def test_extra_keyword_absent_from_groups_csv(self) -> None:
         """Test that the extra a-priori keyword appears in no row
         of the group membership CSV file."""
-        self.__write_keywords([
+        self.__write_pool([
             "a-left", "a-center", "a-right",
             "b-north", "b-middle", "b-south"])
         status: int
@@ -201,23 +233,25 @@ class TestClusterKeywords(unittest.TestCase):
     def test_duplicate_keyword_rejected(self) -> None:
         """Test that a duplicate keyword line fails the run
         without writing any output file."""
-        self.__write_keywords(["shared", "shared"])
+        self.__write_pool(["shared", "shared"])
         status: int
         stderr: str
         status, stderr = self.__run_cluster()
         self.assertEqual(status, 1)
         self.assertIn("duplicate keyword", stderr)
         self.assertFalse(self.__groups_csv.exists())
-        self.assertFalse(self.__keywords_json.exists())
+        self.assertFalse(self.__keywords_txt.exists())
+        self.assertFalse(self.__keywords_to_merge_json.exists())
 
     def test_empty_input_rejected(self) -> None:
         """Test that an empty keyword file fails the run without
         writing any output file."""
-        self.__keywords_txt.write_text("", encoding="utf-8")
+        self.__pool_txt.write_text("", encoding="utf-8")
         status: int
         stderr: str
         status, stderr = self.__run_cluster()
         self.assertEqual(status, 1)
         self.assertIn("no keywords", stderr)
         self.assertFalse(self.__groups_csv.exists())
-        self.assertFalse(self.__keywords_json.exists())
+        self.assertFalse(self.__keywords_txt.exists())
+        self.assertFalse(self.__keywords_to_merge_json.exists())

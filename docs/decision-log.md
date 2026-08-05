@@ -480,3 +480,18 @@
 - **零使用的碼據實報告，不事後改名**：medoid 命名對
   大而異質的組必然失準，該碼在結果中呈現為零使用即是
   儀器的誠實紀錄；改名等於在看過結果後調整儀器。
+- **實驗後維持 medoid 命名，不改用 LLM 命名**：以同一批
+  100 組（僅給成員關鍵字，不給歌詞、組大小與其他組）各跑
+  一次 sonnet-4-6 與 fable-5 的命名，格式只規定小寫、
+  連字號、至多四個詞。兩者皆 100 組全數命名、無撞名，
+  但均未勝過 medoid：名字普遍更抽象（`toxic-relationship`
+  →`toxic-relationship-themes`、`relentless-ambition`
+  →`risk-taking-and-drive`），sonnet 三次以 `-themes`
+  後綴退回後設描述，fable 加禁用該詞後改善但超長名字達
+  10 個（sonnet 3 個）。關鍵案例 `mutual-individuality`
+  三種命名皆未說中——該組實含「群體歸屬」與「個體差異」
+  兩種內容，屬分群未切乾淨，非命名可補。裁定：維持
+  medoid，保住「組名為模型自己產出過的關鍵字」此一性質；
+  代價是少數組名不副實，依前條據實報告。實驗歸檔不入
+  repo，費用 $0.09（sonnet）與 $0.43（fable）記入
+  `run-costs.md`。

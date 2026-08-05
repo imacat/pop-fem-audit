@@ -4,16 +4,19 @@
 #   imacat@mail.imacat.idv.tw (imacat), 2026/8/5
 """The deterministic clusterer of the pooled keywords.
 
-Builds the coding vocabulary from the pooled keyword list, given as
+Builds the coding groups from the pooled keyword list, given as
 the first positional command-line argument, by sentence-embedding
 every keyword and clustering the embeddings: the group membership,
-given as the second positional argument, and the group name
-vocabulary, given as the third positional argument, are written as
-plain files.  The step is fully deterministic; no LLM call is
-made.
+given as the second positional argument, is written as a CSV file
+holding the clustering result alone.  The coding keyword set,
+given as the third positional argument, is written as a JSON file
+holding the group name keywords plus the researcher's a-priori
+topic term (see :data:`EXTRA_KEYWORD`).  The step is fully
+deterministic; no LLM call is made.
 """
 import argparse
 import csv
+import json
 import sys
 import time
 from pathlib import Path
@@ -29,6 +32,9 @@ CLUSTER_EXTRA_MESSAGE: str = (
     " pip install -e \"tools/[cluster]\"")
 """The error message shown when the heavy clustering dependencies
 are not installed."""
+EXTRA_KEYWORD: str = "women-power"
+"""The researcher's a-priori topic term, included in the coding
+keyword set although it is not a clustering result."""
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -39,8 +45,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     :return: The parsed arguments.
     """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description="Build the coding vocabulary by clustering"
-                    " the sentence embeddings of the pooled"
+        description="Build the coding groups by clustering the"
+                    " sentence embeddings of the pooled"
                     " keywords.")
     parser.add_argument(
         "keywords_txt", type=Path,
@@ -49,8 +55,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "groups_csv", type=Path,
         help="the group membership CSV output file")
     parser.add_argument(
-        "vocabulary_txt", type=Path,
-        help="the group name vocabulary text output file")
+        "keywords_json", type=Path,
+        help="the group name keyword JSON output file")
     parser.add_argument(
         "--model", default=MODEL,
         help=f"the sentence embedding model (default \"{MODEL}\")")
@@ -194,7 +200,9 @@ def write_groups(path: Path, groups: dict[str, list[str]]) -> None:
 
     Writes a CSV file with the header row ``Group,Keyword``, one
     row per member keyword.  Rows are sorted by group name
-    lexicographically, then by keyword lexicographically.
+    lexicographically, then by keyword lexicographically.  The
+    file records the clustering result alone; it holds no row for
+    :data:`EXTRA_KEYWORD`.
 
     :param path: The path of the group membership CSV file to
         write.
@@ -213,30 +221,35 @@ def write_groups(path: Path, groups: dict[str, list[str]]) -> None:
                 writer.writerow([group, keyword])
 
 
-def write_vocabulary(path: Path,
-                     groups: dict[str, list[str]]) -> None:
-    """Write the group name vocabulary text file.
+def write_keywords(path: Path,
+                   groups: dict[str, list[str]]) -> None:
+    """Write the coding keyword set JSON file.
 
-    Writes a plain text file, one group name per line,
-    lexicographically sorted, UTF-8, LF line endings, with a
-    trailing newline.
+    Writes a JSON file holding a single object with one
+    ``keywords`` key, whose value is the lexicographically
+    sorted list of the group names plus :data:`EXTRA_KEYWORD`,
+    UTF-8, with a trailing newline.
 
-    :param path: The path of the vocabulary text file to write.
+    :param path: The path of the keyword JSON file to write.
     :param groups: The keyword members of every group, keyed by
         the group's medoid name.
     :return: None.
     :raises OSError: When the file cannot be written.
     """
+    keywords: list[str] = sorted(
+        [*groups.keys(), EXTRA_KEYWORD])
+    data: dict[str, list[str]] = {"keywords": keywords}
     path.write_text(
-        "".join(f"{x}\n" for x in sorted(groups.keys())),
+        json.dumps(data, ensure_ascii=False, indent=1) + "\n",
         encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Cluster the pooled keywords into the coding vocabulary.
+    """Cluster the pooled keywords into the coding groups.
 
-    Writes the group membership CSV file and the group name
-    vocabulary text file.
+    Writes the group membership CSV file, holding the clustering
+    result alone, and the coding keyword set JSON file, holding
+    the group names plus :data:`EXTRA_KEYWORD`.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -259,9 +272,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 1
     args.groups_csv.parent.mkdir(parents=True, exist_ok=True)
-    args.vocabulary_txt.parent.mkdir(parents=True, exist_ok=True)
+    args.keywords_json.parent.mkdir(parents=True, exist_ok=True)
     write_groups(args.groups_csv, groups)
-    write_vocabulary(args.vocabulary_txt, groups)
+    write_keywords(args.keywords_json, groups)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
         f"done: {len(keywords)} keywords clustered into"

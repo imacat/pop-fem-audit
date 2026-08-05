@@ -75,17 +75,31 @@ class TestExportLlmInput(unittest.TestCase):
         finally:
             session.close()
 
-    def __run_export(self) -> tuple[int, str]:
+    def __run_export(
+            self, extras: Path | None = None) -> tuple[int, str]:
         """Run the exporter with the standard error captured.
 
+        :param extras: The extras JSON file, or None for none.
         :return: A tuple of the exit status and the standard
             error.
         """
+        argv: list[str] = [str(self.__output)]
+        if extras is not None:
+            argv += ["--extras", str(extras)]
         stderr: io.StringIO = io.StringIO()
         with redirect_stderr(stderr):
-            status: int = export_llm_input.main(
-                [str(self.__output)])
+            status: int = export_llm_input.main(argv)
         return status, stderr.getvalue()
+
+    def __write_extras(self, text: str) -> Path:
+        """Write an extras file with the given raw text.
+
+        :param text: The raw file content.
+        :return: The path of the written extras file.
+        """
+        path: Path = self.__dir / "extras.json"
+        path.write_text(text, encoding="utf-8")
+        return path
 
     @staticmethod
     def __read_records(path: Path) -> list[dict[str, str]]:
@@ -167,3 +181,50 @@ class TestExportLlmInput(unittest.TestCase):
             nested)
         self.assertEqual(records, [
             {"id": "song-1", "content": "hello lyrics\n"}])
+
+    def test_extras_merges_lyrics_first_in_file_order(
+            self) -> None:
+        """Test that with extras, content is a JSON object whose
+        first key is lyrics, followed by the extras' keys in
+        their file order."""
+        self.__seed([("Hello", "Adele", "hello lyrics\n")])
+        extras: Path = self.__write_extras(
+            '{"b": 2, "a": 1}')
+        status: int
+        stderr: str
+        status, stderr = self.__run_export(extras)
+        self.assertEqual(status, 0)
+        records: list[dict[str, str]] = self.__read_records(
+            self.__output)
+        self.assertEqual(len(records), 1)
+        content: dict[str, Any] = json.loads(
+            records[0]["content"])
+        self.assertEqual(
+            list(content.keys()), ["lyrics", "b", "a"])
+        self.assertEqual(content["lyrics"], "hello lyrics\n")
+        self.assertEqual(content["b"], 2)
+        self.assertEqual(content["a"], 1)
+
+    def test_extras_non_object_fails(self) -> None:
+        """Test that a non-object extras file is rejected."""
+        self.__seed([("Hello", "Adele", "hello lyrics\n")])
+        extras: Path = self.__write_extras('[1, 2]')
+        status: int
+        stderr: str
+        status, stderr = self.__run_export(extras)
+        self.assertEqual(status, 1)
+        self.assertIn("error:", stderr)
+        self.assertFalse(self.__output.exists())
+
+    def test_extras_with_lyrics_key_fails(self) -> None:
+        """Test that an extras file carrying a "lyrics" key is
+        rejected."""
+        self.__seed([("Hello", "Adele", "hello lyrics\n")])
+        extras: Path = self.__write_extras(
+            '{"lyrics": "not allowed"}')
+        status: int
+        stderr: str
+        status, stderr = self.__run_export(extras)
+        self.assertEqual(status, 1)
+        self.assertIn("error:", stderr)
+        self.assertFalse(self.__output.exists())

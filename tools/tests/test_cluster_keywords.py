@@ -5,6 +5,7 @@
 """Unit tests for the keyword clusterer module."""
 import csv
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -32,7 +33,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.__dir: Path = Path(tmp.name)
         self.__keywords_txt: Path = self.__dir / "keywords.txt"
         self.__groups_csv: Path = self.__dir / "groups.csv"
-        self.__vocabulary_txt: Path = self.__dir / "vocabulary.txt"
+        self.__keywords_json: Path = self.__dir / "keywords.json"
 
     @staticmethod
     def __two_cluster_vectors() -> Vectors:
@@ -102,7 +103,7 @@ class TestClusterKeywords(unittest.TestCase):
         """
         argv: list[str] = [
             str(self.__keywords_txt), str(self.__groups_csv),
-            str(self.__vocabulary_txt)]
+            str(self.__keywords_json)]
         argv.extend(extra_args or [])
         fake: Any = self.__fake_encode(
             vectors if vectors is not None
@@ -125,16 +126,14 @@ class TestClusterKeywords(unittest.TestCase):
                   newline="") as file:
             return list(csv.reader(file))
 
-    def __read_vocabulary(self) -> list[str]:
-        """Read the vocabulary text file.
+    def __read_keywords(self) -> list[str]:
+        """Read the group name keyword JSON file.
 
-        :return: The group names, one per line, with the trailing
-            empty line from the final newline removed.
+        :return: The group names under the "keywords" key.
         """
-        lines: list[str] = self.__vocabulary_txt.read_text(
-            encoding="utf-8").split("\n")
-        self.assertEqual(lines[-1], "")
-        return lines[:-1]
+        data: dict[str, list[str]] = json.loads(
+            self.__keywords_json.read_text(encoding="utf-8"))
+        return data["keywords"]
 
     def test_groups_csv_header_and_ordering(self) -> None:
         """Test the header row and the group/keyword ordering of
@@ -170,17 +169,34 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(
             sorted(x[1] for x in rows), sorted(keywords))
 
-    def test_vocabulary_file_sorted_medoids(self) -> None:
-        """Test that the vocabulary file holds the sorted medoid
-        group names."""
+    def test_keywords_json_sorted_medoids(self) -> None:
+        """Test that the keyword JSON file holds the sorted medoid
+        group names plus the extra a-priori keyword."""
         self.__write_keywords([
             "a-left", "a-center", "a-right",
             "b-north", "b-middle", "b-south"])
         status: int
         status, _ = self.__run_cluster()
         self.assertEqual(status, 0)
+        keywords: list[str] = self.__read_keywords()
         self.assertEqual(
-            self.__read_vocabulary(), ["a-center", "b-middle"])
+            keywords,
+            ["a-center", "b-middle", cluster_keywords.EXTRA_KEYWORD])
+        self.assertEqual(keywords, sorted(keywords))
+        self.assertEqual(len(keywords), 2 + 1)
+
+    def test_extra_keyword_absent_from_groups_csv(self) -> None:
+        """Test that the extra a-priori keyword appears in no row
+        of the group membership CSV file."""
+        self.__write_keywords([
+            "a-left", "a-center", "a-right",
+            "b-north", "b-middle", "b-south"])
+        status: int
+        status, _ = self.__run_cluster()
+        self.assertEqual(status, 0)
+        rows: list[list[str]] = self.__read_groups()
+        for row in rows:
+            self.assertNotIn(cluster_keywords.EXTRA_KEYWORD, row)
 
     def test_duplicate_keyword_rejected(self) -> None:
         """Test that a duplicate keyword line fails the run
@@ -192,7 +208,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("duplicate keyword", stderr)
         self.assertFalse(self.__groups_csv.exists())
-        self.assertFalse(self.__vocabulary_txt.exists())
+        self.assertFalse(self.__keywords_json.exists())
 
     def test_empty_input_rejected(self) -> None:
         """Test that an empty keyword file fails the run without
@@ -204,4 +220,4 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("no keywords", stderr)
         self.assertFalse(self.__groups_csv.exists())
-        self.assertFalse(self.__vocabulary_txt.exists())
+        self.assertFalse(self.__keywords_json.exists())

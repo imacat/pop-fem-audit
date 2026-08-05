@@ -25,7 +25,7 @@ pop-fem-audit/
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
 │   └── <步>-<次步>-<task>.md  # 01-tag.md、03-01-code.md、
-│                              #   03-02-code-arb.md
+│                              #   03-02-arbitration.md
 │                              #   不帶版本號，版本即 git 歷史
 │                              #   （編號的所指是工序：確定性
 │                              #   的步驟 2 無定義檔仍佔一號；
@@ -62,7 +62,7 @@ pop-fem-audit/
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
 │   │                          #   重跑同一 run 須明示 --replace）
-│   ├── <步驟名>/              #   仲裁步驟居自己的 <task>-arb/
+│   ├── <步驟名>/              #   仲裁自成一步，居自己的目錄
 │   │   └── run<N>/            #   LLM 步驟：每個 run 一份自我
 │   │       ├── prompt.md      #   完備歸檔（定義檔快照）
 │   │       ├── output.jsonl   #   該次執行原始輸出

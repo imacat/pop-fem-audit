@@ -36,6 +36,14 @@ pop\_fem\_audit\_tools.commands.fetch\_lyrics module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.commands.pool\_keywords module
+-----------------------------------------------------
+
+.. automodule:: pop_fem_audit_tools.commands.pool_keywords
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 pop\_fem\_audit\_tools.commands.run\_llm module
 -----------------------------------------------
 

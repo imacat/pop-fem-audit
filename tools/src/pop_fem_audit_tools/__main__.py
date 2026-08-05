@@ -20,6 +20,7 @@ from .commands import (
     export_llm_input_command,
     fetch_artists_command,
     fetch_lyrics_command,
+    pool_keywords_command,
     run_llm_command,
 )
 
@@ -31,6 +32,7 @@ SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
     "export-llm-input": export_llm_input_command,
     "fetch-artists": fetch_artists_command,
     "fetch-lyrics": fetch_lyrics_command,
+    "pool-keywords": pool_keywords_command,
     "run-llm": run_llm_command,
 }
 """The dispatch table from the subcommand name to the tool main."""

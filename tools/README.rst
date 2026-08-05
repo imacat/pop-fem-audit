@@ -61,6 +61,12 @@ run-llm
 A general command that runs specific LLM instructions with the Anthropic API.  The API key must be present in the ``.env`` file in the working directory.  Check ``pop-fem-audit-tools run-llm -h`` for complete instructions on its usage.
 
 
+pool-keywords
+-------------
+
+Deterministically pool the keywords of the two tagging runs into the clustering step's input, per the project's handoff contract.  Check ``pop-fem-audit-tools pool-keywords -h`` for complete instructions on its usage.
+
+
 Copyright
 =========
 

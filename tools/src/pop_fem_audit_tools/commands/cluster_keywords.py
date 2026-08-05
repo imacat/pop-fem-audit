@@ -40,7 +40,6 @@ from typing import Any
 from ..utils import format_duration
 
 MODEL: str = "sentence-transformers/all-mpnet-base-v2"
-DEFAULT_CLUSTERS: int = 50
 CLUSTER_EXTRA_MESSAGE: str = (
     "cluster-keywords requires the optional \"cluster\""
     " dependency group; install it with"
@@ -101,8 +100,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--revision", default=None,
         help="the model revision to pin (default: unpinned)")
     parser.add_argument(
-        "--clusters", type=int, default=DEFAULT_CLUSTERS,
-        help=f"the number of clusters (default {DEFAULT_CLUSTERS})")
+        "--clusters", type=int, required=True,
+        help="the number of clusters; required, so that the\n"
+             "group count is stated on every invocation")
     parser.add_argument(
         "--extra-keyword", dest="extra_keywords", action="append",
         default=None,

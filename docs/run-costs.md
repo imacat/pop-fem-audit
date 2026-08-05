@@ -31,5 +31,6 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01L7VepTxSNz5vruvzzjuL2c | 6 分 36 秒 | 1,247,264 | 492,730 | $5.57 | 36 首輸出遭內容過濾攔阻，待修訂重跑 |
 | 2026-08-05 | 03-01-code | 引述減量實驗（36 首）| claude-sonnet-4-6 | msgbatch_01Hskdhi2DkudYmgZhhgFts7 | 3 分 51 秒 | 56,458 | 11,074 | $0.17 | 實驗：每碼一行引述，36 首全數通過過濾；歸檔不入 repo |
 | 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01GG5Ez9KT1pPwtQaY4sW7tv | 4 分 35 秒 | 1,293,724 | 269,166 | $3.96 | 過濾零攔阻；song-168、song-590 因餘額用盡失敗，song-775 拒答 |
+| 2026-08-05 | 03-01-code | 101 碼樹狀探測（148 首）| claude-sonnet-4-6 | msgbatch_017jo3E5gWVks9b39iWMTqz3 | 2 小時 11 分 | 385,270 | 79,690 | $0.87 | 實驗：k=100 葉碼＋women-power；零違規碼； 歸檔不入 repo |
 
-累計支出：$43.40。
+累計支出：$44.27。

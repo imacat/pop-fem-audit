@@ -478,6 +478,15 @@ class TestClusterKeywords(unittest.TestCase):
             ["a-center", "aaa-extra", "b-middle", "zzz-extra"])
         self.assertEqual(keywords, sorted(keywords))
 
+    def test_missing_clusters_option_rejected(self) -> None:
+        """Test that omitting --clusters fails the run."""
+        with self.assertRaises(SystemExit) as caught, \
+                redirect_stderr(io.StringIO()):
+            cluster_keywords.parse_args(
+                [str(self.__run1), str(self.__run2),
+                 str(self.__output_dir)])
+        self.assertNotEqual(caught.exception.code, 0)
+
     def test_duplicate_extra_keyword_rejected(self) -> None:
         """Test that repeating the same ``--extra-keyword`` value
         fails the run without writing any output file."""

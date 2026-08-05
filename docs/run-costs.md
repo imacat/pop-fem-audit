@@ -26,8 +26,10 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-05 | 01-02-01-merge | run1 | claude-opus-5 | msgbatch_012SEfebTnjU5uWN6hhfnhhh | 8 分 45 秒 | 63,368 | 64,000 | $1.92 | 已取代（64k 截斷） |
 | 2026-08-05 | 01-02-01-merge | run1 | claude-opus-5 | msgbatch_01Wi9xEoQKCy1nZK6myVNg77 | 11 分 34 秒 | 63,368 | 70,175 | $2.07 | 已取代（驗證不過：漏 59、發明 140、重複 3） |
 | 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_01M15hUs8P9FDTqWvAHdc1cA | 32 分 45 秒 | 63,368 | 107,721 | $3.01 | 現行歸檔（JSON 語法毀損，驗證不過） |
-
 | 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_012stRP28uuQDQwobm41HMLh | — | 0 | 0 | $0.00 | 拒收（thinking.type.enabled 不支援） |
 | 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_01KpS7AMx1zAHTcNujgGsouJ | 26 分 28 秒 | 63,368 | 128,000 | $3.52 | 現行歸檔（effort max：128k 全耗於推理，正文空白） |
+| 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01L7VepTxSNz5vruvzzjuL2c | 6 分 36 秒 | 1,247,264 | 492,730 | $5.57 | 36 首輸出遭內容過濾攔阻，待修訂重跑 |
+| 2026-08-05 | 03-01-code | 引述減量實驗（36 首）| claude-sonnet-4-6 | msgbatch_01Hskdhi2DkudYmgZhhgFts7 | 3 分 51 秒 | 56,458 | 11,074 | $0.17 | 實驗：每碼一行引述，36 首全數通過過濾；歸檔不入 repo |
+| 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01GG5Ez9KT1pPwtQaY4sW7tv | 4 分 35 秒 | 1,293,724 | 269,166 | $3.96 | 過濾零攔阻；song-168、song-590 因餘額用盡失敗，song-775 拒答 |
 
-累計支出：$33.70。
+累計支出：$43.40。

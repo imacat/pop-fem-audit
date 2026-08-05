@@ -49,10 +49,9 @@ pop-fem-audit/
 │   │   │   │                    #   Wikidata into the snapshot CSV
 │   │   │   ├── fetch_lyrics.py # fetch missing lyrics from the
 │   │   │   │                   #   public APIs into the lyrics dir
-│   │   │   ├── pool_keywords.py # pool the two tagging runs'
-│   │   │   │                    #   keywords (step 2-1)
-│   │   │   ├── cluster_keywords.py # build the vocabulary by
-│   │   │   │                       #   embedding + clustering (step 2-2)
+│   │   │   ├── cluster_keywords.py # pool the tagging runs'
+│   │   │   │                       #   keywords and cluster them
+│   │   │   │                       #   into the codes (step 2)
 │   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
 │   │   │                      #   →歸檔至指定目錄（Batch API）；
 │   │   │                      #   比對與仲裁編排由獨立子命令承擔
@@ -69,7 +68,7 @@ pop-fem-audit/
 │   │       ├── output.jsonl   #   該次執行原始輸出
 │   │       └── meta.json      #   model ID、temperature、時間戳、
 │   │                          #   batch ID、token 用量
-│   └── 02-01-pool/  02-02-cluster/  # 確定性步驟：無執行變異，
+│   └── 02-cluster/           # 確定性步驟：無執行變異，
 │                              #   不分 run<N> 層
 ├── results/                   # 論文引用的報表 CSV（export 產出；
 │                              #   「可再生仍 commit」的唯一例外）

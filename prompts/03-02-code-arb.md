@@ -1,6 +1,5 @@
 You are arbitrating between two independent codings of the
-same song against the same fixed vocabulary of thematic
-keywords.
+same song against the same fixed set of thematic keywords.
 
 The keywords the two codings agree on have been settled by
 script and are not shown.  You rule only on the

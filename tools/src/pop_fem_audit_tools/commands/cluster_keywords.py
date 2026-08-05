@@ -2,20 +2,29 @@
 # Copyright 2026 imacat.  All rights reserved.
 # Authors:
 #   imacat@mail.imacat.idv.tw (imacat), 2026/8/5
-"""The deterministic clusterer of the pooled keywords.
+"""The deterministic vocabulary-building step.
 
-Builds the coding groups from the pooled keyword list, given as
-the first positional command-line argument, by sentence-embedding
-every keyword and clustering the embeddings: the group membership,
-given as the second positional argument, is written as a CSV file
-holding the clustering result alone.  The group name keywords
-alone, given as the third positional argument, are written as a
-text file, one per line.  The coding keyword set for
-``export-llm-input --extras``, given as the fourth positional
-argument, is written as a JSON file holding the group name
-keywords plus the researcher's a-priori topic term (see
-:data:`EXTRA_KEYWORD`).  The step is fully deterministic; no LLM
-call is made.
+Goes from the two tagging runs' archives straight to the coding
+vocabulary, writing five fixed-named artifacts under the output
+directory given as the third positional command-line argument.
+First, the keywords produced by the two runs of the tagging step
+are pooled into the pooled keyword list, per the project's handoff
+contract: the pool is the plain union of every keyword key observed
+across both runs' valid records, exact-string deduplicated and
+sorted, written as a plain text file with one keyword per line, as
+:data:`SOURCE_KEYWORDS_TXT`.  The provenance mapping records where
+every keyword came from for audit purposes as a CSV file, as
+:data:`SOURCE_PROVENANCE_CSV`; it never enters any LLM input.  Then
+the coding groups are built from the pooled keyword list by
+sentence-embedding every keyword and clustering the embeddings: the
+group membership is written as a CSV file holding the clustering
+result alone, as :data:`RESULT_GROUPS_CSV`.  The group name
+keywords alone are written as a text file, one per line, as
+:data:`RESULT_KEYWORDS_TXT`.  The coding keyword set for
+``export-llm-input --extras`` is written as a JSON file holding the
+group name keywords plus the researcher's a-priori topic term (see
+:data:`EXTRA_KEYWORD`), as :data:`KEYWORDS_TO_MERGE_JSON`.  The
+step is fully deterministic; no LLM call is made.
 """
 import argparse
 import csv
@@ -38,6 +47,27 @@ are not installed."""
 EXTRA_KEYWORD: str = "women-power"
 """The researcher's a-priori topic term, included in the coding
 keyword set although it is not a clustering result."""
+SOURCE_KEYWORDS_TXT: str = "source-keywords.txt"
+"""The pooled keyword text file's fixed name under the output
+directory."""
+SOURCE_PROVENANCE_CSV: str = "source-provenance.csv"
+"""The keyword provenance CSV file's fixed name under the output
+directory."""
+RESULT_KEYWORDS_TXT: str = "result-keywords.txt"
+"""The group name keyword text file's fixed name under the output
+directory."""
+RESULT_GROUPS_CSV: str = "groups.csv"
+"""The group membership CSV file's fixed name under the output
+directory."""
+KEYWORDS_TO_MERGE_JSON: str = "keywords-to-merge.json"
+"""The coding keyword set JSON file's fixed name under the output
+directory."""
+
+type Records = list[tuple[int, dict[str, Any]]]
+"""The valid records of one run: (song ID, keyword mapping) pairs."""
+
+type Provenance = dict[str, list[tuple[str, int]]]
+"""The occurrences of every keyword, keyed by the keyword."""
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -48,21 +78,22 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     :return: The parsed arguments.
     """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description="Build the coding groups by clustering the"
-                    " sentence embeddings of the pooled"
-                    " keywords.")
+        description="Pool the keywords of the two tagging runs and"
+                    " build the coding groups by clustering their"
+                    " sentence embeddings.")
     parser.add_argument(
-        "pool_txt", type=Path,
-        help="the pooled keyword list, one keyword per line")
+        "run_dir_1", type=Path,
+        help="the first tagging run's archive directory")
     parser.add_argument(
-        "groups_csv", type=Path,
-        help="the group membership CSV output file")
+        "run_dir_2", type=Path,
+        help="the second tagging run's archive directory")
     parser.add_argument(
-        "keywords_txt", type=Path,
-        help="the group name keyword text output file")
-    parser.add_argument(
-        "keywords_to_merge_json", type=Path,
-        help="the coding keyword set JSON output file")
+        "output_dir", type=Path,
+        help="the output directory, created if missing, that"
+             f" receives {SOURCE_KEYWORDS_TXT},"
+             f" {SOURCE_PROVENANCE_CSV}, {RESULT_KEYWORDS_TXT},"
+             f" {RESULT_GROUPS_CSV}, and"
+             f" {KEYWORDS_TO_MERGE_JSON}")
     parser.add_argument(
         "--model", default=MODEL,
         help=f"the sentence embedding model (default \"{MODEL}\")")
@@ -75,30 +106,154 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_keywords(path: Path) -> list[str]:
-    """Load and validate the pooled keyword list.
+def reject_duplicate_keys(
+        pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a mapping from key-value pairs, rejecting duplicates.
 
-    :param path: The path of the pooled keyword text file, one
-        keyword per line.
-    :return: The keywords, in file order.
-    :raises OSError: When the file cannot be read.
-    :raises ValueError: When the file has no keyword, or a
-        keyword is duplicated.
+    :param pairs: The key-value pairs, in document order.
+    :return: The mapping built from the pairs.
+    :raises ValueError: When a key appears more than once.
     """
+    result: dict[str, Any] = {}
+    key: str
+    value: Any
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate key \"{key}\"")
+        result[key] = value
+    return result
+
+
+def parse_song_id(item_id: str, path: Path) -> int:
+    """Parse the integer song ID out of an item ID.
+
+    :param item_id: The item ID, expected as ``song-<ID>``.
+    :param path: The output file the ID came from, for the error
+        message.
+    :return: The parsed song ID.
+    :raises ValueError: When the item ID is not ``song-<ID>``.
+    """
+    prefix: str = "song-"
+    if not item_id.startswith(prefix) \
+            or not item_id[len(prefix):].isdigit():
+        raise ValueError(
+            f"{path}: id \"{item_id}\": not in \"song-<ID>\" form")
+    return int(item_id[len(prefix):])
+
+
+def load_run(run_dir: Path) -> tuple[str, Records]:
+    """Load and validate the keyword records of one tagging run.
+
+    Records carrying an "error" field are skipped.  A "text"
+    field that fails to parse as JSON is a refusal and is
+    skipped; a "text" field that parses to anything other than a
+    JSON object, or whose keys are not unique, fails the run.
+
+    :param run_dir: The run's archive directory, containing
+        ``output.jsonl``.
+    :return: The run label (the directory's basename) and its
+        valid records, each the song ID and the parsed keyword
+        mapping, in file order.
+    :raises OSError: When ``output.jsonl`` cannot be read.
+    :raises ValueError: When a line is not a well-formed output
+        record, or a "text" field is invalid per the rules above.
+    """
+    path: Path = run_dir / "output.jsonl"
     text: str = path.read_text(encoding="utf-8")
-    lines: list[str] = text.split("\n")
-    if len(lines) > 0 and lines[-1] == "":
-        lines = lines[:-1]
-    if len(lines) == 0:
-        raise ValueError(f"{path}: no keywords")
-    seen: set[str] = set()
-    keyword: str
-    for keyword in lines:
-        if keyword in seen:
+    records: Records = []
+    line: str
+    for line in text.split("\n"):
+        if line.strip() == "":
+            continue
+        record: Any = json.loads(line)
+        if not isinstance(record, dict) or "id" not in record:
             raise ValueError(
-                f"{path}: duplicate keyword \"{keyword}\"")
-        seen.add(keyword)
-    return lines
+                f"{path}: record without \"id\": {line}")
+        if "error" in record:
+            continue
+        if "text" not in record:
+            raise ValueError(
+                f"{path}: id {record['id']}: record without"
+                " \"text\" or \"error\"")
+        song_id: int = parse_song_id(record["id"], path)
+        try:
+            keywords: Any = json.loads(
+                record["text"],
+                object_pairs_hook=reject_duplicate_keys)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(keywords, dict):
+            raise ValueError(
+                f"{path}: id {record['id']}: \"text\" does not"
+                " parse to a JSON object")
+        records.append((song_id, keywords))
+    return run_dir.name, records
+
+
+def pool_keywords(runs: list[tuple[str, Records]],
+                  ) -> tuple[list[str], Provenance]:
+    """Pool the keywords of the given tagging runs.
+
+    :param runs: The runs, each the run label and its valid
+        records (song ID, keyword mapping).
+    :return: The sorted, exact-string-deduplicated keyword list
+        and the provenance mapping from each keyword to its
+        occurrences, sorted by (run label, song ID).
+    """
+    provenance: Provenance = {}
+    label: str
+    records: Records
+    for label, records in runs:
+        song_id: int
+        keywords: dict[str, Any]
+        for song_id, keywords in records:
+            keyword: str
+            for keyword in keywords:
+                provenance.setdefault(keyword, []).append(
+                    (label, song_id))
+    for occurrences in provenance.values():
+        occurrences.sort()
+    return sorted(provenance.keys()), provenance
+
+
+def write_pool(path: Path, keywords: list[str]) -> None:
+    """Write the pooled keyword list as the clustering input.
+
+    Writes a plain text file, one keyword per line, in the given
+    order, UTF-8, LF line endings, with a trailing newline.
+
+    :param path: The path of the pool text file to write.
+    :param keywords: The sorted, deduplicated keyword list.
+    :return: None.
+    """
+    path.write_text(
+        "".join(f"{keyword}\n" for keyword in keywords),
+        encoding="utf-8")
+
+
+def write_provenance(path: Path, provenance: Provenance) -> None:
+    """Write the keyword provenance mapping.
+
+    Writes a CSV file with the header row
+    ``Keyword,Run,Song``, one row per occurrence, long format.
+    Rows are sorted by keyword lexicographically, then by run
+    label, then by song ID.
+
+    :param path: The path of the provenance CSV file to write.
+    :param provenance: The provenance mapping from each keyword
+        to its occurrences (run label, song ID).
+    :return: None.
+    :raises OSError: When the file cannot be written.
+    """
+    keyword: str
+    with open(path, "w", encoding="utf-8", newline="") as file:
+        writer: Any = csv.writer(file)
+        writer.writerow(["Keyword", "Run", "Song"])
+        for keyword in sorted(provenance.keys()):
+            label: str
+            song_id: int
+            for label, song_id in provenance[keyword]:
+                writer.writerow([keyword, label, song_id])
 
 
 def encode_keywords(keywords: list[str], model_name: str,
@@ -272,13 +427,17 @@ def write_keywords_to_merge(path: Path,
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Cluster the pooled keywords into the coding groups.
+    """Pool the two tagging runs' keywords and cluster them.
 
-    Writes the group membership CSV file, holding the clustering
-    result alone; the group name keyword text file, holding the
-    same group names as a readable list; and the coding keyword
-    set JSON file, holding the group names plus
-    :data:`EXTRA_KEYWORD`.
+    Writes the five fixed-named artifacts under the output
+    directory, creating it (with parents) if it does not exist:
+    the pooled keyword text file and the keyword provenance CSV
+    file; then the group membership CSV file, holding the
+    clustering result alone; the group name keyword text file,
+    holding the same group names as a readable list; and the
+    coding keyword set JSON file, holding the group names plus
+    :data:`EXTRA_KEYWORD`.  When the input is rejected, none of
+    the five files is written.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -286,11 +445,17 @@ def main(argv: list[str] | None = None) -> int:
     """
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
+    run1: tuple[str, Records]
+    run2: tuple[str, Records]
     try:
-        keywords: list[str] = load_keywords(args.pool_txt)
+        run1 = load_run(args.run_dir_1)
+        run2 = load_run(args.run_dir_2)
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
+    keywords: list[str]
+    provenance: Provenance
+    keywords, provenance = pool_keywords([run1, run2])
     try:
         embeddings: Any = encode_keywords(
             keywords, args.model, args.revision)
@@ -300,16 +465,20 @@ def main(argv: list[str] | None = None) -> int:
     except (RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    args.groups_csv.parent.mkdir(parents=True, exist_ok=True)
-    args.keywords_txt.parent.mkdir(parents=True, exist_ok=True)
-    args.keywords_to_merge_json.parent.mkdir(
-        parents=True, exist_ok=True)
-    write_groups(args.groups_csv, groups)
-    write_keyword_names(args.keywords_txt, groups)
-    write_keywords_to_merge(args.keywords_to_merge_json, groups)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    write_pool(
+        args.output_dir / SOURCE_KEYWORDS_TXT, keywords)
+    write_provenance(
+        args.output_dir / SOURCE_PROVENANCE_CSV, provenance)
+    write_groups(args.output_dir / RESULT_GROUPS_CSV, groups)
+    write_keyword_names(
+        args.output_dir / RESULT_KEYWORDS_TXT, groups)
+    write_keywords_to_merge(
+        args.output_dir / KEYWORDS_TO_MERGE_JSON, groups)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
-        f"done: {len(keywords)} keywords clustered into"
+        f"done: {len(keywords)} keywords pooled from"
+        f" {len(run1[1])}+{len(run2[1])} records, clustered into"
         f" {len(groups)} groups.  {elapsed} elapsed.",
         file=sys.stderr)
     return 0

@@ -5,7 +5,7 @@
 """The deterministic vocabulary-building step.
 
 Goes from the two tagging runs' archives straight to the coding
-vocabulary, writing five fixed-named artifacts under the output
+vocabulary, writing six fixed-named artifacts under the output
 directory given as the third positional command-line argument.
 First, the keywords produced by the two runs of the tagging step
 are pooled into the pooled keyword list, per the project's handoff
@@ -16,18 +16,22 @@ sorted, written as a plain text file with one keyword per line, as
 every keyword came from for audit purposes as a CSV file, as
 :data:`SOURCE_PROVENANCE_CSV`; it never enters any LLM input.  Then
 the coding groups are built from the pooled keyword list by
-sentence-embedding every keyword and clustering the embeddings: the
-group membership is written as a CSV file holding the clustering
-result alone, as :data:`RESULT_GROUPS_CSV`.  The group name
-keywords alone are written as a text file, one per line, as
-:data:`RESULT_KEYWORDS_TXT`.  The coding keyword set for
+sentence-embedding every keyword and clustering the embeddings into
+the number of groups given by the required ``--clusters``
+command-line option: the group membership is written as a CSV file
+holding the clustering result alone, as :data:`RESULT_GROUPS_CSV`.
+The group name keywords alone are written as a text file, one per
+line, as :data:`RESULT_KEYWORDS_TXT`.  The coding keyword set for
 ``export-llm-input --extras`` is written as a JSON file holding the
 group name keywords plus every extra a-priori keyword the caller
 gives with the repeatable ``--extra-keyword`` command-line option,
 as :data:`KEYWORDS_TO_MERGE_JSON`; with no ``--extra-keyword``, it
 holds the group names alone.  No default extra keyword is ever
-injected; the caller supplies each one consciously.  The step is
-fully deterministic; no LLM call is made.
+injected; the caller supplies each one consciously.  Finally, the
+command-line choices and the environment that produced the numbers
+-- neither recoverable from the committed inputs and outputs -- are
+written as a JSON file, as :data:`META_JSON`.  The step is fully
+deterministic; no LLM call is made.
 """
 import argparse
 import csv
@@ -40,6 +44,8 @@ from typing import Any
 from ..utils import format_duration
 
 MODEL: str = "sentence-transformers/all-mpnet-base-v2"
+SCRIPT_VERSION: str = "cluster_keywords.py 1.0.0"
+"""The script version recorded into :data:`META_JSON`."""
 CLUSTER_EXTRA_MESSAGE: str = (
     "cluster-keywords requires the optional \"cluster\""
     " dependency group; install it with"
@@ -60,6 +66,9 @@ RESULT_GROUPS_CSV: str = "groups.csv"
 directory."""
 KEYWORDS_TO_MERGE_JSON: str = "keywords-to-merge.json"
 """The coding keyword set JSON file's fixed name under the output
+directory."""
+META_JSON: str = "meta.json"
+"""The run metadata JSON file's fixed name under the output
 directory."""
 
 type Records = list[tuple[int, dict[str, Any]]]
@@ -91,8 +100,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="the output directory, created if missing, that"
              f" receives {SOURCE_KEYWORDS_TXT},"
              f" {SOURCE_PROVENANCE_CSV}, {RESULT_KEYWORDS_TXT},"
-             f" {RESULT_GROUPS_CSV}, and"
-             f" {KEYWORDS_TO_MERGE_JSON}")
+             f" {RESULT_GROUPS_CSV}, {KEYWORDS_TO_MERGE_JSON},"
+             f" and {META_JSON}")
     parser.add_argument(
         "--model", default=MODEL,
         help=f"the sentence embedding model (default \"{MODEL}\")")
@@ -101,8 +110,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="the model revision to pin (default: unpinned)")
     parser.add_argument(
         "--clusters", type=int, required=True,
-        help="the number of clusters; required, so that the\n"
-             "group count is stated on every invocation")
+        help="the number of clusters; required, as the study's"
+             " chosen cluster count must be stated on every"
+             " invocation")
     parser.add_argument(
         "--extra-keyword", dest="extra_keywords", action="append",
         default=None,
@@ -364,6 +374,35 @@ def build_groups(keywords: list[str], embeddings: Any,
     return groups
 
 
+def collect_versions() -> dict[str, str]:
+    """Collect the versions of the running environment.
+
+    :return: The version strings, keyed by "python", "torch",
+        "transformers", "sentence-transformers",
+        "scikit-learn", and "numpy".
+    :raises RuntimeError: When the optional clustering
+        dependencies are not installed.
+    """
+    try:
+        import numpy
+        import sentence_transformers
+        import sklearn
+        import torch
+        import transformers
+    except ImportError as error:
+        raise RuntimeError(CLUSTER_EXTRA_MESSAGE) from error
+    import platform
+    return {
+        "python": platform.python_version(),
+        "torch": str(torch.__version__),
+        "transformers": str(transformers.__version__),
+        "sentence-transformers": str(
+            sentence_transformers.__version__),
+        "scikit-learn": str(sklearn.__version__),
+        "numpy": str(numpy.__version__),
+    }
+
+
 def write_groups(path: Path, groups: dict[str, list[str]]) -> None:
     """Write the group membership CSV file.
 
@@ -467,20 +506,75 @@ def write_keywords_to_merge(path: Path,
         encoding="utf-8")
 
 
+def build_meta(
+        run1: tuple[str, Records], run2: tuple[str, Records],
+        args: argparse.Namespace, keyword_count: int,
+        extra_keywords: list[str],
+        versions: dict[str, str]) -> dict[str, Any]:
+    """Build the run metadata recorded into :data:`META_JSON`.
+
+    :param run1: The first run's label and valid records.
+    :param run2: The second run's label and valid records.
+    :param args: The parsed command-line arguments.
+    :param keyword_count: The number of pooled keywords.
+    :param extra_keywords: The extra a-priori keywords given via
+        ``--extra-keyword``, in the given order.
+    :param versions: The version strings of the running
+        environment, as returned by :func:`collect_versions`.
+    :return: The metadata, in the documented key order.
+    """
+    return {
+        "script_version": SCRIPT_VERSION,
+        "source_runs": [str(args.run_dir_1), str(args.run_dir_2)],
+        "source_records": [len(run1[1]), len(run2[1])],
+        "embedding": {
+            "model": args.model, "revision": args.revision},
+        "clustering": {
+            "algorithm": "AgglomerativeClustering",
+            "linkage": "ward", "metric": "euclidean",
+            "clusters": args.clusters},
+        "extra_keywords": extra_keywords,
+        "keyword_count": keyword_count,
+        "versions": versions,
+    }
+
+
+def write_meta(path: Path, meta: dict[str, Any]) -> None:
+    """Write the run metadata JSON file.
+
+    Writes a JSON file holding the researcher's command-line
+    choices and the environment that produced the numbers --
+    neither recoverable from the committed inputs and outputs --
+    UTF-8, with a trailing newline.  No timestamp or input digest
+    is recorded, so re-running in the same environment reproduces
+    the file byte for byte.
+
+    :param path: The path of the metadata JSON file to write.
+    :param meta: The metadata to write, as built by
+        :func:`build_meta`.
+    :return: None.
+    :raises OSError: When the file cannot be written.
+    """
+    path.write_text(
+        json.dumps(meta, ensure_ascii=False, indent=1) + "\n",
+        encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Pool the two tagging runs' keywords and cluster them.
 
-    Writes the five fixed-named artifacts under the output
+    Writes the six fixed-named artifacts under the output
     directory, creating it (with parents) if it does not exist:
     the pooled keyword text file and the keyword provenance CSV
     file; then the group membership CSV file, holding the
     clustering result alone; the group name keyword text file,
-    holding the same group names as a readable list; and the
-    coding keyword set JSON file, holding the group names plus
-    every extra keyword given via ``--extra-keyword``.  When the
-    input is rejected, or an extra keyword duplicates a group
-    name or another extra keyword, none of the five files is
-    written.
+    holding the same group names as a readable list; the coding
+    keyword set JSON file, holding the group names plus every
+    extra keyword given via ``--extra-keyword``; and the run
+    metadata JSON file, recording the command-line choices and
+    the environment.  When the input is rejected, or an extra
+    keyword duplicates a group name or another extra keyword,
+    none of the six files is written.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -505,6 +599,7 @@ def main(argv: list[str] | None = None) -> int:
         labels: Any = cluster_embeddings(embeddings, args.clusters)
         groups: dict[str, list[str]] = build_groups(
             keywords, embeddings, labels)
+        versions: dict[str, str] = collect_versions()
     except (RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -525,6 +620,9 @@ def main(argv: list[str] | None = None) -> int:
     write_keywords_to_merge(
         args.output_dir / KEYWORDS_TO_MERGE_JSON, groups,
         extra_keywords)
+    meta: dict[str, Any] = build_meta(
+        run1, run2, args, len(keywords), extra_keywords, versions)
+    write_meta(args.output_dir / META_JSON, meta)
     elapsed: str = format_duration(time.monotonic() - started)
     print(
         f"done: {len(keywords)} keywords pooled from"

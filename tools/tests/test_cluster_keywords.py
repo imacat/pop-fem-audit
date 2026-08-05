@@ -51,6 +51,8 @@ class TestClusterKeywords(unittest.TestCase):
         self.__keywords_to_merge_json: Path \
             = self.__output_dir \
             / cluster_keywords.KEYWORDS_TO_MERGE_JSON
+        self.__meta_json: Path \
+            = self.__output_dir / cluster_keywords.META_JSON
 
     @staticmethod
     def __write_output(
@@ -110,22 +112,40 @@ class TestClusterKeywords(unittest.TestCase):
                 [vectors[x] for x in keywords], dtype=np.float32)
         return fake
 
+    @staticmethod
+    def __fake_versions() -> dict[str, str]:
+        """Return a fixed version mapping test double.
+
+        :return: A fixed mapping with the same keys
+            :func:`cluster_keywords.collect_versions` returns.
+        """
+        return {
+            "python": "9.9.9",
+            "torch": "9.9.9",
+            "transformers": "9.9.9",
+            "sentence-transformers": "9.9.9",
+            "scikit-learn": "9.9.9",
+            "numpy": "9.9.9",
+        }
+
     def __run_cluster(self, extra_args: list[str] | None = None,
                       vectors: Vectors | None = None,
+                      clusters: str = "2",
                       ) -> tuple[int, str]:
-        """Run the clusterer with a fake encoder and captured
-        standard error.
+        """Run the clusterer with a fake encoder, a fake version
+        mapping, and captured standard error.
 
         :param extra_args: Extra command-line arguments appended
             after the three positional arguments.
         :param vectors: The fixed embedding to encode with; the
             two-cluster fixture is used when None.
+        :param clusters: The ``--clusters`` option value.
         :return: A tuple of the exit status and the standard
             error.
         """
         argv: list[str] = [
             str(self.__run1), str(self.__run2),
-            str(self.__output_dir)]
+            str(self.__output_dir), "--clusters", clusters]
         argv.extend(extra_args or [])
         fake: Any = self.__fake_encode(
             vectors if vectors is not None
@@ -133,10 +153,20 @@ class TestClusterKeywords(unittest.TestCase):
         stderr: io.StringIO = io.StringIO()
         with mock.patch.object(
                 cluster_keywords, "encode_keywords", fake), \
+                mock.patch.object(
+                    cluster_keywords, "collect_versions",
+                    return_value=self.__fake_versions()), \
                 redirect_stderr(stderr):
-            status: int = cluster_keywords.main(
-                argv + ["--clusters", "2"])
+            status: int = cluster_keywords.main(argv)
         return status, stderr.getvalue()
+
+    def __read_meta(self) -> dict[str, Any]:
+        """Read the run metadata JSON file.
+
+        :return: The parsed metadata.
+        """
+        return json.loads(
+            self.__meta_json.read_text(encoding="utf-8"))
 
     def __read_source_keywords(self) -> list[str]:
         """Read the pooled source keyword text file.
@@ -277,6 +307,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
+        self.assertFalse(self.__meta_json.exists())
 
     def test_non_object_text_rejected(self) -> None:
         """Test that a "text" JSON value that is not an object
@@ -297,6 +328,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
+        self.assertFalse(self.__meta_json.exists())
 
     def test_provenance_content_and_ordering(self) -> None:
         """Test the provenance content and its ordering: rows
@@ -478,15 +510,6 @@ class TestClusterKeywords(unittest.TestCase):
             ["a-center", "aaa-extra", "b-middle", "zzz-extra"])
         self.assertEqual(keywords, sorted(keywords))
 
-    def test_missing_clusters_option_rejected(self) -> None:
-        """Test that omitting --clusters fails the run."""
-        with self.assertRaises(SystemExit) as caught, \
-                redirect_stderr(io.StringIO()):
-            cluster_keywords.parse_args(
-                [str(self.__run1), str(self.__run2),
-                 str(self.__output_dir)])
-        self.assertNotEqual(caught.exception.code, 0)
-
     def test_duplicate_extra_keyword_rejected(self) -> None:
         """Test that repeating the same ``--extra-keyword`` value
         fails the run without writing any output file."""
@@ -510,6 +533,7 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
+        self.assertFalse(self.__meta_json.exists())
 
     def test_extra_keyword_duplicating_group_name_rejected(
             self) -> None:
@@ -535,3 +559,106 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
+        self.assertFalse(self.__meta_json.exists())
+
+    def test_meta_json_records_documented_keys(self) -> None:
+        """Test that the metadata JSON file records exactly the
+        documented keys."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        status, _ = self.__run_cluster()
+        self.assertEqual(status, 0)
+        meta: dict[str, Any] = self.__read_meta()
+        self.assertEqual(set(meta.keys()), {
+            "script_version", "source_runs", "source_records",
+            "embedding", "clustering", "extra_keywords",
+            "keyword_count", "versions"})
+        self.assertEqual(
+            meta["script_version"], cluster_keywords.SCRIPT_VERSION)
+        self.assertEqual(
+            meta["versions"], self.__fake_versions())
+
+    def test_meta_json_source_runs_and_records(self) -> None:
+        """Test that the metadata records the given run
+        directories and their valid record counts."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+            {"id": "song-9", "error": "invalid_request_error"},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        status, _ = self.__run_cluster()
+        self.assertEqual(status, 0)
+        meta: dict[str, Any] = self.__read_meta()
+        self.assertEqual(
+            meta["source_runs"],
+            [str(self.__run1), str(self.__run2)])
+        self.assertEqual(meta["source_records"], [1, 1])
+
+    def test_meta_json_clustering_and_embedding(self) -> None:
+        """Test that the metadata records the given cluster count
+        and the embedding model and revision."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        status, _ = self.__run_cluster(extra_args=[
+            "--model", "some-model", "--revision", "abc123"])
+        self.assertEqual(status, 0)
+        meta: dict[str, Any] = self.__read_meta()
+        self.assertEqual(meta["clustering"]["clusters"], 2)
+        self.assertEqual(
+            meta["clustering"]["algorithm"],
+            "AgglomerativeClustering")
+        self.assertEqual(meta["embedding"], {
+            "model": "some-model", "revision": "abc123"})
+
+    def test_meta_json_extra_keywords_order_and_count(self) -> None:
+        """Test that the metadata's ``extra_keywords`` reflects the
+        given options in the given order, and ``keyword_count``
+        matches the pooled keyword count."""
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+        status: int
+        status, _ = self.__run_cluster(extra_args=[
+            "--extra-keyword", "zzz-extra",
+            "--extra-keyword", "aaa-extra"])
+        self.assertEqual(status, 0)
+        meta: dict[str, Any] = self.__read_meta()
+        self.assertEqual(
+            meta["extra_keywords"], ["zzz-extra", "aaa-extra"])
+        self.assertEqual(meta["keyword_count"], 6)
+
+    def test_missing_clusters_option_rejected(self) -> None:
+        """Test that omitting ``--clusters`` exits with an
+        argparse error."""
+        argv: list[str] = [
+            str(self.__run1), str(self.__run2),
+            str(self.__output_dir)]
+        stderr: io.StringIO = io.StringIO()
+        with redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as context:
+                cluster_keywords.parse_args(argv)
+        self.assertNotEqual(context.exception.code, 0)

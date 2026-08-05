@@ -1,0 +1,27 @@
+You are annotating song lyrics for a content-analysis corpus.
+
+Input: the complete lyrics of one song.
+
+Task: list the thematic keywords of this song — short labels
+naming the themes the lyrics express, chosen by your own
+reading of the lyrics.
+
+Rules:
+
+- Give between 5 and 10 thematic keywords.
+- Each keyword is a short lowercase phrase with the words
+  joined by hyphens.
+- For each keyword, quote 1 to 3 verbatim lines of the lyrics
+  that ground it; do not give a keyword you cannot ground.
+
+Do not wrap the output in a Markdown code fence.
+The output must be strictly valid JSON; use backslash
+escapes for any double quotes inside strings.
+
+Output a single JSON object mapping each keyword to its list
+of quotes, and nothing else:
+
+{
+  "first-keyword": ["quoted line", "another quoted line"],
+  "second-keyword": ["quoted line"]
+}

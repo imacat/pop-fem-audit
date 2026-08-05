@@ -18,5 +18,6 @@
 | 2026-08-05 | 01-01-01-tag | run1 | msgbatch_01VSDneWuSbf8mShA32jiWrX | 6 分 15 秒 | 790,370 | 326,193 | $3.63 | 已取代（措辭修訂後全體重跑） |
 | 2026-08-05 | 01-01-01-tag | run1-rescue-288 | msgbatch_019Hq6bNVXVmp4DjRZ2cgVda | 2 分 5 秒 | 1,015 | 376 | $0.01 | 已取代（措辭修訂後全體重跑，該首原生通過）|
 | 2026-08-05 | 01-01-01-tag | run1 | msgbatch_01VgZ77KAPGWmuu3PnQFqZ7Q | 7 分 1 秒 | 794,913 | 326,435 | $3.64 | 現行 |
+| 2026-08-05 | 01-01-01-tag | run2 | msgbatch_01TLFey3L4fimKxcebTZQGYn | 4 分 21 秒 | 794,913 | 328,324 | $3.65 | 現行 |
 
-累計支出：$18.20。
+累計支出：$21.85。

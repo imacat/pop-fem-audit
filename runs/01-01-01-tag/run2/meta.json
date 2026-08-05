@@ -1,0 +1,27 @@
+{
+  "script_version": "run_llm.py 3.0.0",
+  "model": "claude-sonnet-4-6",
+  "temperature": 0.0,
+  "thinking": {
+    "type": "disabled"
+  },
+  "max_tokens": 2048,
+  "prompt_path": "../prompts/01-01-01-tag.md",
+  "prompt_sha256": "6c39c7e128d96268e2d28d442d8af245b0a5d8b8a6744f6d8f5f2a53182bcbd5",
+  "input_path": "instance/llm-input.jsonl",
+  "input_sha256": "7660e4805878ed5ca9e7ab29e174bd7585caf35a60d854f0e82de1e8f770c2d2",
+  "item_count": 883,
+  "dry_run": false,
+  "started_at": "2026-08-05T08:26:00+08:00",
+  "batch": {
+    "batch_id": "msgbatch_01TLFey3L4fimKxcebTZQGYn",
+    "submitted_at": "2026-08-05T08:26:09+08:00",
+    "ended_at": "2026-08-05T00:30:29.686928+00:00"
+  },
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 794913,
+    "output_tokens": 328324
+  }
+}

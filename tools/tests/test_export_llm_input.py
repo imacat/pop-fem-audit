@@ -35,11 +35,11 @@ class TestExportLlmInput(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.__dir: Path = Path(tmp.name)
         self.__output: Path = self.__dir / "llm-input.jsonl"
-        url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL=url,
+            SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
         patcher: Any = mock.patch.object(
             export_llm_input, "ds", self.__ds)
         patcher.start()

@@ -30,6 +30,7 @@ class TestModels(unittest.TestCase):
             SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
         Base.metadata.create_all(self.__ds.engine)
         self.__session: Session = self.__ds.get_db()
         self.addCleanup(self.__session.close)

@@ -38,11 +38,11 @@ class TestTallyCodings(unittest.TestCase):
             self.__runs.append(run_dir)
         self.__output_csv: Path \
             = self.__dir / "results" / "codings.csv"
-        url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL=url,
+            SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
         patcher: Any = mock.patch.object(
             tally_codings, "ds", self.__ds)
         patcher.start()

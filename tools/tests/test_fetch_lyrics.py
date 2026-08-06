@@ -43,11 +43,11 @@ class TestFetchLyrics(unittest.TestCase):
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__provenance: Path = \
             self.__dir / "lyrics-provenance.csv"
-        url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL=url,
+            SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
         patchers: list[Any] = [
             mock.patch.object(fetch_lyrics, "ds", self.__ds),
             mock.patch.object(fetch_lyrics, "SLEEP_SECONDS", 0.0)]

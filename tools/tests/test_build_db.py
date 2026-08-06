@@ -269,11 +269,11 @@ class TestBuildDB(unittest.TestCase):
             self.__dir / "artists_wikidata.csv"
         self.__codings: Path = self.__dir / "codings.csv"
         self.__write_chart(self.CHART_CSV)
-        url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL=url,
+            SQLALCHEMY_DATABASE_URL="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
         patchers: list[Any] = [
             mock.patch.object(build_db, "ds", self.__ds),
             mock.patch.object(
@@ -540,7 +540,8 @@ class TestBuildDB(unittest.TestCase):
 
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""
-        self.assertFalse((self.__dir / "store.sqlite3").exists())
+        self.assertEqual(
+            sa.inspect(self.__ds.engine).get_table_names(), [])
         self.assertEqual(self.__run_build()[0], 0)
         session: Session = self.__session()
         self.assertEqual(

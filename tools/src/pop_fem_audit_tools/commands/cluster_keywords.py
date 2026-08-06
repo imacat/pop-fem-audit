@@ -5,17 +5,15 @@
 """The deterministic vocabulary-building step.
 
 Goes from the two tagging runs' archives straight to the coding
-vocabulary, writing six fixed-named artifacts under the output
+vocabulary, writing five fixed-named artifacts under the output
 directory given as the third positional command-line argument.
 First, the keywords produced by the two runs of the tagging step
 are pooled into the pooled keyword list, per the project's handoff
 contract: the pool is the plain union of every keyword key observed
 across both runs' valid records, exact-string deduplicated and
 sorted, written as a plain text file with one keyword per line, as
-:data:`SOURCE_KEYWORDS_TXT`.  The provenance mapping records where
-every keyword came from for audit purposes as a CSV file, as
-:data:`SOURCE_PROVENANCE_CSV`; it never enters any LLM input.  Then
-the coding groups are built from the pooled keyword list by
+:data:`SOURCE_KEYWORDS_TXT`.  Then the coding groups are built from
+the pooled keyword list by
 sentence-embedding every keyword and clustering the embeddings into
 the number of groups given by the required ``--clusters``
 command-line option: the group membership is written as a CSV file
@@ -55,9 +53,6 @@ are not installed."""
 SOURCE_KEYWORDS_TXT: str = "source-keywords.txt"
 """The pooled keyword text file's fixed name under the output
 directory."""
-SOURCE_PROVENANCE_CSV: str = "source-provenance.csv"
-"""The keyword provenance CSV file's fixed name under the output
-directory."""
 RESULT_KEYWORDS_TXT: str = "result-keywords.txt"
 """The group name keyword text file's fixed name under the output
 directory."""
@@ -73,9 +68,6 @@ directory."""
 
 type Records = list[tuple[int, dict[str, Any]]]
 """The valid records of one run: (song ID, keyword mapping) pairs."""
-
-type Provenance = dict[str, list[tuple[str, int]]]
-"""The occurrences of every keyword, keyed by the keyword."""
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -99,9 +91,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "output_dir", type=Path,
         help="the output directory, created if missing, that"
              f" receives {SOURCE_KEYWORDS_TXT},"
-             f" {SOURCE_PROVENANCE_CSV}, {RESULT_KEYWORDS_TXT},"
-             f" {RESULT_GROUPS_CSV}, {KEYWORDS_TO_MERGE_JSON},"
-             f" and {META_JSON}")
+             f" {RESULT_KEYWORDS_TXT}, {RESULT_GROUPS_CSV},"
+             f" {KEYWORDS_TO_MERGE_JSON}, and {META_JSON}")
     parser.add_argument(
         "--model", default=MODEL,
         help=f"the sentence embedding model (default \"{MODEL}\")")
@@ -159,7 +150,7 @@ def parse_song_id(item_id: str, path: Path) -> int:
     return int(item_id[len(prefix):])
 
 
-def load_run(run_dir: Path) -> tuple[str, Records]:
+def load_run(run_dir: Path) -> Records:
     """Load and validate the keyword records of one tagging run.
 
     Records carrying an "error" field are skipped.  A "text"
@@ -169,9 +160,8 @@ def load_run(run_dir: Path) -> tuple[str, Records]:
 
     :param run_dir: The run's archive directory, containing
         ``output.jsonl``.
-    :return: The run label (the directory's basename) and its
-        valid records, each the song ID and the parsed keyword
-        mapping, in file order.
+    :return: The run's valid records, each the song ID and the
+        parsed keyword mapping, in file order.
     :raises OSError: When ``output.jsonl`` cannot be read.
     :raises ValueError: When a line is not a well-formed output
         record, or a "text" field is invalid per the rules above.
@@ -205,33 +195,23 @@ def load_run(run_dir: Path) -> tuple[str, Records]:
                 f"{path}: id {record['id']}: \"text\" does not"
                 " parse to a JSON object")
         records.append((song_id, keywords))
-    return run_dir.name, records
+    return records
 
 
-def pool_keywords(runs: list[tuple[str, Records]],
-                  ) -> tuple[list[str], Provenance]:
+def pool_keywords(runs: list[Records]) -> list[str]:
     """Pool the keywords of the given tagging runs.
 
-    :param runs: The runs, each the run label and its valid
-        records (song ID, keyword mapping).
-    :return: The sorted, exact-string-deduplicated keyword list
-        and the provenance mapping from each keyword to its
-        occurrences, sorted by (run label, song ID).
+    :param runs: The runs, each its valid records (song ID,
+        keyword mapping).
+    :return: The sorted, exact-string-deduplicated keyword list.
     """
-    provenance: Provenance = {}
-    label: str
+    pool: set[str] = set()
     records: Records
-    for label, records in runs:
-        song_id: int
+    for records in runs:
         keywords: dict[str, Any]
-        for song_id, keywords in records:
-            keyword: str
-            for keyword in keywords:
-                provenance.setdefault(keyword, []).append(
-                    (label, song_id))
-    for occurrences in provenance.values():
-        occurrences.sort()
-    return sorted(provenance.keys()), provenance
+        for _, keywords in records:
+            pool.update(keywords)
+    return sorted(pool)
 
 
 def write_pool(path: Path, keywords: list[str]) -> None:
@@ -247,31 +227,6 @@ def write_pool(path: Path, keywords: list[str]) -> None:
     path.write_text(
         "".join(f"{keyword}\n" for keyword in keywords),
         encoding="utf-8")
-
-
-def write_provenance(path: Path, provenance: Provenance) -> None:
-    """Write the keyword provenance mapping.
-
-    Writes a CSV file with the header row
-    ``Keyword,Run,Song``, one row per occurrence, long format.
-    Rows are sorted by keyword lexicographically, then by run
-    label, then by song ID.
-
-    :param path: The path of the provenance CSV file to write.
-    :param provenance: The provenance mapping from each keyword
-        to its occurrences (run label, song ID).
-    :return: None.
-    :raises OSError: When the file cannot be written.
-    """
-    keyword: str
-    with open(path, "w", encoding="utf-8", newline="") as file:
-        writer: Any = csv.writer(file)
-        writer.writerow(["Keyword", "Run", "Song"])
-        for keyword in sorted(provenance.keys()):
-            label: str
-            song_id: int
-            for label, song_id in provenance[keyword]:
-                writer.writerow([keyword, label, song_id])
 
 
 def encode_keywords(keywords: list[str], model_name: str,
@@ -507,14 +462,14 @@ def write_keywords_to_merge(path: Path,
 
 
 def build_meta(
-        run1: tuple[str, Records], run2: tuple[str, Records],
+        run1: Records, run2: Records,
         args: argparse.Namespace, keyword_count: int,
         extra_keywords: list[str],
         versions: dict[str, str]) -> dict[str, Any]:
     """Build the run metadata recorded into :data:`META_JSON`.
 
-    :param run1: The first run's label and valid records.
-    :param run2: The second run's label and valid records.
+    :param run1: The first run's valid records.
+    :param run2: The second run's valid records.
     :param args: The parsed command-line arguments.
     :param keyword_count: The number of pooled keywords.
     :param extra_keywords: The extra a-priori keywords given via
@@ -526,7 +481,7 @@ def build_meta(
     return {
         "script_version": SCRIPT_VERSION,
         "source_runs": [str(args.run_dir_1), str(args.run_dir_2)],
-        "source_records": [len(run1[1]), len(run2[1])],
+        "source_records": [len(run1), len(run2)],
         "embedding": {
             "model": args.model, "revision": args.revision},
         "clustering": {
@@ -563,18 +518,17 @@ def write_meta(path: Path, meta: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Pool the two tagging runs' keywords and cluster them.
 
-    Writes the six fixed-named artifacts under the output
+    Writes the five fixed-named artifacts under the output
     directory, creating it (with parents) if it does not exist:
-    the pooled keyword text file and the keyword provenance CSV
-    file; then the group membership CSV file, holding the
-    clustering result alone; the group name keyword text file,
-    holding the same group names as a readable list; the coding
-    keyword set JSON file, holding the group names plus every
-    extra keyword given via ``--extra-keyword``; and the run
-    metadata JSON file, recording the command-line choices and
-    the environment.  When the input is rejected, or an extra
-    keyword duplicates a group name or another extra keyword,
-    none of the six files is written.
+    the pooled keyword text file; then the group membership CSV
+    file, holding the clustering result alone; the group name
+    keyword text file, holding the same group names as a readable
+    list; the coding keyword set JSON file, holding the group
+    names plus every extra keyword given via ``--extra-keyword``;
+    and the run metadata JSON file, recording the command-line
+    choices and the environment.  When the input is rejected, or
+    an extra keyword duplicates a group name or another extra
+    keyword, none of the five files is written.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.
@@ -582,17 +536,15 @@ def main(argv: list[str] | None = None) -> int:
     """
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
-    run1: tuple[str, Records]
-    run2: tuple[str, Records]
+    run1: Records
+    run2: Records
     try:
         run1 = load_run(args.run_dir_1)
         run2 = load_run(args.run_dir_2)
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    keywords: list[str]
-    provenance: Provenance
-    keywords, provenance = pool_keywords([run1, run2])
+    keywords: list[str] = pool_keywords([run1, run2])
     try:
         embeddings: Any = encode_keywords(
             keywords, args.model, args.revision)
@@ -612,8 +564,6 @@ def main(argv: list[str] | None = None) -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_pool(
         args.output_dir / SOURCE_KEYWORDS_TXT, keywords)
-    write_provenance(
-        args.output_dir / SOURCE_PROVENANCE_CSV, provenance)
     write_groups(args.output_dir / RESULT_GROUPS_CSV, groups)
     write_keyword_names(
         args.output_dir / RESULT_KEYWORDS_TXT, groups)

@@ -39,9 +39,6 @@ class TestClusterKeywords(unittest.TestCase):
         self.__source_keywords_txt: Path \
             = self.__output_dir \
             / cluster_keywords.SOURCE_KEYWORDS_TXT
-        self.__source_provenance_csv: Path \
-            = self.__output_dir \
-            / cluster_keywords.SOURCE_PROVENANCE_CSV
         self.__result_keywords_txt: Path \
             = self.__output_dir \
             / cluster_keywords.RESULT_KEYWORDS_TXT
@@ -179,16 +176,6 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(lines[-1], "")
         return lines[:-1]
 
-    def __read_source_provenance(self) -> list[list[str]]:
-        """Read the source provenance CSV file.
-
-        :return: All rows, including the header row, in file
-            order.
-        """
-        with open(self.__source_provenance_csv, encoding="utf-8",
-                  newline="") as file:
-            return list(csv.reader(file))
-
     def __read_groups(self) -> list[list[str]]:
         """Read the group membership CSV file.
 
@@ -303,7 +290,6 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("duplicate key", stderr)
         self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__source_provenance_csv.exists())
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
@@ -324,59 +310,10 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("song-1", stderr)
         self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__source_provenance_csv.exists())
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
         self.assertFalse(self.__meta_json.exists())
-
-    def test_provenance_content_and_ordering(self) -> None:
-        """Test the provenance content and its ordering: rows
-        sorted by keyword lexicographically, then by run label,
-        then by song ID."""
-        self.__write_output(self.__run1, [
-            {"id": "song-2", "text": json.dumps({"shared": 1})},
-            {"id": "song-1", "text": json.dumps({"shared": 1})},
-        ])
-        self.__write_output(self.__run2, [
-            {"id": "song-5",
-             "text": json.dumps({"shared": 1, "b-middle": 1})},
-        ])
-        vectors: Vectors = {
-            **self.__two_cluster_vectors(),
-            "shared": (1.0, 0.0)}
-        status: int
-        status, _ = self.__run_cluster(vectors=vectors)
-        self.assertEqual(status, 0)
-        rows: list[list[str]] = self.__read_source_provenance()
-        self.assertEqual(rows[1:], [
-            ["b-middle", "run2", "5"],
-            ["shared", "run1", "1"],
-            ["shared", "run1", "2"],
-            ["shared", "run2", "5"],
-        ])
-
-    def test_provenance_file_header_and_row_count(self) -> None:
-        """Test that the provenance CSV file starts with the
-        ``Keyword,Run,Song`` header row and has exactly one row
-        per keyword occurrence."""
-        self.__write_output(self.__run1, [
-            {"id": "song-2", "text": json.dumps({"shared": 1})},
-            {"id": "song-1", "text": json.dumps({"shared": 1})},
-        ])
-        self.__write_output(self.__run2, [
-            {"id": "song-5",
-             "text": json.dumps({"shared": 1, "b-middle": 1})},
-        ])
-        vectors: Vectors = {
-            **self.__two_cluster_vectors(),
-            "shared": (1.0, 0.0)}
-        status: int
-        status, _ = self.__run_cluster(vectors=vectors)
-        self.assertEqual(status, 0)
-        rows: list[list[str]] = self.__read_source_provenance()
-        self.assertEqual(rows[0], ["Keyword", "Run", "Song"])
-        self.assertEqual(len(rows), 1 + 4)
 
     def test_groups_csv_header_and_ordering(self) -> None:
         """Test the header row and the group/keyword ordering of
@@ -529,7 +466,6 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("zzz-extra", stderr)
         self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__source_provenance_csv.exists())
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
@@ -555,7 +491,6 @@ class TestClusterKeywords(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("a-center", stderr)
         self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__source_provenance_csv.exists())
         self.assertFalse(self.__result_groups_csv.exists())
         self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())

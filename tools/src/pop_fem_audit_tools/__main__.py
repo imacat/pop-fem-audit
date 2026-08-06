@@ -18,6 +18,7 @@ from types import ModuleType
 from .commands import (
     build_db_command,
     cluster_keywords_command,
+    compare_codings_command,
     export_llm_input_command,
     fetch_artists_command,
     fetch_lyrics_command,
@@ -30,6 +31,7 @@ MODULE_PROG: str = "python -m pop_fem_audit_tools"
 SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
     "build-db": build_db_command,
     "cluster-keywords": cluster_keywords_command,
+    "compare-codings": compare_codings_command,
     "export-llm-input": export_llm_input_command,
     "fetch-artists": fetch_artists_command,
     "fetch-lyrics": fetch_lyrics_command,

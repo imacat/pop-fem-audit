@@ -11,7 +11,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
-from pop_fem_audit_tools import __main__
+from pop_fem_audit_tools import __main__, commands
 from pop_fem_audit_tools.commands import run_llm
 
 
@@ -33,8 +33,31 @@ class TestDispatcher(unittest.TestCase):
         return status, stdout.getvalue(), stderr.getvalue()
 
     def test_run_llm_registered(self) -> None:
-        """Test that run-llm is bound to the run_llm tool main."""
-        self.assertIs(__main__.SUBCOMMANDS["run-llm"], run_llm.main)
+        """Test that run-llm is bound to the run_llm wrapper."""
+        self.assertIs(__main__.SUBCOMMANDS["run-llm"],
+                      commands.run_llm_command)
+
+    def test_every_subcommand_registered(self) -> None:
+        """Test that every subcommand is bound to its wrapper."""
+        for name, command in __main__.SUBCOMMANDS.items():
+            with self.subTest(subcommand=name):
+                wrapper: str = f"{name.replace('-', '_')}_command"
+                self.assertIs(command, getattr(commands, wrapper))
+
+    def test_run_llm_command_delegates(self) -> None:
+        """Test that the run-llm wrapper calls the run_llm main."""
+        tool: mock.Mock = mock.Mock(return_value=7)
+        with mock.patch.object(run_llm, "main", tool):
+            status: int = commands.run_llm_command(["--input", "x"])
+        self.assertEqual(status, 7)
+        tool.assert_called_once_with(["--input", "x"])
+
+    def test_run_llm_command_defaults_to_none(self) -> None:
+        """Test that the run-llm wrapper defaults the arguments."""
+        tool: mock.Mock = mock.Mock(return_value=0)
+        with mock.patch.object(run_llm, "main", tool):
+            commands.run_llm_command()
+        tool.assert_called_once_with(None)
 
     def test_run_llm_dispatch(self) -> None:
         """Test that run-llm forwards the arguments and the status."""

@@ -1,0 +1,35 @@
+You are coding song lyrics against a fixed set of thematic
+keywords.
+
+Input: a JSON object with the complete lyrics of one song and
+the keywords — the complete set of codes; use these and no
+others:
+
+{
+  "lyrics": "the complete lyrics of one song",
+  "keywords": ["first-keyword", "second-keyword"]
+}
+
+Task: list every given keyword whose theme this song
+expresses, by your own reading of the lyrics.
+
+Rules:
+
+- Use only the given keywords, spelled exactly as given.
+- A song may match any number of keywords, including none.
+- For each keyword you assign, quote exactly one verbatim
+  line of the lyrics that grounds it; do not assign a keyword
+  you cannot ground.
+
+Do not wrap the output in a Markdown code fence.
+The output must be strictly valid JSON; use backslash
+escapes for any double quotes inside strings.
+
+Output a single JSON object mapping each assigned keyword to
+its list of quotes (an empty object when no keyword applies),
+and nothing else:
+
+{
+  "first-keyword": ["quoted line"],
+  "second-keyword": ["another quoted line"]
+}

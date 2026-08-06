@@ -38,5 +38,6 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-06 | 03-01-code | run2 | claude-sonnet-4-6 | msgbatch_01CxnwNLWzZbRpZK7UAdpb8i | 5 分 22 秒 | 1,625,458 | 364,098 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） |
 | 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_019xcQXwrbwDGFc9nE5M8AjE | 4 分 0 秒 | 763,193 | 42,389 | $1.46 | 已取代（2 首遭內容過濾攔阻、13 首輸出夾帶散文；定義檔修訂後重跑） |
 | 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_01N7bDbXRSfAVUzzaj2thKeR | 4 分 20 秒 | 781,037 | 39,315 | $1.47 | 現行（644 首全數有效，零攔阻；保留 1,481／送裁 1,699） |
+| 2026-08-06 | 03-code | run3 | claude-sonnet-4-6 | msgbatch_01KnkCaGETnFJrPddrxZTYHA | 6 分 26 秒 | 1,625,458 | 363,840 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） |
 
-累計支出：$58.05。
+累計支出：$63.22。

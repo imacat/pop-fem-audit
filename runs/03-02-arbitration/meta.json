@@ -1,0 +1,27 @@
+{
+  "script_version": "run_llm.py 3.0.0",
+  "model": "claude-sonnet-4-6",
+  "temperature": 0.0,
+  "thinking": {
+    "type": "disabled"
+  },
+  "max_tokens": 2048,
+  "prompt_path": "../prompts/03-02-arbitration.md",
+  "prompt_sha256": "ff507689b7232c694c16be939ee5c2daf2418b4e2ff0157d70d1c156885a6edd",
+  "input_path": "instance/llm-input-arbitration.jsonl",
+  "input_sha256": "ec41e9d9a79155a697a5fb52dd9b5634c8fca1823697ae0320688859ebf1b487",
+  "item_count": 644,
+  "dry_run": false,
+  "started_at": "2026-08-06T11:19:26+08:00",
+  "batch": {
+    "batch_id": "msgbatch_01N7bDbXRSfAVUzzaj2thKeR",
+    "submitted_at": "2026-08-06T11:19:43+08:00",
+    "ended_at": "2026-08-06T03:22:50.369763+00:00"
+  },
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 781037,
+    "output_tokens": 39315
+  }
+}

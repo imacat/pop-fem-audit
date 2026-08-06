@@ -50,6 +50,7 @@ import argparse
 import csv
 import re
 import sys
+import time
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -68,6 +69,7 @@ from ..models import (
     Song,
     SongArtist,
 )
+from ..utils import format_duration
 
 ARTIST_FIELDS: dict[str, str] = {
     "qid": "wikidata_qid",
@@ -703,14 +705,8 @@ class StoreCounts:
 
     songs: int
     """The number of the songs."""
-    chart_entries: int
-    """The number of the chart entries."""
     artists: int
     """The number of the artists."""
-    credits: int
-    """The number of the song-artist credits."""
-    songs_with_lyrics: int
-    """The number of the songs with lyrics."""
     codings: int
     """The number of the settled codings."""
 
@@ -730,17 +726,8 @@ class StoreCounts:
         return cls(
             songs=count(
                 sa.select(sa.func.count()).select_from(Song)),
-            chart_entries=count(
-                sa.select(sa.func.count())
-                .select_from(ChartEntry)),
             artists=count(
                 sa.select(sa.func.count()).select_from(Artist)),
-            credits=count(
-                sa.select(sa.func.count())
-                .select_from(SongArtist)),
-            songs_with_lyrics=count(
-                sa.select(sa.func.count()).select_from(Song)
-                .where(Song.lyrics.is_not(None))),
             codings=count(
                 sa.select(sa.func.count()).select_from(Coding)))
 
@@ -913,6 +900,7 @@ def main(argv: list[str] | None = None) -> int:
         ``sys.argv``.
     :return: The exit status: 0 on success, non-zero on failure.
     """
+    started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     Base.metadata.create_all(ds.engine)
     session: Session = ds.get_db()
@@ -933,11 +921,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         session.close()
-    print(f"done: {counts.songs} songs,"
-          f" {counts.chart_entries} chart entries,"
-          f" {counts.artists} artists,"
-          f" {counts.credits} credits,"
-          f" {counts.songs_with_lyrics} songs with lyrics,"
-          f" {counts.codings} codings",
+    elapsed: str = format_duration(time.monotonic() - started)
+    print(f"Done.  {counts.songs} songs/{counts.artists} artists"
+          f"/{counts.codings} codings.  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

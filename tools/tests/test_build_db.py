@@ -383,9 +383,7 @@ class TestBuildDB(unittest.TestCase):
                          [("Drake", Role.PRIMARY, 0),
                           ("Wizkid", Role.FEATURED, 1)])
         self.assertIn("3 songs", stderr)
-        self.assertIn("4 chart entries", stderr)
         self.assertIn("4 artists", stderr)
-        self.assertIn("4 credits", stderr)
 
     def test_dedup_credit_variant(self) -> None:
         """Test that a credit variant listed in
@@ -651,7 +649,6 @@ class TestBuildDB(unittest.TestCase):
             "--lyrics-dir", str(self.__lyrics))
         self.assertEqual(status, 0)
         self.assertIn("999", stderr)
-        self.assertIn("1 songs with lyrics", stderr)
         session: Session = self.__session()
         song: Song | None = session.get(Song, 1)
         assert song is not None
@@ -671,7 +668,6 @@ class TestBuildDB(unittest.TestCase):
         stderr: str
         status, stderr = self.__run_build()
         self.assertEqual(status, 0)
-        self.assertIn("0 songs with lyrics", stderr)
         session: Session = self.__session()
         song: Song | None = session.get(Song, 1)
         assert song is not None

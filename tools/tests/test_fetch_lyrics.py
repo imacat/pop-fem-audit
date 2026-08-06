@@ -112,14 +112,15 @@ class TestFetchLyrics(unittest.TestCase):
             = json.dumps(payload).encode("utf-8")
         return response
 
-    @staticmethod
-    def __not_found() -> urllib.error.HTTPError:
-        """Build an HTTP 404 error.
+    def __not_found(self) -> urllib.error.HTTPError:
+        """Build an HTTP 404 error, closed when the test ends.
 
         :return: The HTTP 404 error.
         """
-        return urllib.error.HTTPError(
+        error: urllib.error.HTTPError = urllib.error.HTTPError(
             "https://example.com/", 404, "Not Found", None, None)
+        self.addCleanup(error.close)
+        return error
 
     def __run_fetch(self) -> tuple[int, str]:
         """Run the fetcher with the standard error captured.

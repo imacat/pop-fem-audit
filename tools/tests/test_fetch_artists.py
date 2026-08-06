@@ -106,15 +106,16 @@ class TestFetchArtists(unittest.TestCase):
             = json.dumps(payload).encode("utf-8")
         return response
 
-    @staticmethod
-    def __http_error(status: int) -> urllib.error.HTTPError:
-        """Build an HTTP error.
+    def __http_error(self, status: int) -> urllib.error.HTTPError:
+        """Build an HTTP error, closed when the test ends.
 
         :param status: The HTTP status code.
         :return: The HTTP error.
         """
-        return urllib.error.HTTPError(
+        error: urllib.error.HTTPError = urllib.error.HTTPError(
             "https://example.com/", status, "Error", None, None)
+        self.addCleanup(error.close)
+        return error
 
     @staticmethod
     def __claim(qid: str) -> dict[str, Any]:

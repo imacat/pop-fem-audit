@@ -79,10 +79,19 @@ class TestCompareCodings(unittest.TestCase):
     def __read_disagreements(self) -> dict[str, Any]:
         """Read the disagreement JSON file.
 
-        :return: The parsed disagreements.
+        :return: The parsed disagreements, as written, with every
+            song's keywords in its "disagreements" wrapper.
         """
         return json.loads(
             self.__disagreements_json.read_text(encoding="utf-8"))
+
+    def __read_keywords(self, song_id: str) -> dict[str, Any]:
+        """Read one song's disagreed keywords from the file.
+
+        :param song_id: The song ID.
+        :return: The keywords of that song, unwrapped.
+        """
+        return self.__read_disagreements()[song_id]["disagreements"]
 
     def __read_disagreement_text(self) -> str:
         """Read the disagreement JSON file verbatim.
@@ -103,7 +112,23 @@ class TestCompareCodings(unittest.TestCase):
         status, _ = self.__run_compare()
         self.assertEqual(status, 0)
         self.assertEqual(self.__read_disagreements(), {
-            "song-1": {"only-1": ["q2"], "only-2": ["q4"]}})
+            "song-1": {"disagreements": {
+                "only-1": ["q2"], "only-2": ["q4"]}}})
+
+    def test_keywords_wrapped_for_merging(self) -> None:
+        """Test that each song's value is the object merged into
+        the arbitration input, holding "disagreements" alone."""
+        self.__write_codings(self.__run1, {
+            "song-1": {"only-1": ["q"]}})
+        self.__write_codings(self.__run2, {"song-1": {}})
+        status: int
+        status, _ = self.__run_compare()
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            list(self.__read_disagreements()["song-1"].keys()),
+            ["disagreements"])
+        self.assertEqual(
+            self.__read_keywords("song-1"), {"only-1": ["q"]})
 
     def test_quotes_do_not_take_part_in_comparison(self) -> None:
         """Test that identical key sets with different quotes
@@ -162,7 +187,7 @@ class TestCompareCodings(unittest.TestCase):
         status, _ = self.__run_compare()
         self.assertEqual(status, 0)
         self.assertEqual(
-            list(self.__read_disagreements()["song-1"].keys()),
+            list(self.__read_keywords("song-1").keys()),
             ["alpha", "beta", "mu", "zeta"])
 
     def test_summary_line_counts(self) -> None:
@@ -195,8 +220,7 @@ class TestCompareCodings(unittest.TestCase):
         status, _ = self.__run_compare()
         self.assertEqual(status, 0)
         self.assertEqual(
-            self.__read_disagreements(),
-            {"song-1": {"only-1": [quote]}})
+            self.__read_keywords("song-1"), {"only-1": [quote]})
 
     def test_non_ascii_written_verbatim(self) -> None:
         """Test that the output is UTF-8 with the non-ASCII text
@@ -362,8 +386,7 @@ class TestCompareCodings(unittest.TestCase):
         status, _ = self.__run_compare()
         self.assertEqual(status, 0)
         self.assertEqual(
-            self.__read_disagreements(),
-            {"song-1": {"only-1": ["q"]}})
+            self.__read_keywords("song-1"), {"only-1": ["q"]})
 
     def test_compare_returns_agreed_keyword_names(self) -> None:
         """Test that the comparison function returns the agreed

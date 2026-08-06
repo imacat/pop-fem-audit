@@ -14,8 +14,11 @@ agreed.  The quotes supporting a keyword never take part in the
 comparison; they are carried along as the evidence of the disagreed
 keyword they support.  The disagreements are written as a JSON file,
 as :data:`DISAGREEMENTS_JSON`, holding only the songs the two runs
-disagree on; it is what the arbitration step of the coding
-procedure settles.  The agreed half is not written; it is returned
+disagree on, each song's disagreed keywords wrapped in a
+"disagreements" object so that the file merges into the arbitration
+input as the per-song extra parameters; it is what the arbitration
+step of the coding procedure settles.  The agreed half is not
+written; it is returned
 by :func:`compare_codings`, as the keyword names alone, for later
 steps to consume.  The step is fully deterministic; no LLM call is
 made.
@@ -229,10 +232,13 @@ def write_disagreements(path: Path,
     """Write the per-song disagreement JSON file.
 
     Writes a JSON file holding a single object mapping the song ID
-    to the disagreed keywords of that song, each with the quotes of
-    the run that assigned it, in the given order, UTF-8, with a
-    trailing newline.  Only the songs the two runs disagree on are
-    written.
+    to a ``{"disagreements": {...}}`` object holding the disagreed
+    keywords of that song, each with the quotes of the run that
+    assigned it, in the given order, UTF-8, with a trailing newline.
+    The wrapper is what makes the file merge into the arbitration
+    input as the per-song extra parameters, giving a "disagreements"
+    sibling of the lyrics rather than loose keywords.  Only the
+    songs the two runs disagree on are written.
 
     :param path: The path of the disagreement JSON file to write.
     :param disagreements: The disagreed keywords of every song,
@@ -240,9 +246,11 @@ def write_disagreements(path: Path,
     :return: None.
     :raises OSError: When the file cannot be written.
     """
+    wrapped: dict[str, dict[str, Coding]] = {
+        song_id: {"disagreements": coding}
+        for song_id, coding in disagreements.items()}
     path.write_text(
-        json.dumps(disagreements, ensure_ascii=False, indent=2)
-        + "\n",
+        json.dumps(wrapped, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
 
 

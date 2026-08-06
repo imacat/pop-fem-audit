@@ -22,6 +22,7 @@ from .commands import (
     fetch_artists_command,
     fetch_lyrics_command,
     run_llm_command,
+    tally_codings_command,
 )
 
 MODULE_PROG: str = "python -m pop_fem_audit_tools"
@@ -34,6 +35,7 @@ SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
     "fetch-artists": fetch_artists_command,
     "fetch-lyrics": fetch_lyrics_command,
     "run-llm": run_llm_command,
+    "tally-codings": tally_codings_command,
 }
 """The dispatch table from the subcommand name to the tool main."""
 

@@ -93,3 +93,26 @@ def run_llm_command(argv: list[str] | None = None) -> int:
     """
     from .run_llm import main
     return main(argv)
+
+
+def tally_codings_command(argv: list[str] | None = None) -> int:
+    """Settle the coding by a majority of the three coding runs.
+
+    Writes the final coding table as the given CSV file, holding
+    the header row ``Song,Artist Credit,Keyword,Quote`` and one
+    row per keyword at least two of the three runs assign, the
+    song named by its title and its stored artist credit from the
+    SQLite working store, and the keyword carrying the pooled,
+    deduplicated, and sorted lyric quotes of the runs that
+    assigned it, joined with a single ``|``.  Nothing is written
+    when the three archives do not cover the same songs, a record
+    is not a successful result, a record's "text" does not parse
+    to a JSON object of quote string lists, or a song is not in
+    the working store; the error message names what failed.
+
+    :param argv: The command-line arguments, or None for
+        ``sys.argv``.
+    :return: The exit status: 0 on success, non-zero on failure.
+    """
+    from .tally_codings import main
+    return main(argv)

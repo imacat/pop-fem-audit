@@ -67,6 +67,12 @@ cluster-keywords
 Deterministically build the coding vocabulary from the two tagging runs' archives, by pooling their keywords per the project's handoff contract and then sentence-embedding and clustering them.  Check ``pop-fem-audit-tools cluster-keywords -h`` for complete instructions on its usage.
 
 
+tally-codings
+-------------
+
+Settle the coding step by a majority of the three coding runs' archives, and write the final coding table, naming every song by its title and stored artist credit from the working store.  Check ``pop-fem-audit-tools tally-codings -h`` for complete instructions on its usage.
+
+
 Copyright
 =========
 

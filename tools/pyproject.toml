@@ -40,13 +40,11 @@ dependencies = [
     "pydantic-settings >= 2",
     "SQLAlchemy >= 2",
     "anthropic",
-]
-
-[project.optional-dependencies]
-cluster = [
     "torch",
     "sentence-transformers",
     "scikit-learn",
+    "numpy",
+    "transformers",
 ]
 
 [project.scripts]

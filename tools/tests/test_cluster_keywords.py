@@ -3,12 +3,13 @@
 # Authors:
 #   imacat@mail.imacat.idv.tw (imacat), 2026/8/5
 """Unit tests for the keyword clusterer module."""
+import argparse
 import csv
 import io
 import json
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import ExitStack, redirect_stderr
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -38,18 +39,20 @@ class TestClusterKeywords(unittest.TestCase):
         self.__output_dir: Path = self.__dir / "output"
         self.__source_keywords_txt: Path \
             = self.__output_dir \
-            / cluster_keywords.SOURCE_KEYWORDS_TXT
+            / cluster_keywords.PooledKeywords.SOURCE_KEYWORDS_TXT
         self.__result_keywords_txt: Path \
             = self.__output_dir \
-            / cluster_keywords.RESULT_KEYWORDS_TXT
+            / cluster_keywords.KeywordGroups.RESULT_KEYWORDS_TXT
         self.__result_groups_csv: Path \
             = self.__output_dir \
-            / cluster_keywords.RESULT_GROUPS_CSV
+            / cluster_keywords.KeywordGroups.RESULT_GROUPS_CSV
         self.__keywords_to_merge_json: Path \
             = self.__output_dir \
-            / cluster_keywords.KEYWORDS_TO_MERGE_JSON
+            / cluster_keywords.KeywordsToMerge \
+            .KEYWORDS_TO_MERGE_JSON
         self.__meta_json: Path \
-            = self.__output_dir / cluster_keywords.META_JSON
+            = self.__output_dir \
+            / cluster_keywords.RunMeta.META_JSON
 
     @staticmethod
     def __write_output(
@@ -88,13 +91,13 @@ class TestClusterKeywords(unittest.TestCase):
 
     @staticmethod
     def __fake_encode(vectors: Vectors) -> Any:
-        """Build a test double for :func:`encode_keywords`.
+        """Build a test double for the clusterer's encoder.
 
         :param vectors: The fixed 2D embedding of every keyword
             the double may be asked to encode.
-        :return: A callable with the same signature as
-            :func:`encode_keywords`, returning the fixed
-            embeddings in the requested keyword order.
+        :return: A callable with the same signature as the
+            clusterer's encoder, returning the fixed embeddings in
+            the requested keyword order.
         """
         def fake(keywords: list[str], model_name: str,
                  revision: str | None) -> Any:
@@ -113,8 +116,8 @@ class TestClusterKeywords(unittest.TestCase):
     def __fake_versions() -> dict[str, str]:
         """Return a fixed version mapping test double.
 
-        :return: A fixed mapping with the same keys
-            :func:`cluster_keywords.collect_versions` returns.
+        :return: A fixed mapping with the same keys the metadata
+            builder's version collector returns.
         """
         return {
             "python": "9.9.9",
@@ -144,15 +147,8 @@ class TestClusterKeywords(unittest.TestCase):
             str(self.__run1), str(self.__run2),
             str(self.__output_dir), "--clusters", clusters]
         argv.extend(extra_args or [])
-        fake: Any = self.__fake_encode(
-            vectors if vectors is not None
-            else self.__two_cluster_vectors())
         stderr: io.StringIO = io.StringIO()
-        with mock.patch.object(
-                cluster_keywords, "encode_keywords", fake), \
-                mock.patch.object(
-                    cluster_keywords, "collect_versions",
-                    return_value=self.__fake_versions()), \
+        with self.__fake_environment(vectors), \
                 redirect_stderr(stderr):
             status: int = cluster_keywords.main(argv)
         return status, stderr.getvalue()
@@ -449,7 +445,8 @@ class TestClusterKeywords(unittest.TestCase):
 
     def test_duplicate_extra_keyword_rejected(self) -> None:
         """Test that repeating the same ``--extra-keyword`` value
-        fails the run without writing any output file."""
+        fails the run without writing the coding keyword set JSON
+        file or the run metadata JSON file."""
         self.__write_output(self.__run1, [
             {"id": "song-1", "text": json.dumps(
                 {"a-left": 1, "a-center": 1, "a-right": 1})},
@@ -465,17 +462,14 @@ class TestClusterKeywords(unittest.TestCase):
             "--extra-keyword", "zzz-extra"])
         self.assertEqual(status, 1)
         self.assertIn("zzz-extra", stderr)
-        self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__result_groups_csv.exists())
-        self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
         self.assertFalse(self.__meta_json.exists())
 
     def test_extra_keyword_duplicating_group_name_rejected(
             self) -> None:
         """Test that an ``--extra-keyword`` matching a clustered
-        group name fails the run without writing any output
-        file."""
+        group name fails the run without writing the coding
+        keyword set JSON file or the run metadata JSON file."""
         self.__write_output(self.__run1, [
             {"id": "song-1", "text": json.dumps(
                 {"a-left": 1, "a-center": 1, "a-right": 1})},
@@ -490,9 +484,6 @@ class TestClusterKeywords(unittest.TestCase):
             extra_args=["--extra-keyword", "a-center"])
         self.assertEqual(status, 1)
         self.assertIn("a-center", stderr)
-        self.assertFalse(self.__source_keywords_txt.exists())
-        self.assertFalse(self.__result_groups_csv.exists())
-        self.assertFalse(self.__result_keywords_txt.exists())
         self.assertFalse(self.__keywords_to_merge_json.exists())
         self.assertFalse(self.__meta_json.exists())
 
@@ -516,7 +507,7 @@ class TestClusterKeywords(unittest.TestCase):
             "embedding", "clustering", "extra_keywords",
             "keyword_count", "versions"})
         self.assertEqual(
-            meta["script_version"], cluster_keywords.SCRIPT_VERSION)
+            meta["script_version"], "cluster_keywords.py 1.0.0")
         self.assertEqual(
             meta["versions"], self.__fake_versions())
 
@@ -597,3 +588,72 @@ class TestClusterKeywords(unittest.TestCase):
             with self.assertRaises(SystemExit) as context:
                 cluster_keywords.parse_args(argv)
         self.assertNotEqual(context.exception.code, 0)
+
+    def test_builder_failure_raises_cluster_error(self) -> None:
+        """Test that a builder reports its own failure as a
+        ``ClusterError``, writing no file of its own."""
+        self.__write_two_clusters()
+        args: argparse.Namespace = self.__parse_args()
+        self.__output_dir.mkdir()
+        with self.__fake_environment():
+            source: cluster_keywords.PooledKeywords \
+                = cluster_keywords.KeywordPooler(
+                    args.run_dir_1, args.run_dir_2,
+                    self.__output_dir).run()
+            groups: cluster_keywords.KeywordGroups \
+                = cluster_keywords.KeywordClusterer(
+                    source, args.model, args.revision,
+                    args.clusters, self.__output_dir).run()
+            with self.assertRaises(
+                    cluster_keywords.ClusterError) as context:
+                cluster_keywords.KeywordsToMergeBuilder(
+                    groups, ["a-center"],
+                    self.__output_dir).run()
+        self.assertIn("a-center", str(context.exception))
+        self.assertFalse(self.__keywords_to_merge_json.exists())
+
+    def __write_two_clusters(self) -> None:
+        """Write the two runs' outputs of the two-cluster fixture.
+
+        :return: None.
+        """
+        self.__write_output(self.__run1, [
+            {"id": "song-1", "text": json.dumps(
+                {"a-left": 1, "a-center": 1, "a-right": 1})},
+        ])
+        self.__write_output(self.__run2, [
+            {"id": "song-2", "text": json.dumps(
+                {"b-north": 1, "b-middle": 1, "b-south": 1})},
+        ])
+
+    def __parse_args(self) -> argparse.Namespace:
+        """Parse a two-cluster command line over the fixture.
+
+        :return: The parsed arguments.
+        """
+        return cluster_keywords.parse_args([
+            str(self.__run1), str(self.__run2),
+            str(self.__output_dir), "--clusters", "2"])
+
+    def __fake_environment(
+            self, vectors: Vectors | None = None) -> ExitStack:
+        """Build the fake encoder and version collector context.
+
+        :param vectors: The fixed embedding to encode with; the
+            two-cluster fixture is used when None.
+        :return: A context manager patching the clusterer's
+            encoder with the fixed embedding and the metadata
+            builder's version collector with a fixed mapping.
+        """
+        fake: Any = self.__fake_encode(
+            vectors if vectors is not None
+            else self.__two_cluster_vectors())
+        stack: ExitStack = ExitStack()
+        stack.enter_context(mock.patch.object(
+            cluster_keywords.KeywordClusterer,
+            "_KeywordClusterer__encode", staticmethod(fake)))
+        stack.enter_context(mock.patch.object(
+            cluster_keywords.MetaBuilder,
+            "_MetaBuilder__collect_versions",
+            staticmethod(self.__fake_versions)))
+        return stack

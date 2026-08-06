@@ -64,7 +64,7 @@ A general command that runs specific LLM instructions with the Anthropic API.  T
 cluster-keywords
 ----------------
 
-Deterministically build the coding vocabulary from the two tagging runs' archives, by pooling their keywords per the project's handoff contract and then sentence-embedding and clustering them.  Requires the optional ``cluster`` dependency group.  Check ``pop-fem-audit-tools cluster-keywords -h`` for complete instructions on its usage.
+Deterministically build the coding vocabulary from the two tagging runs' archives, by pooling their keywords per the project's handoff contract and then sentence-embedding and clustering them.  Check ``pop-fem-audit-tools cluster-keywords -h`` for complete instructions on its usage.
 
 
 compare-codings

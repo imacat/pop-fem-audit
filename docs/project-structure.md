@@ -24,8 +24,8 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-01-code.md、
-│                              #   03-02-arbitration.md
+│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-code.md
+│                              #   （步內僅一個執行時省略次步）
 │                              #   不帶版本號，版本即 git 歷史
 │                              #   （編號的所指是工序：確定性
 │                              #   的步驟 2 無定義檔仍佔一號；
@@ -54,7 +54,7 @@ pop-fem-audit/
 │   │   │   │                       #   into the codes (step 2)
 │   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
 │   │   │                      #   →歸檔至指定目錄（Batch API）；
-│   │   │                      #   比對與仲裁編排由獨立子命令承擔
+│   │   │                      #   多次執行的計票由獨立子命令承擔
 │   │   ├── config.py          # pydantic-settings 設定（.env）
 │   │   ├── database.py        # SQLAlchemy engine / session / Base
 │   │   ├── models.py          # SQLAlchemy ORM 資料模型
@@ -62,7 +62,7 @@ pop-fem-audit/
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
 │   │                          #   重跑同一 run 須明示 --replace）
-│   ├── <步驟名>/              #   仲裁自成一步，居自己的目錄
+│   ├── <步驟名>/              #   一步一個目錄（如 03-code）
 │   │   └── run<N>/            #   LLM 步驟：每個 run 一份自我
 │   │       ├── prompt.md      #   完備歸檔（定義檔快照）
 │   │       ├── output.jsonl   #   該次執行原始輸出

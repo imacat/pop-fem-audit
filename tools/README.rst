@@ -67,12 +67,6 @@ cluster-keywords
 Deterministically build the coding vocabulary from the two tagging runs' archives, by pooling their keywords per the project's handoff contract and then sentence-embedding and clustering them.  Check ``pop-fem-audit-tools cluster-keywords -h`` for complete instructions on its usage.
 
 
-compare-codings
----------------
-
-Compare the two coding runs' archives and export the per-song disagreements, for the arbitration step to rule on.  The keywords both runs assigned are settled by the comparison itself; only the keywords assigned by exactly one run are exported, each with the quotes the assigning run gave as evidence.  Check ``pop-fem-audit-tools compare-codings -h`` for complete instructions on its usage.
-
-
 Copyright
 =========
 

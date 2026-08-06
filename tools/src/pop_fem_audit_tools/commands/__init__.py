@@ -47,21 +47,6 @@ def cluster_keywords_command(argv: list[str] | None = None) -> int:
     return main(argv)
 
 
-def compare_codings_command(argv: list[str] | None = None) -> int:
-    """Compare the two coding runs and export the disagreements.
-
-    Writes the disagreement JSON file under the output directory,
-    creating it (with parents) if it does not exist.  When the
-    input is rejected, the file is not written.
-
-    :param argv: The command-line arguments, or None for
-        ``sys.argv``.
-    :return: The exit status: 0 on success, non-zero on failure.
-    """
-    from .compare_codings import main
-    return main(argv)
-
-
 def export_llm_input_command(argv: list[str] | None = None) -> int:
     """Export the LLM input JSONL file from the working store.
 

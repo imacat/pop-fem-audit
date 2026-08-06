@@ -11,13 +11,13 @@ Anthropic Messages Batch API exactly once, archived self-contained
 under the destination directory given by the three positional
 command-line arguments: prompt, input, archive_dir.  The tool
 knows nothing about run counts or protocols: run identity --
-run1/run2, arbitration -- lives entirely in the caller's command
-list, per the research plan.  A rerun of an already existing
+run1, run2, run3 -- lives entirely in the caller's command list,
+per the research plan.  A rerun of an already existing
 destination requires ``--replace``; any other directory is never
 touched.
 
-Comparing runs and reconciling disagreements are the responsibility
-of separate subcommands, not this one.
+Counting the runs' votes into the final table is the
+responsibility of a separate subcommand, not this one.
 """
 import argparse
 import hashlib

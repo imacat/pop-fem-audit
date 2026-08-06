@@ -20,14 +20,6 @@ pop\_fem\_audit\_tools.commands.cluster\_keywords module
    :show-inheritance:
    :undoc-members:
 
-pop\_fem\_audit\_tools.commands.compare\_codings module
--------------------------------------------------------
-
-.. automodule:: pop_fem_audit_tools.commands.compare_codings
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 pop\_fem\_audit\_tools.commands.export\_llm\_input module
 ---------------------------------------------------------
 

@@ -14,6 +14,7 @@ from pop_fem_audit_tools.database import Base, DataSource
 from pop_fem_audit_tools.models import (
     Artist,
     ChartEntry,
+    Coding,
     Role,
     Song,
     SongArtist,
@@ -47,6 +48,10 @@ class TestModels(unittest.TestCase):
             SongArtist(artist=Artist(name="Wizkid"),
                        role=Role.FEATURED, position=1)]
         song.lyrics = "Baby, I like your style"
+        song.codings = [
+            Coding(keyword="desire",
+                   quotes="Baby, I like your style|One dance"),
+            Coding(keyword="nightlife", quotes="")]
         self.__session.add(song)
         self.__session.commit()
 
@@ -80,6 +85,35 @@ class TestModels(unittest.TestCase):
         self.__session.add(
             Song(title="One Dance",
                  artist_credit="Drake featuring Wizkid"))
+        with self.assertRaises(sa.exc.IntegrityError):
+            self.__session.commit()
+
+    def test_song_codings(self) -> None:
+        """Test reading a song's codings back through the
+        relationship."""
+        self.__add_song()
+        self.__session.expunge_all()
+        song: Song | None = self.__session.scalar(
+            sa.select(Song).where(Song.title == "One Dance"))
+        assert song is not None
+        self.assertEqual(
+            {(x.keyword, x.quotes) for x in song.codings},
+            {("desire", "Baby, I like your style|One dance"),
+             ("nightlife", "")})
+        coding: Coding | None = self.__session.scalar(
+            sa.select(Coding).where(Coding.keyword == "desire"))
+        assert coding is not None
+        self.assertEqual(coding.song.title, "One Dance")
+
+    def test_duplicated_coding_rejected(self) -> None:
+        """Test that a repeated song and keyword fails."""
+        self.__add_song()
+        song: Song | None = self.__session.scalar(
+            sa.select(Song).where(Song.title == "One Dance"))
+        assert song is not None
+        self.__session.add(
+            Coding(song_id=song.id, keyword="desire",
+                   quotes="another line"))
         with self.assertRaises(sa.exc.IntegrityError):
             self.__session.commit()
 

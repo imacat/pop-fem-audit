@@ -21,6 +21,7 @@ from pop_fem_audit_tools.database import DataSource
 from pop_fem_audit_tools.models import (
     Artist,
     ChartEntry,
+    Coding,
     Role,
     Song,
 )
@@ -266,6 +267,7 @@ class TestBuildDB(unittest.TestCase):
         self.__lyrics: Path = self.__dir / "lyrics"
         self.__wikidata: Path = \
             self.__dir / "artists_wikidata.csv"
+        self.__codings: Path = self.__dir / "codings.csv"
         self.__write_chart(self.CHART_CSV)
         url: str = f"sqlite:///{self.__dir}/store.sqlite3"
         config.set_settings(config.Settings(
@@ -289,6 +291,14 @@ class TestBuildDB(unittest.TestCase):
         :return: None.
         """
         self.__chart.write_text(content, encoding="utf-8")
+
+    def __write_codings(self, content: str) -> None:
+        """Write the coding CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__codings.write_text(content, encoding="utf-8")
 
     def __run_build(self, *options: str) -> tuple[int, str]:
         """Run the build with the standard error captured.
@@ -821,3 +831,143 @@ class TestBuildDB(unittest.TestCase):
             (self.__derived / "artists.csv").read_text(
                 encoding="utf-8"),
             artists_before)
+
+    CODINGS_CSV: str = (
+        "Song,Artist Credit,Keyword,Quote\n"
+        "Hello,Adele,longing,\"Hello from the other side\\nI must"
+        " have called a thousand times\"\n"
+        "Hello,Adele,regret,I'm sorry|It's no secret\n"
+        "One Dance,Drake featuring Wizkid,desire,\n")
+    """The coding CSV fixture: a two-line quote, two quotes joined
+    by "|", and an empty quote."""
+
+    def __stored_codings(self) -> dict[tuple[str, str], str]:
+        """Read the stored codings keyed by the song and keyword.
+
+        :return: The stored quotes, keyed by the song title and the
+            keyword.
+        """
+        session: Session = self.__session()
+        return {(x.song.title, x.keyword): x.quotes
+                for x in session.scalars(sa.select(Coding))}
+
+    def test_codings_imported(self) -> None:
+        """Test that the coding CSV imports one row per song and
+        keyword, restoring the newline and keeping the "|"-joined
+        quotes verbatim."""
+        self.__write_codings(self.CODINGS_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertEqual(status, 0)
+        self.assertIn("3 codings", stderr)
+        self.assertEqual(
+            self.__stored_codings(),
+            {("Hello", "longing"):
+                "Hello from the other side\n"
+                "I must have called a thousand times",
+             ("Hello", "regret"): "I'm sorry|It's no secret",
+             ("One Dance", "desire"): ""})
+
+    def test_codings_reach_the_song(self) -> None:
+        """Test that a stored coding reaches its song through the
+        relationship."""
+        self.__write_codings(self.CODINGS_CSV)
+        self.assertEqual(
+            self.__run_build("--codings", str(self.__codings))[0], 0)
+        session: Session = self.__session()
+        song: Song | None = session.get(Song, 1)
+        assert song is not None
+        self.assertEqual(sorted(x.keyword for x in song.codings),
+                         ["longing", "regret"])
+
+    def test_omitted_codings_leaves_table_empty(self) -> None:
+        """Test that an omitted coding option leaves no codings."""
+        self.__write_codings(self.CODINGS_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        self.assertIn("0 codings", stderr)
+        self.assertEqual(self.__stored_codings(), {})
+
+    def test_codings_unknown_song_fails(self) -> None:
+        """Test that a coding row naming an unknown song fails the
+        build, leaving the previous store contents intact."""
+        self.assertEqual(self.__run_build()[0], 0)
+        titles: dict[int, str] = self.__song_titles()
+        self.__write_codings(
+            "Song,Artist Credit,Keyword,Quote\n"
+            "Nowhere,Nobody,longing,a line\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertNotEqual(status, 0)
+        self.assertIn("no song \"Nowhere\" by \"Nobody\"", stderr)
+        self.assertEqual(self.__song_titles(), titles)
+        self.assertEqual(self.__stored_codings(), {})
+
+    def test_codings_duplicated_keyword_fails(self) -> None:
+        """Test that two rows naming the same song and keyword fail
+        the build, without partial data."""
+        self.__write_codings(
+            "Song,Artist Credit,Keyword,Quote\n"
+            "Hello,Adele,longing,a line\n"
+            "Hello,Adele,longing,another line\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertNotEqual(status, 0)
+        self.assertIn("duplicated coding", stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_codings_missing_column_fails(self) -> None:
+        """Test that a coding CSV missing a required column fails
+        the build."""
+        self.__write_codings(
+            "Song,Artist Credit,Keyword\n"
+            "Hello,Adele,longing\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertNotEqual(status, 0)
+        self.assertIn("missing column(s): Quote", stderr)
+        self.assertEqual(self.__stored_codings(), {})
+
+    def test_missing_codings_csv_fails(self) -> None:
+        """Test that a given but missing coding CSV fails."""
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertNotEqual(status, 0)
+        self.assertIn("error:", stderr)
+        self.assertIn(str(self.__codings), stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    def test_codings_replaced_on_rebuild(self) -> None:
+        """Test that a rebuild replaces the previous codings rather
+        than adding to them."""
+        self.__write_codings(self.CODINGS_CSV)
+        self.assertEqual(
+            self.__run_build("--codings", str(self.__codings))[0], 0)
+        self.__write_codings(
+            "Song,Artist Credit,Keyword,Quote\n"
+            "Shape of You,Ed Sheeran,attraction,I'm in love with"
+            " your body\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--codings", str(self.__codings))
+        self.assertEqual(status, 0)
+        self.assertIn("1 codings", stderr)
+        self.assertEqual(
+            self.__stored_codings(),
+            {("Shape of You", "attraction"):
+                "I'm in love with your body"})

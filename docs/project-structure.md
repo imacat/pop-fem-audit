@@ -94,6 +94,12 @@ pop-fem-audit/
 - **`prompts/` 檔名不帶版本號**：版本即 git 歷史，失敗的
   版本不保留；論文引用的單位是 `runs/` 內隨執行保存的定義檔
   快照（每個執行目錄自我完備），不需檔名可指的版本名。
+- **工作儲存的資料表**：`songs`、`chart_entries`、`artists`、
+  `song_artists`、`codings`（定案編碼：一歌一標籤一列，`quotes`
+  存該標籤所據的歌詞引述，多句以 `|` 相接）。定案表
+  `results/codings.csv` 經 `build-db --codings` 匯入，與其餘資料
+  同一交易，儲存不會半建；詳見 `research-plan.md`「資料儲存與
+  模型」。
 - **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
   commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
   一律以文字 commit。「可再生仍 commit」的例外有二：

@@ -6,7 +6,9 @@
 
 The schema covers the year-end chart data: songs with their
 lyrics, their yearly chart entries, the individual artists, and
-the song-artist credits with the role and order.
+the song-artist credits with the role and order.  It also covers
+the settled coding of the songs: the keywords assigned to each
+song with the lyric quotes they are grounded in.
 
 """
 import enum
@@ -45,6 +47,9 @@ class Song(Base):
     song_artists: Mapped[list[SongArtist]] \
         = relationship(back_populates="song")
     """The song-artist credits of the song."""
+    codings: Mapped[list[Coding]] \
+        = relationship(back_populates="song")
+    """The settled codings of the song."""
     __table_args__ = (sa.UniqueConstraint(title, artist_credit),)
     """The table-level constraints."""
 
@@ -112,3 +117,20 @@ class SongArtist(Base):
         sa.CheckConstraint(role.in_([x.value for x in Role]),
                            name="ck_song_artists_role"),)
     """The table-level constraints."""
+
+
+class Coding(Base):
+    """A settled coding keyword of a song, with its lyric quotes."""
+    __tablename__ = "codings"
+    """The table name."""
+
+    song_id: Mapped[int] = mapped_column(sa.ForeignKey(Song.id),
+                                         primary_key=True)
+    """The ID of the coded song."""
+    keyword: Mapped[str] = mapped_column(primary_key=True)
+    """The coding keyword assigned to the song."""
+    quotes: Mapped[str] = mapped_column()
+    """The lyric quotes the keyword is grounded in, joined by a
+    single "|", empty when the keyword carries no evidence."""
+    song: Mapped[Song] = relationship(back_populates="codings")
+    """The coded song."""

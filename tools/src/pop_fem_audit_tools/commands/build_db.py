@@ -7,10 +7,10 @@
 Rebuilds the working store from scratch out of the committed
 inputs: the year-end chart CSV and the output directory for the
 review CSV files, given as the two positional command-line
-arguments, and the optional capture inputs, each given as an
-option: the lyrics cache directory and the Wikidata artist
-snapshot CSV.  An omitted option
-leaves its capture layer unloaded; a given option whose path does
+arguments, and the optional inputs, each given as an
+option: the lyrics cache directory, the Wikidata artist
+snapshot CSV, and the settled coding table CSV.  An omitted option
+leaves its layer unloaded; a given option whose path does
 not exist fails the build.  Missing tables
 are created on a fresh store; existing tables are never altered,
 as the schema lifecycle belongs to the migrations.  Every rebuild
@@ -63,6 +63,7 @@ from ..database import Base, ds
 from ..models import (
     Artist,
     ChartEntry,
+    Coding,
     Role,
     Song,
     SongArtist,
@@ -104,6 +105,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--wikidata-csv", type=Path, default=None,
         help="the Wikidata artist snapshot CSV file to apply")
+    parser.add_argument(
+        "--codings", type=Path, default=None,
+        help="the settled coding table CSV file to import")
     return parser.parse_args(argv)
 
 
@@ -589,6 +593,110 @@ class CaptureImporter:
                         setattr(artist, attribute, row[column])
 
 
+class CodingImporter:
+    """The coding-import job: loads the settled coding table onto
+    the stored songs."""
+
+    COLUMNS: tuple[str, ...] = (
+        "Song", "Artist Credit", "Keyword", "Quote")
+    """The required columns of the coding CSV file."""
+    NEWLINE_ESCAPE: str = "\\n"
+    """The two characters standing for a newline in the quote
+    column, so that the CSV file is one row per line."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def import_codings(self, path: Path | None) -> None:
+        """Load the settled coding table onto the stored songs.
+
+        A None input leaves the coding unloaded.  Otherwise every
+        row of the CSV file yields one coding of the song named by
+        its title and artist credit, with the quote column stored
+        verbatim except that each two-character ``\\n`` escape
+        becomes a newline; an empty quote column stores an empty
+        string.  When the method returns, the imported codings are
+        queryable in the session.
+
+        :param path: The settled coding table CSV file to import,
+            or None to skip the coding.
+        :return: None.
+        :raises BuildError: When the file lacks a required column,
+            a row names a song that the store does not have, or two
+            rows name the same song and keyword.
+        :raises OSError: When the file cannot be read.
+        """
+        if path is None:
+            return
+        songs: dict[tuple[str, str], Song] = {
+            (x.title, x.artist_credit): x
+            for x in self.__session.scalars(sa.select(Song))}
+        seen: set[tuple[int, str]] = set()
+        with open(path, encoding="utf-8", newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(path, reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.__import_coding(path, songs, seen, row)
+        self.__session.flush()
+
+    def __import_coding(self, path: Path,
+                        songs: dict[tuple[str, str], Song],
+                        seen: set[tuple[int, str]],
+                        row: dict[str, str]) -> None:
+        """Store one coding row.
+
+        :param path: The coding CSV file, for the error messages.
+        :param songs: The stored songs, keyed by the title and the
+            artist credit.
+        :param seen: The (song ID, keyword) pairs already stored,
+            updated with the pair of this row.
+        :param row: The coding CSV row.
+        :return: None.
+        :raises BuildError: When the row names a song that the
+            store does not have, or its song and keyword repeat an
+            earlier row.
+        """
+        key: tuple[str, str] = (row["Song"], row["Artist Credit"])
+        song: Song | None = songs.get(key)
+        if song is None:
+            raise BuildError(
+                f"{path}: no song \"{row['Song']}\" by"
+                f" \"{row['Artist Credit']}\"")
+        coding_key: tuple[int, str] = (song.id, row["Keyword"])
+        if coding_key in seen:
+            raise BuildError(
+                f"{path}: duplicated coding: \"{row['Song']}\" by"
+                f" \"{row['Artist Credit']}\", keyword"
+                f" \"{row['Keyword']}\"")
+        seen.add(coding_key)
+        self.__session.add(Coding(
+            song=song, keyword=row["Keyword"],
+            quotes=row["Quote"].replace(self.NEWLINE_ESCAPE, "\n")))
+
+    @classmethod
+    def __check_columns(cls, path: Path,
+                        fieldnames: Sequence[str] | None) -> None:
+        """Verify the coding CSV file has the required columns.
+
+        :param path: The coding CSV file.
+        :param fieldnames: The header row of the file, or None when
+            the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in cls.COLUMNS if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{path}: missing column(s): {', '.join(missing)}")
+
+
 @dataclass
 class StoreCounts:
     """The row counts of the working store, for the build summary."""
@@ -603,6 +711,8 @@ class StoreCounts:
     """The number of the song-artist credits."""
     songs_with_lyrics: int
     """The number of the songs with lyrics."""
+    codings: int
+    """The number of the settled codings."""
 
     @classmethod
     def get_instance(cls, session: Session) -> Self:
@@ -630,7 +740,9 @@ class StoreCounts:
                 .select_from(SongArtist)),
             songs_with_lyrics=count(
                 sa.select(sa.func.count()).select_from(Song)
-                .where(Song.lyrics.is_not(None))))
+                .where(Song.lyrics.is_not(None))),
+            codings=count(
+                sa.select(sa.func.count()).select_from(Coding)))
 
 
 def reset_store(session: Session) -> None:
@@ -640,7 +752,7 @@ def reset_store(session: Session) -> None:
     :return: None.
     """
     model: type[Base]
-    for model in (SongArtist, ChartEntry, Song, Artist):
+    for model in (Coding, SongArtist, ChartEntry, Song, Artist):
         session.execute(sa.delete(model))
 
 
@@ -811,6 +923,7 @@ def main(argv: list[str] | None = None) -> int:
         ArtistImporter(session).import_artists()
         CaptureImporter(session).import_captures(
             args.lyrics_dir, args.wikidata_csv)
+        CodingImporter(session).import_codings(args.codings)
         counts = StoreCounts.get_instance(session)
         CSVExporter(session, args.derived_dir).write()
         session.commit()
@@ -824,6 +937,7 @@ def main(argv: list[str] | None = None) -> int:
           f" {counts.chart_entries} chart entries,"
           f" {counts.artists} artists,"
           f" {counts.credits} credits,"
-          f" {counts.songs_with_lyrics} songs with lyrics",
+          f" {counts.songs_with_lyrics} songs with lyrics,"
+          f" {counts.codings} codings",
           file=sys.stderr)
     return 0

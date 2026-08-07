@@ -794,7 +794,6 @@ def main(argv: list[str] | None = None) -> int:
     fetched: int = 0
     not_found: int = 0
     errors: int = 0
-    skipped: int = 0
     session: Session = ds.get_db()
     try:
         args.wikidata_csv.parent.mkdir(
@@ -808,7 +807,6 @@ def main(argv: list[str] | None = None) -> int:
             for artist in session.scalars(
                     sa.select(Artist).order_by(Artist.id)):
                 if artist.name in done:
-                    skipped += 1
                     continue
                 titles: list[str] = read_artist_titles(
                     session, artist.id)

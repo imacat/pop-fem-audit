@@ -647,8 +647,7 @@ class ArtistFetcher:
                 with urllib.request.urlopen(
                         request, timeout=timeout) as response:
                     return response.read()
-            except (urllib.error.HTTPError, TimeoutError,
-                    urllib.error.URLError) as error:
+            except (TimeoutError, urllib.error.URLError) as error:
                 reason = self.__retry_reason(error)
                 if reason is None:
                     raise

@@ -158,6 +158,33 @@ def load_extras_per_id(path: Path) -> dict[str, dict[str, Any]]:
     return data
 
 
+def _build_content(
+        lyrics: str,
+        extras: dict[str, Any] | None,
+        song_extras: dict[str, Any] | None) -> str:
+    """Build the content of one exported record.
+
+    :param lyrics: The lyrics of the song.
+    :param extras: The extra parameters shared by every record,
+        in the order they are to appear, or None for none.
+    :param song_extras: The extra parameters of this record
+        alone, in the order they are to appear, or None for none.
+    :return: The bare lyrics when there are no extras of either
+        kind, or otherwise a JSON object serialized as a string,
+        whose first key is ``"lyrics"`` holding the lyrics,
+        followed by the shared extras' keys and then this
+        record's own keys, each group in its given order.
+    """
+    if extras is None and song_extras is None:
+        return lyrics
+    payload: dict[str, Any] = {"lyrics": lyrics}
+    if extras is not None:
+        payload.update(extras)
+    if song_extras is not None:
+        payload.update(song_extras)
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def build_lines(
         session: Session,
         extras: dict[str, Any] | None = None,
@@ -200,16 +227,10 @@ def build_lines(
         if song.lyrics is None:
             raise ValueError(
                 f"song {song.id} \"{song.title}\": no lyrics")
-        content: str
-        if extras is None and extras_per_id is None:
-            content = song.lyrics
-        else:
-            payload: dict[str, Any] = {"lyrics": song.lyrics}
-            if extras is not None:
-                payload.update(extras)
-            if extras_per_id is not None:
-                payload.update(extras_per_id[song_id])
-            content = json.dumps(payload, ensure_ascii=False)
+        song_extras: dict[str, Any] | None = None \
+            if extras_per_id is None else extras_per_id[song_id]
+        content: str = _build_content(
+            song.lyrics, extras, song_extras)
         record: dict[str, str] = {
             "id": song_id, "content": content}
         lines.append(json.dumps(record, ensure_ascii=False))

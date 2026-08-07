@@ -472,14 +472,29 @@ class ArtistImporter:
             token: str
             for token in ArtistImporter.DELIMITER_PATTERN.split(
                     side):
-                name: str = token.strip()
-                placeholder = ""
-                original: str
-                for placeholder, original in placeholders.items():
-                    name = name.replace(placeholder, original)
+                name: str = ArtistImporter.__restore_protected(
+                    token.strip(), placeholders)
                 if name != "":
                     pairs.append((name, role))
         return pairs
+
+    @staticmethod
+    def __restore_protected(
+            name: str, placeholders: dict[str, str]) -> str:
+        """Restore the protected artist names in a parsed name.
+
+        :param name: A parsed artist name, possibly containing
+            placeholders.
+        :param placeholders: The protected artist names, keyed by
+            the placeholder standing for each of them.
+        :return: The name with every placeholder replaced by the
+            protected artist name it stands for.
+        """
+        placeholder: str
+        original: str
+        for placeholder, original in placeholders.items():
+            name = name.replace(placeholder, original)
+        return name
 
     @staticmethod
     def resolve_artist_identity(name: str) -> tuple[str, str]:

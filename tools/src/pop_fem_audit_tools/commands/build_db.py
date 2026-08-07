@@ -247,7 +247,7 @@ class ArtistImporter:
     """The pattern separating a group prefix from its members in a
     "<group>: <members>" credit."""
     PAREN_MEMBERS_PATTERN: re.Pattern[str] = re.compile(
-        r"^.+ \((?P<members>.+)\)$")
+        r"^[^(]+ \((?P<members>[^()]+)\)$")
     """The pattern separating a group name from its members in a
     "<group> (<members>)" credit spanning the whole credit."""
     DUET_WITH_PATTERN: re.Pattern[str] = re.compile(

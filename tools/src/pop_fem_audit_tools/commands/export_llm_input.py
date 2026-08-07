@@ -71,7 +71,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _no_duplicate_keys(
+def __no_duplicate_keys(
         pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     """Build a dict from JSON object pairs, rejecting duplicates.
 
@@ -90,7 +90,7 @@ def _no_duplicate_keys(
     return result
 
 
-def _load_json_object(path: Path, label: str) -> dict[str, Any]:
+def __load_json_object(path: Path, label: str) -> dict[str, Any]:
     """Load a single JSON object from a file, in file order.
 
     :param path: The JSON file.
@@ -104,7 +104,7 @@ def _load_json_object(path: Path, label: str) -> dict[str, Any]:
         text: str = file.read()
     try:
         data: Any = json.loads(
-            text, object_pairs_hook=_no_duplicate_keys)
+            text, object_pairs_hook=__no_duplicate_keys)
     except json.JSONDecodeError as error:
         raise ValueError(
             f"invalid JSON in {label} file {path}: {error}") \
@@ -124,7 +124,7 @@ def load_extras(path: Path) -> dict[str, Any]:
     :raises ValueError: When the file is not valid JSON, is not
         a JSON object, has duplicate keys, or has a "lyrics" key.
     """
-    data: dict[str, Any] = _load_json_object(path, "extras")
+    data: dict[str, Any] = __load_json_object(path, "extras")
     if "lyrics" in data:
         raise ValueError(
             f"extras file {path} must not have a \"lyrics\" key")
@@ -143,7 +143,7 @@ def load_extras_per_id(path: Path) -> dict[str, dict[str, Any]]:
         a JSON object, has duplicate keys, has a song whose value
         is not a JSON object, or has a song with a "lyrics" key.
     """
-    data: dict[str, Any] = _load_json_object(path, "per-ID extras")
+    data: dict[str, Any] = __load_json_object(path, "per-ID extras")
     song_id: str
     extras: Any
     for song_id, extras in data.items():
@@ -158,7 +158,7 @@ def load_extras_per_id(path: Path) -> dict[str, dict[str, Any]]:
     return data
 
 
-def _build_content(
+def __build_content(
         lyrics: str,
         extras: dict[str, Any] | None,
         song_extras: dict[str, Any] | None) -> str:
@@ -229,7 +229,7 @@ def build_lines(
                 f"song {song.id} \"{song.title}\": no lyrics")
         song_extras: dict[str, Any] | None = None \
             if extras_per_id is None else extras_per_id[song_id]
-        content: str = _build_content(
+        content: str = __build_content(
             song.lyrics, extras, song_extras)
         record: dict[str, str] = {
             "id": song_id, "content": content}

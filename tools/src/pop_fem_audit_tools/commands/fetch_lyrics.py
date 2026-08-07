@@ -57,7 +57,7 @@ SLEEP_SECONDS: float = 1.0
 """The delay between consecutive HTTP requests, in seconds."""
 
 
-def _build_normalization() -> dict[int, str | None]:
+def __build_normalization() -> dict[int, str | None]:
     """Build the lyrics normalization translation table.
 
     :return: The codepoint-to-replacement mapping, a replacement
@@ -79,7 +79,7 @@ def _build_normalization() -> dict[int, str | None]:
     return table
 
 
-NORMALIZATION: dict[int, str | None] = _build_normalization()
+NORMALIZATION: dict[int, str | None] = __build_normalization()
 """The codepoint-to-replacement mapping applied to fetched
 lyrics: cp1252-mojibake restoration for U+0080-U+009F (with the
 five byte values undefined in cp1252 removed), homoglyph

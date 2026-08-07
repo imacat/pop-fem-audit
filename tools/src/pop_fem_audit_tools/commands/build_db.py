@@ -396,14 +396,13 @@ class ArtistImporter:
             ``Role.PRIMARY`` entry, or contains a name blank after
             stripping.
         """
-        role: Role
         if len(parsed) == 0 or not any(
                 role == Role.PRIMARY for _, role in parsed):
             raise BuildError(
                 f"song {song.id} \"{song.artist_credit}\": no"
                 " primary artist parsed")
         name: str
-        for name, role in parsed:
+        for name, _ in parsed:
             if name.strip() == "":
                 raise BuildError(
                     f"song {song.id} \"{song.artist_credit}\":"

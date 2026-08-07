@@ -349,8 +349,10 @@ class TestMainFlow(RunLLMTestCase):
         status: int
         stdout: str
         stderr: str
-        status, stdout, stderr = self.__run_main(
-            self.__argv + ["--dry-run"])
+        with mock.patch(
+                "time.monotonic", side_effect=[1000.0, 1125.0]):
+            status, stdout, stderr = self.__run_main(
+                self.__argv + ["--dry-run"])
         self.assertEqual(status, 0)
         run_dir: Path = self.__archive_dir
         self.assertEqual((run_dir / "prompt.md").read_text(
@@ -366,7 +368,8 @@ class TestMainFlow(RunLLMTestCase):
         self.assertEqual(request["custom_id"], "a")
         self.assertEqual(request["params"]["system"],
                          "The task prompt.\n")
-        self.assertNotRegex(stderr, r"\d{2}:\d{2} elapsed\.")
+        self.assertTrue(stderr.rstrip("\n").endswith(
+            "Done.  2 jobs finished.  02:05 elapsed."))
 
     def test_run_produces_output_file(self) -> None:
         """Test that a run submits one batch and writes output."""
@@ -394,8 +397,7 @@ class TestMainFlow(RunLLMTestCase):
         self.assertEqual(meta["usage"],
                          {"input_tokens": 20, "output_tokens": 10})
         self.assertTrue(stderr.rstrip("\n").endswith(
-            "done: 2 items; archived to"
-            f" {run_dir}  02:05 elapsed."))
+            "Done.  2 jobs finished.  02:05 elapsed."))
 
     def test_existing_archive_rejected_without_replace(self) -> None:
         """Test that an existing archive without --replace fails."""

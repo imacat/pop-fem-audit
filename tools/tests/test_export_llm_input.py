@@ -141,7 +141,7 @@ class TestExportLlmInput(unittest.TestCase):
         self.assertEqual(records, [
             {"id": "song-1", "content": "hello lyrics\n"},
             {"id": "song-2", "content": "umbrella lyrics\n"}])
-        self.assertIn("done: 2 songs exported", stderr)
+        self.assertIn("Done.  2 songs exported.", stderr)
 
     def test_preserves_non_ascii_lyrics(self) -> None:
         """Test that non-ASCII lyrics are written verbatim."""
@@ -291,7 +291,7 @@ class TestExportLlmInput(unittest.TestCase):
             self.__output)
         self.assertEqual(
             [x["id"] for x in records], ["song-1", "song-3"])
-        self.assertIn("done: 2 songs exported", stderr)
+        self.assertIn("Done.  2 songs exported.", stderr)
 
     def test_extras_per_id_unknown_id_fails(self) -> None:
         """Test that a per-ID extras file naming a song the

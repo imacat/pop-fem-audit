@@ -28,6 +28,7 @@ keys, then that song's own keys, each group in its file order.
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from ..database import ds
 from ..models import Song
+from ..utils import format_duration
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -231,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
         ``sys.argv``.
     :return: The exit status: 0 on success, non-zero on failure.
     """
+    started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
     session: Session = ds.get_db()
     lines: list[str]
@@ -252,5 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         line: str
         for line in lines:
             file.write(line + "\n")
-    print(f"done: {len(lines)} songs exported", file=sys.stderr)
+    elapsed: str = format_duration(time.monotonic() - started)
+    print(f"Done.  {len(lines)} songs exported."
+          f"  {elapsed} elapsed.", file=sys.stderr)
     return 0

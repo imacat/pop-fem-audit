@@ -488,8 +488,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(
             build_request(items[0], prompt_text, args.max_tokens),
             ensure_ascii=False, indent=2))
-        print(f"dry run: archive created at {archive_dir}",
-              file=sys.stderr)
+        elapsed: str = format_duration(time.monotonic() - started)
+        print(f"Done.  {len(items)} jobs finished."
+              f"  {elapsed} elapsed.", file=sys.stderr)
         return 0
     client: anthropic.Anthropic = anthropic.Anthropic(
         api_key=get_settings().ANTHROPIC_API_KEY)
@@ -507,7 +508,6 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 1
     elapsed: str = format_duration(time.monotonic() - started)
-    print(f"done: {len(items)} items;"
-          f" archived to {archive_dir}  {elapsed} elapsed.",
-          file=sys.stderr)
+    print(f"Done.  {len(items)} jobs finished."
+          f"  {elapsed} elapsed.", file=sys.stderr)
     return 0

@@ -814,20 +814,7 @@ class CSVExporter:
 
     @classmethod
     def __song_positions(cls, song: Song) -> str:
-        """Format the chart positions of a song for the songs.csv
-        value.
-
-        :param song: The song with its chart entries loaded.
-        :return: The "YEAR#RANK" tokens, ordered by year then rank,
-            joined by "/".
-        """
-        entries: list[ChartEntry] = cls.__sorted_chart_entries(song)
-        return "/".join(f"{x.year}#{x.rank}" for x in entries)
-
-    @classmethod
-    def __formatted_song_positions(cls, song: Song) -> str:
-        """Format the chart positions of a song for the artists.csv
-        value.
+        """Format the chart positions of a song.
 
         :param song: The song with its chart entries loaded.
         :return: The "YEAR#RANK" tokens, ordered by year then rank,
@@ -869,7 +856,7 @@ class CSVExporter:
             (x.song for x in artist.song_artists),
             key=lambda x: x.title.casefold())
         entries: list[str] = [
-            f"{song.title} ({cls.__formatted_song_positions(song)})"
+            f"{song.title} ({cls.__song_positions(song)})"
             for song in songs]
         return "|".join(entries)
 

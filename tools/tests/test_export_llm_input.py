@@ -189,7 +189,9 @@ class TestExportLlmInput(unittest.TestCase):
         created when missing."""
         self.__seed([("Hello", "Adele", "hello lyrics\n")])
         nested: Path = self.__dir / "nested" / "dir" / "out.jsonl"
-        status: int = export_llm_input.main([str(nested)])
+        stderr: io.StringIO = io.StringIO()
+        with redirect_stderr(stderr):
+            status: int = export_llm_input.main([str(nested)])
         self.assertEqual(status, 0)
         self.assertTrue(nested.exists())
         records: list[dict[str, str]] = self.__read_records(

@@ -641,31 +641,43 @@ class ArtistFetcher:
             time.sleep(SLEEP_SECONDS)
         self.__sent += 1
         attempt: int = 1
-        reason: str
-        cause: BaseException
+        reason: str | None
         while True:
             try:
                 with urllib.request.urlopen(
                         request, timeout=timeout) as response:
                     return response.read()
-            except urllib.error.HTTPError as error:
-                if error.code not in RETRY_STATUSES:
+            except (urllib.error.HTTPError, TimeoutError,
+                    urllib.error.URLError) as error:
+                reason = self.__retry_reason(error)
+                if reason is None:
                     raise
-                reason = str(error)
-                cause = error
-            except TimeoutError as error:
-                reason = str(error) or "timed out"
-                cause = error
-            except urllib.error.URLError as error:
-                if not isinstance(error.reason, TimeoutError):
-                    raise
-                reason = str(error.reason) or "timed out"
-                cause = error
-            if attempt >= MAX_ATTEMPTS:
-                raise RetryExhausted(
-                    f"retries exhausted ({reason})") from cause
+                if attempt >= MAX_ATTEMPTS:
+                    raise RetryExhausted(
+                        f"retries exhausted ({reason})") from error
             time.sleep(RETRY_SECONDS * attempt)
             attempt += 1
+
+    @staticmethod
+    def __retry_reason(
+            error: urllib.error.URLError | TimeoutError) \
+            -> str | None:
+        """Tell whether an error is transient, and why.
+
+        :param error: The HTTP or network error raised by the
+            request.
+        :return: The reason to report on the error, or None when
+            the error is not transient and must not be retried.
+        """
+        if isinstance(error, urllib.error.HTTPError):
+            if error.code not in RETRY_STATUSES:
+                return None
+            return str(error)
+        if isinstance(error, TimeoutError):
+            return str(error) or "timed out"
+        if not isinstance(error.reason, TimeoutError):
+            return None
+        return str(error.reason) or "timed out"
 
     @staticmethod
     def __literals(texts: Sequence[str]) -> str:

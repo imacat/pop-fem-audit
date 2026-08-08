@@ -29,6 +29,12 @@ class TestFetchArtists(unittest.TestCase):
         "name", "qid", "gender", "type", "genre",
         "country", "note"]
     """The expected header row of the snapshot CSV file."""
+    GROUP_QID: str = "Q215380"
+    """The item ID of the instance-of target of a group."""
+    MALE_QID: str = "Q6581097"
+    """The item ID of the gender target of a male member."""
+    FEMALE_QID: str = "Q6581072"
+    """The item ID of the gender target of a female member."""
 
     def setUp(self) -> None:
         """Create a temporary capture directory with the store."""
@@ -126,6 +132,69 @@ class TestFetchArtists(unittest.TestCase):
         """
         return {"mainsnak": {"snaktype": "value",
                              "datavalue": {"value": {"id": qid}}}}
+
+    @staticmethod
+    def __part(qid: str, end: str = "",
+               starts: list[str] | None = None) -> dict[str, Any]:
+        """Build a has-part claim statement.
+
+        :param qid: The item ID of the member.
+        :param end: The end time of the membership, as a Wikidata
+            time value, or the empty string for a membership that
+            did not end.
+        :param starts: The start times of the membership, as
+            Wikidata time values, or None for a membership
+            without a start time.
+        :return: The claim statement.
+        """
+        statement: dict[str, Any] \
+            = TestFetchArtists.__claim(qid)
+        qualifiers: dict[str, Any] = {}
+        if starts is not None:
+            qualifiers["P580"] = [
+                TestFetchArtists.__time(x) for x in starts]
+        if end != "":
+            qualifiers["P582"] = [TestFetchArtists.__time(end)]
+        if len(qualifiers) > 0:
+            statement["qualifiers"] = qualifiers
+        return statement
+
+    @staticmethod
+    def __time(time: str) -> dict[str, Any]:
+        """Build a time qualifier snak.
+
+        :param time: The time, as a Wikidata time value.
+        :return: The qualifier snak.
+        """
+        return {"snaktype": "value",
+                "datavalue": {"value": {"time": time,
+                                        "precision": 9}}}
+
+    @staticmethod
+    def __human(gender: str = "") -> dict[str, Any]:
+        """Build the claims of a human group member.
+
+        :param gender: The item ID of the gender target, or the
+            empty string for a member without a gender.
+        :return: The claim statements, keyed by the property.
+        """
+        claims: dict[str, Any] = {
+            "P31": [TestFetchArtists.__claim("Q5")]}
+        if gender != "":
+            claims["P21"] = [TestFetchArtists.__claim(gender)]
+        return claims
+
+    @staticmethod
+    def __member_claims(members: dict[str, dict[str, Any]]) \
+            -> dict[str, Any]:
+        """Build a member claims response payload.
+
+        :param members: The claim statements of each member,
+            keyed by the member item ID.
+        :return: The response payload.
+        """
+        return {"entities": {
+            x: {"claims": y} for x, y in members.items()}}
 
     @staticmethod
     def __labels(labels: dict[str, str]) -> dict[str, Any]:
@@ -283,14 +352,18 @@ class TestFetchArtists(unittest.TestCase):
 
     def test_pinned_qid_skips_search(self) -> None:
         """Test that a pinned name short-circuits the search."""
-        self.__seed(["Pinkfong"])
-        qid: str = fetch_artists.PINNED_QIDS["Pinkfong"]
+        self.__seed(["Brandy Brand"])
+        qid: str = "Q99999999"
         claims: dict[str, Any] = self.__claims(
-            qid, {}, "South Korean children's brand")
+            qid, {}, "a brand the type gate excludes")
         urlopen: mock.Mock
-        with mock.patch(
-                "urllib.request.urlopen",
-                side_effect=[self.__response(claims)]) as urlopen:
+        with mock.patch.object(
+                fetch_artists, "PINNED_QIDS",
+                {"Brandy Brand": qid}), \
+                mock.patch(
+                    "urllib.request.urlopen",
+                    side_effect=[self.__response(claims)]) \
+                as urlopen:
             status: int = self.__run_fetch()[0]
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 1)
@@ -300,8 +373,8 @@ class TestFetchArtists(unittest.TestCase):
         rows: list[list[str]] = self.__read_rows(
             self.__snapshot)
         self.assertEqual(rows[1], [
-            "Pinkfong", qid, "", "", "",
-            "", "South Korean children's brand"])
+            "Brandy Brand", qid, "", "", "",
+            "", "a brand the type gate excludes"])
 
     def test_stage1_performer_intersection(self) -> None:
         """Test the multi-candidate resolution via a performer."""
@@ -382,6 +455,193 @@ class TestFetchArtists(unittest.TestCase):
             self.__snapshot)
         self.assertEqual(rows[1], [
             "Case", "Q2", "", "", "", "", "Rescued by casefold"])
+
+    def __fetch_group(self, parts: list[dict[str, Any]],
+                      members: dict[str, dict[str, Any]],
+                      gender_labels: dict[str, Any] | None) \
+            -> tuple[list[str], mock.Mock]:
+        """Run the fetcher on a store holding one group artist.
+
+        :param parts: The has-part claim statements of the group
+            item.
+        :param members: The claim statements of each member item,
+            keyed by the member item ID, or empty when no member
+            item is expected to be queried.
+        :param gender_labels: The label response payload of the
+            gender items, or None when no label is expected to be
+            queried.
+        :return: A tuple of the snapshot row of the group and the
+            ``urlopen`` mock.
+        """
+        self.__seed(["Boyz"])
+        responses: list[Any] = [
+            self.__response(self.__sparql(
+                [{"item": self.__uri("Q10")}])),
+            self.__response(self.__claims(
+                "Q10",
+                {"P31": [self.__claim(self.GROUP_QID)],
+                 "P527": parts},
+                "American boy band")),
+            self.__response(self.__labels(
+                {self.GROUP_QID: "musical group"}))]
+        if len(members) > 0:
+            responses.append(self.__response(
+                self.__member_claims(members)))
+        if gender_labels is not None:
+            responses.append(self.__response(gender_labels))
+        urlopen: mock.Mock
+        with mock.patch("urllib.request.urlopen",
+                        side_effect=responses) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, len(responses))
+        rows: list[list[str]] = self.__read_rows(self.__snapshot)
+        self.assertEqual(len(rows), 2)
+        return rows[1], urlopen
+
+    def test_group_gender_from_members(self) -> None:
+        """Test a group taking the shared gender of its
+        members."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11"), self.__part("Q12")],
+            {"Q11": self.__human(self.MALE_QID),
+             "Q12": self.__human(self.MALE_QID)},
+            self.__labels({self.MALE_QID: "male"}))[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "male", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 male; Q12 male"])
+
+    def test_group_gender_mixed(self) -> None:
+        """Test a group whose members do not share one gender."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11"), self.__part("Q12")],
+            {"Q11": self.__human(self.MALE_QID),
+             "Q12": self.__human(self.FEMALE_QID)},
+            self.__labels({self.MALE_QID: "male",
+                           self.FEMALE_QID: "female"}))[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "mixed", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 male; Q12 female"])
+
+    def test_group_member_without_gender(self) -> None:
+        """Test that a member without a gender of its own leaves
+        the gender of its group unresolved."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11"), self.__part("Q12")],
+            {"Q11": self.__human(self.MALE_QID),
+             "Q12": self.__human()},
+            None)[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "", "group", "", "",
+            "American boy band"])
+
+    def test_group_non_human_part_ignored(self) -> None:
+        """Test that a part that is not human does not count."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11"), self.__part("Q13")],
+            {"Q11": self.__human(self.MALE_QID),
+             "Q13": {"P31": [self.__claim("Q2088357")]}},
+            self.__labels({self.MALE_QID: "male"}))[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "male", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 male"])
+
+    def test_group_member_left_before_corpus(self) -> None:
+        """Test that a member who left before the corpus window
+        is neither queried nor counted."""
+        row: list[str]
+        urlopen: mock.Mock
+        row, urlopen = self.__fetch_group(
+            [self.__part("Q11", "+2015-06-01T00:00:00Z"),
+             self.__part("Q12")],
+            {"Q12": self.__human(self.MALE_QID)},
+            self.__labels({self.MALE_QID: "male"}))
+        self.assertEqual(row, [
+            "Boyz", "Q10", "male", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q12 male"])
+        url: str = urlopen.call_args_list[3][0][0].full_url
+        self.assertIn("Q12", url)
+        self.assertNotIn("Q11", url)
+
+    def test_group_member_left_within_corpus(self) -> None:
+        """Test that a member who left within the corpus window
+        still counts."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11", "+2016-03-01T00:00:00Z"),
+             self.__part("Q12")],
+            {"Q11": self.__human(self.FEMALE_QID),
+             "Q12": self.__human(self.MALE_QID)},
+            self.__labels({self.MALE_QID: "male",
+                           self.FEMALE_QID: "female"}))[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "mixed", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 female; Q12 male"])
+
+    def test_group_member_rejoined_after_leaving(self) -> None:
+        """Test that a member who left before the corpus window
+        and re-joined after it still counts."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11", "+2013-01-01T00:00:00Z",
+                         ["+2005-01-01T00:00:00Z",
+                          "+2019-01-01T00:00:00Z"]),
+             self.__part("Q12")],
+            {"Q11": self.__human(self.FEMALE_QID),
+             "Q12": self.__human(self.MALE_QID)},
+            self.__labels({self.MALE_QID: "male",
+                           self.FEMALE_QID: "female"}))[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "mixed", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 female; Q12 male"])
+
+    def test_group_member_left_for_good(self) -> None:
+        """Test that a member who left before the corpus window
+        and did not re-join is excluded."""
+        row: list[str]
+        urlopen: mock.Mock
+        row, urlopen = self.__fetch_group(
+            [self.__part("Q11", "+2013-01-01T00:00:00Z",
+                         ["+2005-01-01T00:00:00Z"]),
+             self.__part("Q12")],
+            {"Q12": self.__human(self.MALE_QID)},
+            self.__labels({self.MALE_QID: "male"}))
+        self.assertEqual(row, [
+            "Boyz", "Q10", "male", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q12 male"])
+        url: str = urlopen.call_args_list[3][0][0].full_url
+        self.assertIn("Q12", url)
+        self.assertNotIn("Q11", url)
+
+    def test_group_gender_label_without_english(self) -> None:
+        """Test the gender label of another language being taken
+        when there is no English one."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11")],
+            {"Q11": self.__human(self.MALE_QID)},
+            {"entities": {self.MALE_QID: {
+                "labels": {"ja": {"value": "男性"}}}}})[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", "男性", "group", "", "",
+            "American boy band; gender derived from members:"
+            " Q11 男性"])
+
+    def test_group_gender_label_missing(self) -> None:
+        """Test the bare item ID being taken as the gender label
+        when the item has no label at all."""
+        row: list[str] = self.__fetch_group(
+            [self.__part("Q11")],
+            {"Q11": self.__human(self.MALE_QID)},
+            {"entities": {}})[0]
+        self.assertEqual(row, [
+            "Boyz", "Q10", self.MALE_QID, "group", "", "",
+            "American boy band; gender derived from members:"
+            f" Q11 {self.MALE_QID}"])
 
     def test_unresolved_continues_to_next_artist(self) -> None:
         """Test that an unresolved artist does not stop the run."""
@@ -527,15 +787,75 @@ class TestFetchArtists(unittest.TestCase):
             "Nobody", "", "", "", "", "", "not found"])
         self.__assert_summary(stderr, 0, 1)
 
+    def test_blank_gender_row_refetched(self) -> None:
+        """Test that a row with a blank gender is re-fetched and
+        replaced, not duplicated."""
+        self.__seed(["Adele"])
+        snapshot: Path = self.__snapshot
+        with open(snapshot, "w", encoding="utf-8",
+                  newline="") as file:
+            writer: Any = csv.writer(file)
+            writer.writerow(self.HEADER)
+            writer.writerow([
+                "Adele", "Q1", "", "solo", "", "", "not found"])
+        candidates: dict[str, Any] = self.__sparql(
+            [{"item": self.__uri("Q1")}])
+        claims: dict[str, Any] = self.__claims(
+            "Q1", {"P21": [self.__claim("Q2")],
+                   "P31": [self.__claim("Q5")]},
+            "English singer")
+        labels: dict[str, Any] = self.__labels(
+            {"Q2": "female", "Q5": "human"})
+        urlopen: mock.Mock
+        with mock.patch(
+                "urllib.request.urlopen",
+                side_effect=[self.__response(candidates),
+                             self.__response(claims),
+                             self.__response(labels)]) as urlopen:
+            status: int = self.__run_fetch()[0]
+        self.assertEqual(status, 0)
+        self.assertEqual(urlopen.call_count, 3)
+        rows: list[list[str]] = self.__read_rows(snapshot)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1], [
+            "Adele", "Q1", "female", "solo", "", "",
+            "English singer"])
+
+    def test_stale_row_dropped(self) -> None:
+        """Test that a row matching no artist of the store is
+        dropped and reported."""
+        self.__seed(["Amy"])
+        snapshot: Path = self.__snapshot
+        amy_row: list[str] = [
+            "Amy", "Q1", "female", "solo", "", "", "English singer"]
+        with open(snapshot, "w", encoding="utf-8",
+                  newline="") as file:
+            writer: Any = csv.writer(file)
+            writer.writerow(self.HEADER)
+            writer.writerow(amy_row)
+            writer.writerow([
+                "Pinkfong", "Q2", "male", "solo", "", "", "a brand"])
+        urlopen: mock.Mock
+        with mock.patch("urllib.request.urlopen") as urlopen:
+            status: int
+            stderr: str
+            status, stderr = self.__run_fetch()
+        self.assertEqual(status, 0)
+        urlopen.assert_not_called()
+        rows: list[list[str]] = self.__read_rows(snapshot)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1], amy_row)
+        self.assertIn("Pinkfong", stderr)
+
     def test_topup_inserts_sorted_position(self) -> None:
         """Test that a top-up inserts the new row in its sorted
         position, not appended at the end of the file."""
         self.__seed(["Amy", "Mia", "Zed"])
         snapshot: Path = self.__snapshot
         amy_row: list[str] = [
-            "Amy", "Q1", "", "", "", "", "not found"]
+            "Amy", "Q1", "female", "solo", "", "", "a singer"]
         zed_row: list[str] = [
-            "Zed", "Q2", "", "", "", "", "not found"]
+            "Zed", "Q2", "male", "solo", "", "", "a singer"]
         with open(snapshot, "w", encoding="utf-8",
                   newline="") as file:
             writer: Any = csv.writer(file)

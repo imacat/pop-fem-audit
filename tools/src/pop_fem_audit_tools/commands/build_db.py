@@ -41,9 +41,12 @@ spelling, except for the names listed in
 canonical spelling regardless of which variant is seen first.
 
 Once the artists carry their captured attributes, every song
-takes a performer gender derived from the genders of the artists
-credited on it, primary and featured alike; see
-`PerformerGenderDeriver.performer_gender`.
+takes a performer gender derived from the genders of the
+performing artists credited on it, primary and featured alike.  A
+credited artist without an artist type -- a label, a brand, or a
+producer collective -- is not a performing act: it has no voice,
+so its gender is inapplicable, and it takes no part in the
+derivation.  See `PerformerGenderDeriver.performer_gender`.
 
 On a successful build, two review CSV files, ``songs.csv`` and
 ``artists.csv``, are (re)written under the given output directory,
@@ -617,11 +620,13 @@ class CaptureImporter:
 
 class PerformerGenderDeriver:
     """The performer-gender job: derives the song-level performer
-    gender from the genders of the credited artists."""
+    gender from the genders of the credited artists that are
+    performing acts, a credited artist without an artist type
+    taking no part."""
 
     MIXED: str = "mixed"
-    """The performer gender of a song whose credited artists do not
-    all share one gender."""
+    """The performer gender of a song whose performing credited
+    artists do not all share one gender."""
 
     def __init__(self, session: Session) -> None:
         """Initialize the deriver.
@@ -636,33 +641,36 @@ class PerformerGenderDeriver:
         Reads the songs back from the database, including any songs
         pending in the same session, and sets
         ``Song.performer_gender`` from the genders of the artists
-        credited on the song, primary and featured alike (see
-        `performer_gender`).  When the method returns, the derived
-        performer genders are queryable in the session.
+        credited on the song, primary and featured alike, that have
+        an artist type (see `performer_gender`).  A credited artist
+        without an artist type is not a performing act and takes no
+        part.  When the method returns, the derived performer
+        genders are queryable in the session.
 
         :return: None.
         """
         song: Song
         for song in self.__session.scalars(sa.select(Song)):
             song.performer_gender = self.performer_gender(
-                [x.artist.gender for x in song.song_artists])
+                [x.artist.gender for x in song.song_artists
+                 if x.artist.type])
         self.__session.flush()
 
     @classmethod
     def performer_gender(
             cls, genders: Iterable[str | None]) -> str | None:
-        """Combine the credited artists' genders into one value.
+        """Combine the performing artists' genders into one value.
 
         A gender that is None or empty counts as unknown.  Two or
         more distinct known genders give ``MIXED``, an unknown one
         notwithstanding, as an unknown cannot undo a disagreement.
-        A single known gender shared by every credited artist gives
+        A single known gender shared by every given artist gives
         that gender.  Anything else -- a single known gender
-        alongside an unknown one, or no known gender at all -- gives
-        None.
+        alongside an unknown one, no known gender at all, or no
+        gender given at all -- gives None.
 
-        :param genders: The genders of the artists credited on one
-            song, in any order.
+        :param genders: The genders of the performing artists
+            credited on one song, in any order.
         :return: The performer gender of the song, or None when it
             is undetermined.
         """

@@ -4,29 +4,33 @@
 #   imacat@mail.imacat.idv.tw (imacat), 2026/7/31
 """The fetcher of the artist metadata.
 
-Fetches the metadata of the artists without a snapshot row from
-Wikidata into the capture layer: the Wikidata artist snapshot
-CSV, given as the positional command-line argument.  The working
-store is only read, never written; the ``build-db`` subcommand
-assembles the captured files into the store on the next rebuild.
+Fetches the metadata of the artists that the Wikidata artist
+snapshot CSV, given as the positional command-line argument, does
+not resolve yet -- the artists without a row, and the artists
+whose row has a blank gender -- from Wikidata into the capture
+layer.  The working store is only read, never written; the
+``build-db`` subcommand assembles the captured files into the
+store on the next rebuild.
 
 Every fetched row is meant for later human verification: the
 description of the resolved item is recorded in the note column
 so that a bad match can be spotted.  An unresolved artist or an
 error on one artist is noted on its row and does not fail the
-run.
+run.  A row whose name is no longer an artist of the store is
+dropped from the snapshot and reported on the standard error.
 """
 import argparse
 import csv
 import enum
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Container, Sequence
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any, Literal, TextIO
@@ -83,18 +87,23 @@ NOTE_NOT_FOUND: str = "not found"
 """The note sentinel of an artist without a resolved Wikidata
 item, written to the snapshot and read back for the
 classification."""
-PINNED_QIDS: dict[str, str] = {
-    "Pinkfong": "Q55735607",
-}
+CORPUS_START_YEAR: int = 2016
+"""The first year of the corpus window: a member who left a group
+before it never performed a corpus song."""
+MIXED_GENDER: str = "mixed"
+"""The gender recorded for a group whose members do not share one
+gender."""
+TIME_YEAR_PATTERN: re.Pattern[str] = re.compile(r"^[+-]?\d+")
+"""The leading year of a Wikidata time value."""
+PINNED_QIDS: dict[str, str] = {}
 """The last-resort pinned item IDs, keyed by the artist name.
 
-Each entry is for an artist the algorithm documented on
+An entry is for an artist the algorithm documented on
 ``ArtistFetcher`` is structurally unable to resolve, with its
-justification recorded here:
-
-- "Pinkfong": the only charting act whose item is typed as a
-  brand (P31 = Q431289), which the type gate (human / musical
-  ensemble / original cast) excludes by design.
+justification recorded here.  Currently empty: the only pin ever
+needed, "Pinkfong" (typed as a brand, which the type gate
+excludes by design), became moot when the store's artist entity
+behind that credit was identified as Hope Segoine.
 
 A pinned name skips the candidate retrieval and corroboration
 steps; its item ID is used directly."""
@@ -144,6 +153,53 @@ SNAPSHOT_FIELDS: Sequence[str] = tuple(
 
 
 @dataclass
+class GroupMember:
+    """One has-part member of a Wikidata group item."""
+
+    qid: str
+    """The item ID of the member."""
+    start_years: list[int] = field(default_factory=list)
+    """The years the membership started, from the start-time
+    qualifiers of the statement."""
+    end_years: list[int] = field(default_factory=list)
+    """The years the membership ended, from the end-time
+    qualifiers of the statement."""
+
+    def performed(self) -> bool:
+        """Return whether the member was in the group within the
+        corpus window.
+
+        A membership that ended before the first year of the
+        corpus window is taken up again when a later start time
+        says so: Wikidata models a departure and a re-join as
+        several start times on one membership statement.
+
+        :return: False when the membership ended before the first
+            year of the corpus window and did not start again
+            afterwards, True otherwise.
+        """
+        if len(self.end_years) == 0:
+            return True
+        last_end: int = max(self.end_years)
+        if last_end >= CORPUS_START_YEAR:
+            return True
+        if len(self.start_years) == 0:
+            return False
+        return max(self.start_years) > last_end
+
+
+@dataclass
+class MemberClaims:
+    """The item-ID claim targets of a Wikidata group member item
+    that decide the gender of its group."""
+
+    instance_of_ids: list[str] = field(default_factory=list)
+    """The item IDs of the instance-of targets."""
+    gender_ids: list[str] = field(default_factory=list)
+    """The item IDs of the gender targets."""
+
+
+@dataclass
 class ArtistClaims:
     """The item-ID claim targets and description of a Wikidata
     artist item."""
@@ -158,6 +214,8 @@ class ArtistClaims:
     """The item IDs of the country-of-citizenship targets."""
     origin_country_ids: list[str] = field(default_factory=list)
     """The item IDs of the country-of-origin targets."""
+    members: list[GroupMember] = field(default_factory=list)
+    """The has-part members, in the statement order."""
     description: str = ""
     """The English description of the item, or empty when
     absent."""
@@ -220,6 +278,17 @@ class ArtistFetcher:
 
     As a last resort, a name listed in ``PINNED_QIDS`` uses its
     pinned item ID directly, skipping every step above.
+
+    A resolved item with no gender of its own that is typed as a
+    group takes the gender of its has-part members: the parts
+    that left the group before the first year of the corpus
+    window without re-joining it afterwards and the parts that
+    are not human are dropped, and the genders of the remaining
+    members decide -- one shared gender becomes the group's,
+    differing genders make it ``mixed``, and a member with no
+    gender of its own, or no member left, leaves the group's
+    gender unresolved.  The basis of a derived gender is recorded
+    in the note.
     """
 
     def __init__(self) -> None:
@@ -400,6 +469,10 @@ class ArtistFetcher:
     def __resolve(self, snapshot: ArtistSnapshot) -> None:
         """Resolve the claims of an artist into the snapshot.
 
+        A group with no gender of its own takes the gender
+        derived from its members, with the basis appended to the
+        note.
+
         :param snapshot: The snapshot, with the QID set.
         :return: None.
         :raises OSError: On a non-retryable HTTP or network
@@ -424,6 +497,94 @@ class ArtistFetcher:
             labels[x] for x in claims.genre_ids if x in labels)
         if len(country_ids) > 0:
             snapshot.country = labels.get(country_ids[0], "")
+        if len(claims.gender_ids) == 0 \
+                and snapshot.type == ArtistType.GROUP:
+            self.__derive_gender(snapshot, claims.members)
+
+    def __derive_gender(self, snapshot: ArtistSnapshot,
+                        members: Sequence[GroupMember]) -> None:
+        """Derive the gender of a group from its members.
+
+        Sets the gender to the shared gender label of the
+        members, or to ``mixed`` when the members do not share
+        one gender, and appends the basis -- each member and its
+        gender -- to the note.  The gender and the note are left
+        untouched when a member has no gender of its own, or when
+        no member is left once the members who left the group
+        before the corpus window without re-joining it afterwards
+        and the parts that are not human are dropped.
+
+        :param snapshot: The snapshot of the group.
+        :param members: The has-part members of the group item.
+        :return: None.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        qids: list[str] = [x.qid for x in members if x.performed()]
+        if len(qids) == 0:
+            return
+        claims: dict[str, MemberClaims] \
+            = self.__get_member_claims(qids)
+        genders: list[tuple[str, str]] = []
+        qid: str
+        for qid in qids:
+            member: MemberClaims = claims.get(qid, MemberClaims())
+            if HUMAN_QID not in member.instance_of_ids:
+                continue
+            if len(member.gender_ids) == 0:
+                return
+            genders.append((qid, member.gender_ids[0]))
+        if len(genders) == 0:
+            return
+        labels: dict[str, str] = self.__get_labels(
+            [x[1] for x in genders], any_language=True)
+        unique: set[str] = {x[1] for x in genders}
+        snapshot.gender = labels[genders[0][1]] \
+            if len(unique) == 1 else MIXED_GENDER
+        basis: str = "gender derived from members: " + "; ".join(
+            f"{x} {labels[y]}" for x, y in genders)
+        snapshot.note = f"{snapshot.note}; {basis}" \
+            if snapshot.note != "" else basis
+
+    def __get_member_claims(self, qids: Sequence[str]) \
+            -> dict[str, MemberClaims]:
+        """Fetch the claims of the group member items in one
+        batch.
+
+        :param qids: The item IDs, duplicates allowed.
+        :return: The instance-of and gender targets, keyed by the
+            item ID; the items without claims are left out.
+        :raises OSError: On a non-retryable HTTP or network
+            error.
+        :raises RetryExhausted: When the retries on a
+            transient error are exhausted.
+        :raises ValueError: On a JSON decoding error.
+        """
+        unique: list[str] = list(dict.fromkeys(qids))
+        if len(unique) == 0:
+            return {}
+        data: Any = self.__get_json({
+            "action": "wbgetentities", "ids": "|".join(unique),
+            "props": "claims", "format": "json"})
+        entities: Any = data.get("entities") \
+            if isinstance(data, dict) else None
+        if not isinstance(entities, dict):
+            return {}
+        members: dict[str, MemberClaims] = {}
+        qid: str
+        for qid in unique:
+            entity: Any = entities.get(qid)
+            claims: Any = entity.get("claims") \
+                if isinstance(entity, dict) else None
+            if not isinstance(claims, dict):
+                continue
+            members[qid] = MemberClaims(
+                instance_of_ids=self.__targets(claims.get("P31")),
+                gender_ids=self.__targets(claims.get("P21")))
+        return members
 
     def __get_claims(self, qid: str) -> ArtistClaims:
         """Fetch the claims and the description of a Wikidata
@@ -431,8 +592,8 @@ class ArtistFetcher:
 
         :param qid: The item ID.
         :return: The item-ID targets of the gender, instance-of,
-            genre, and country properties, and the English
-            description.
+            genre, country, and has-part properties, and the
+            English description.
         :raises OSError: On a non-retryable HTTP or network
             error.
         :raises RetryExhausted: When the retries on a
@@ -457,7 +618,69 @@ class ArtistFetcher:
             genre_ids=self.__targets(claims.get("P136")),
             country_ids=self.__targets(claims.get("P27")),
             origin_country_ids=self.__targets(claims.get("P495")),
+            members=self.__members(claims.get("P527")),
             description=self.__description(entity))
+
+    @staticmethod
+    def __members(statements: Any) -> list[GroupMember]:
+        """Extract the members of the has-part statements.
+
+        :param statements: The statements of the has-part
+            property, or None.
+        :return: The members, in the statement order, each with
+            the start and end years of its statement.
+        """
+        if not isinstance(statements, list):
+            return []
+        members: list[GroupMember] = []
+        statement: Any
+        for statement in statements:
+            if not isinstance(statement, dict):
+                continue
+            qids: list[str] = ArtistFetcher.__targets([statement])
+            if len(qids) == 0:
+                continue
+            members.append(GroupMember(
+                qid=qids[0],
+                start_years=ArtistFetcher.__years(
+                    statement, "P580"),
+                end_years=ArtistFetcher.__years(
+                    statement, "P582")))
+        return members
+
+    @staticmethod
+    def __years(statement: dict[str, Any],
+                qualifier: str) -> list[int]:
+        """Extract the years of a time qualifier of a statement.
+
+        :param statement: The statement data.
+        :param qualifier: The property of the time qualifier.
+        :return: The years of the qualifiers, in the qualifier
+            order; the qualifiers of a coarser precision than the
+            year are read as their year all the same.
+        """
+        qualifiers: Any = statement.get("qualifiers")
+        snaks: Any = qualifiers.get(qualifier) \
+            if isinstance(qualifiers, dict) else None
+        if not isinstance(snaks, list):
+            return []
+        years: list[int] = []
+        snak: Any
+        for snak in snaks:
+            if not isinstance(snak, dict):
+                continue
+            datavalue: Any = snak.get("datavalue")
+            if not isinstance(datavalue, dict):
+                continue
+            value: Any = datavalue.get("value")
+            if not isinstance(value, dict) \
+                    or not isinstance(value.get("time"), str):
+                continue
+            match: re.Match[str] | None \
+                = TIME_YEAR_PATTERN.match(value["time"])
+            if match is not None:
+                years.append(int(match.group()))
+        return years
 
     @staticmethod
     def __description(entity: Any) -> str:
@@ -503,13 +726,20 @@ class ArtistFetcher:
                 ids.append(value["id"])
         return ids
 
-    def __get_labels(self, qids: Sequence[str]) \
+    def __get_labels(self, qids: Sequence[str],
+                     any_language: bool = False) \
             -> dict[str, str]:
-        """Resolve item IDs to their English labels in one batch.
+        """Resolve item IDs to their labels in one batch.
 
         :param qids: The item IDs, duplicates allowed.
-        :return: The English labels, keyed by the item ID; the
-            items without an English label are left out.
+        :param any_language: True to accept the label of another
+            language for an item without an English label, and to
+            fall back to the bare item ID for an item without any
+            label, so that every requested item ID is a key of
+            the result.
+        :return: The labels, keyed by the item ID; without
+            ``any_language``, the items without an English label
+            are left out.
         :raises OSError: On a non-retryable HTTP or network
             error.
         :raises RetryExhausted: When the retries on a
@@ -519,26 +749,50 @@ class ArtistFetcher:
         unique: list[str] = list(dict.fromkeys(qids))
         if len(unique) == 0:
             return {}
-        data: Any = self.__get_json({
+        params: dict[str, str] = {
             "action": "wbgetentities", "ids": "|".join(unique),
-            "props": "labels", "languages": "en",
-            "format": "json"})
+            "props": "labels", "format": "json"}
+        if not any_language:
+            params["languages"] = "en"
+        data: Any = self.__get_json(params)
         entities: Any = data.get("entities") \
             if isinstance(data, dict) else None
         if not isinstance(entities, dict):
-            return {}
+            entities = {}
         labels: dict[str, str] = {}
         qid: str
         for qid in unique:
-            entity: Any = entities.get(qid)
-            if not isinstance(entity, dict) \
-                    or not isinstance(entity.get("labels"), dict):
-                continue
-            label: Any = entity["labels"].get("en")
-            if isinstance(label, dict) \
-                    and isinstance(label.get("value"), str):
-                labels[qid] = label["value"]
+            label: str = self.__label(
+                entities.get(qid), any_language)
+            if label == "" and any_language:
+                label = qid
+            if label != "":
+                labels[qid] = label
         return labels
+
+    @staticmethod
+    def __label(entity: Any, any_language: bool) -> str:
+        """Extract the label of a Wikidata entity.
+
+        :param entity: The entity data, or None.
+        :param any_language: True to accept the label of another
+            language when there is no English label.
+        :return: The label, or the empty string when there is
+            none to take.
+        """
+        labels: Any = entity.get("labels") \
+            if isinstance(entity, dict) else None
+        if not isinstance(labels, dict):
+            return ""
+        candidates: list[Any] = [labels.get("en")]
+        if any_language:
+            candidates.extend(labels.values())
+        candidate: Any
+        for candidate in candidates:
+            if isinstance(candidate, dict) \
+                    and isinstance(candidate.get("value"), str):
+                return candidate["value"]
+        return ""
 
     @staticmethod
     def __artist_type(type_ids: Sequence[str],
@@ -769,20 +1023,31 @@ def append_row(file: TextIO, snapshot: ArtistSnapshot) -> None:
     file.flush()
 
 
-def write_snapshot(file: TextIO) -> None:
+def write_snapshot(file: TextIO, names: Container[str]) -> None:
     """Rewrite a snapshot CSV file handle sorted by artist name.
 
-    Reads back the current rows and rewrites the header and the
-    rows ordered by the case-folded artist name, matching the
-    convention of the derived ``artists.csv``.
+    The rows are ordered by the case-folded artist name, matching
+    the convention of the derived ``artists.csv``.  An artist
+    keeps one row only, the last one of the file, so that a
+    re-fetched artist replaces its earlier row.  A row whose name
+    is not an artist of the store is dropped and reported on the
+    standard error.
 
     :param file: The open, seekable snapshot CSV file.
+    :param names: The artist names of the working store.
     :return: None.
     :raises OSError: When the file cannot be read or written.
     """
+    kept: dict[str, dict[str, str]] = {}
+    row: dict[str, str]
+    for row in read_snapshot_rows(file):
+        if row["name"] not in names:
+            print(f"dropped stale row \"{row['name']}\":"
+                  " no such artist in the store", file=sys.stderr)
+            continue
+        kept[row["name"]] = row
     ordered: list[dict[str, str]] = sorted(
-        read_snapshot_rows(file),
-        key=lambda row: row["name"].casefold())
+        kept.values(), key=lambda x: x["name"].casefold())
     file.seek(0)
     file.truncate()
     writer: csv.DictWriter[str] = csv.DictWriter(
@@ -812,11 +1077,14 @@ def main(argv: list[str] | None = None) -> int:
         with open(args.wikidata_csv, "a+", encoding="utf-8",
                   newline="") as csv_file:
             done: set[str] = {x["name"] for x in
-                              read_snapshot_rows(csv_file)}
+                              read_snapshot_rows(csv_file)
+                              if x["gender"] != ""}
             ensure_snapshot_header(csv_file)
+            names: set[str] = set()
             artist: Artist
             for artist in session.scalars(
                     sa.select(Artist).order_by(Artist.id)):
+                names.add(artist.name)
                 if artist.name in done:
                     continue
                 titles: list[str] = read_artist_titles(
@@ -835,7 +1103,7 @@ def main(argv: list[str] | None = None) -> int:
                     fetched += 1
                 print(f"artist \"{artist.name}\": {status}",
                       file=sys.stderr)
-            write_snapshot(csv_file)
+            write_snapshot(csv_file, names)
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

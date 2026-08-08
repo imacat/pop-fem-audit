@@ -583,9 +583,12 @@ class TestBuildDB(unittest.TestCase):
         "name,qid,gender,type,genre,country,note\n"
         "Adele,Q2831,female,solo,pop,GB,\n"
         "Drake,Q33240,male,solo,hip-hop,CA,\n"
-        "Taylor Swift,Q26876,female,solo,pop,US,\n")
-    """The artist snapshot fixture for the performer gender, leaving
-    "Nobody" and "Nobody Else" without a gender."""
+        "Taylor Swift,Q26876,female,solo,pop,US,\n"
+        "Nobody,,,solo,pop,US,\n"
+        "Nobody Else,,,solo,pop,US,\n")
+    """The artist snapshot fixture for the performer gender, giving
+    "Nobody" and "Nobody Else" a performing type without a
+    gender."""
 
     def __performer_genders(self) -> dict[str, str | None]:
         """Read the stored performer genders keyed by the titles.
@@ -631,6 +634,62 @@ class TestBuildDB(unittest.TestCase):
              ("Mixed Song", "mixed"),
              ("No Gender Song", ""),
              ("Unknown Song", "")])
+
+    NON_PERFORMING_CHART_CSV: str = (
+        "year,rank,title,artist\n"
+        "2016,1,Lemonade,"
+        "Internet Money & Gunna Featuring Don Toliver\n"
+        "2016,2,Bruno,\"Adassa, Rhenzy Feliz & Encanto Cast\"\n"
+        "2017,1,Label Song,Internet Money & Encanto Cast\n"
+        "2017,2,filler,Filler Artist\n")
+    """The chart CSV fixture exercising the non-performing credits:
+    a non-performing credit alongside agreeing performers, one
+    alongside disagreeing performers, and a song credited to
+    non-performing artists only."""
+
+    NON_PERFORMING_WIKIDATA_CSV: str = (
+        "name,qid,gender,type,genre,country,note\n"
+        "Gunna,Q55613105,male,solo,hip-hop,US,\n"
+        "Don Toliver,Q56513383,male,solo,hip-hop,US,\n"
+        "Adassa,Q576181,female,solo,pop,US,\n"
+        "Rhenzy Feliz,Q34344805,male,solo,pop,US,\n"
+        "Internet Money,Q99691610,,,hip-hop,US,\n"
+        "Encanto Cast,Q140814124,,,,US,\n")
+    """The artist snapshot fixture for the non-performing credits,
+    leaving "Internet Money" and "Encanto Cast" without a gender and
+    without a type."""
+
+    def __build_non_performing(self) -> dict[str, str | None]:
+        """Build the non-performing credit fixture and read back the
+        performer genders.
+
+        :return: The stored performer genders, keyed by the song
+            titles.
+        """
+        self.__write_chart(self.NON_PERFORMING_CHART_CSV)
+        self.__write_wikidata(self.NON_PERFORMING_WIKIDATA_CSV)
+        self.assertEqual(
+            self.__run_build("--wikidata-csv",
+                             str(self.__wikidata))[0], 0)
+        return self.__performer_genders()
+
+    def test_non_performing_credit_does_not_block(self) -> None:
+        """Test that a credited artist without a type does not block
+        the agreement of the performing artists."""
+        self.assertEqual(
+            self.__build_non_performing()["Lemonade"], "male")
+
+    def test_non_performing_credit_keeps_mixed(self) -> None:
+        """Test that a credited artist without a type leaves a
+        disagreement among the performing artists as "mixed"."""
+        self.assertEqual(
+            self.__build_non_performing()["Bruno"], "mixed")
+
+    def test_all_non_performing_credits_unset(self) -> None:
+        """Test that a song credited to artists without a type only
+        leaves the performer gender unset."""
+        self.assertIsNone(
+            self.__build_non_performing()["Label Song"])
 
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""

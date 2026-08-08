@@ -5,7 +5,7 @@ name,qid,gender,type,genre,country,note
 24kGoldn,Q83751918,male,solo,pop rap,United States,American rapper
 42 Dugg,Q95694810,male,solo,Michigan rap; Midwest hip-hop; trap music; gangsta rap,United States,American rapper
 4batz,Q124313062,male,solo,contemporary R&B,United States,American singer (born 2003)
-5 Seconds of Summer,Q4641147,,group,pop rock; pop-punk,Australia,Australian pop rock band
+5 Seconds of Summer,Q4641147,male,group,pop rock; pop-punk,Australia,Australian pop rock band; gender derived from members: Q21282968 male; Q18812046 male; Q15746737 male; Q22237759 male
 50 Cent,Q6060,male,solo,East Coast hip-hop; gangsta rap; hardcore hip-hop,United States,American rapper (born 1975)
 6ix9ine,Q44479972,male,solo,hip-hop; East Coast hip-hop; gangsta rap; trap metal; hardcore hip-hop; SoundCloud rap; punk rap; drill; trap music; urbano music; reggaeton; Brooklyn drill,United States,American rapper from New York (born 1996)
 6LACK,Q27886640,male,solo,alternative R&B; contemporary R&B; trap music; cloud rap; industrial music; soul; hip-hop soul,United States,American singer-songwriter and rapper (born 1992)
@@ -14,14 +14,14 @@ A$AP Ferg,Q15648254,male,solo,East Coast hip-hop; trap music,United States,Ameri
 A$AP Rocky,Q129910,male,solo,East Coast hip-hop; psychedelic rap; experimental hip-hop; alternative hip-hop; cloud rap; trap music,United States,American rapper (born 1988)
 Adassa,Q576181,female,solo,reggaeton; urban contemporary; pop music,United States,American singer-songwriter
 Adele,Q23215,female,solo,pop music; blue-eyed soul; rhythm and blues; soul; jazz; rock music,United Kingdom,English singer-songwriter (born 1988)
-AJR,Q16154058,,group,indie pop; alternative pop; electropop,United States,American indie pop band
+AJR,Q16154058,male,group,indie pop; alternative pop; electropop,United States,American indie pop band; gender derived from members: Q131385109 male; Q140937060 male; Q140937061 male
 Alessia Cara,Q20090091,female,solo,contemporary R&B; indie pop; pop music; soul; alternative R&B,Italy,"Italian-Canadian singer, songwriter and actress"
 Alex Warren,Q121842162,male,solo,pop music,United States,"American singer, songwriter, YouTuber, and influencer"
 Aminé,Q27830860,male,solo,West Coast hip-hop; alternative hip-hop; trap music; contemporary R&B,United States,"American rapper, singer, and songwriter"
 Anderson .Paak,Q20810369,male,solo,contemporary R&B; hip-hop; soul; funk; pop music,United States,"American singer, rapper, drummer, and record producer (born 1986)"
 Andrew Choi,Q15229870,male,solo,K-pop; pop music; contemporary R&B,South Korea,South Korean singer and songwriter
 Anne-Marie,Q25396976,female,solo,pop music; contemporary R&B,United Kingdom,British singer (born 1990)
-Aqua,Q213388,,group,pop music; bubblegum music; Eurodance,Denmark,Danish-Norwegian music group
+Aqua,Q213388,mixed,group,pop music; bubblegum music; Eurodance,Denmark,Danish-Norwegian music group; gender derived from members: Q287329 female; Q1369910 male; Q1319904 male; Q517584 male
 Ariana Grande,Q151892,female,solo,pop music; contemporary R&B; electronic dance music,United States,"American singer, songwriter, and actress (born 1993)"
 Arizona Zervas,Q75124792,male,solo,hip-hop; contemporary R&B; pop music,United States,American singer and rapper (born 1995)
 Artemas,Q125176874,male,solo,alternative pop,United Kingdom,British singer-songwriter and record producer
@@ -33,7 +33,7 @@ Ayo,Q55860029,male,solo,hip-hop,United States,American singer and dancer
 AzChike,Q131417489,male,solo,hip-hop,United States,American rapper
 Bad Bunny,Q44333953,male,solo,Latin trap; reggaeton,Puerto Rico,"Puerto Rican rapper, singer, and record producer (born 1994)"
 Bailey Zimmerman,Q112581616,male,solo,country music,United States,American singer
-Bastille,Q689,,group,synth-pop,United Kingdom,English indie pop band
+Bastille,Q689,male,group,synth-pop,United Kingdom,English indie pop band; gender derived from members: Q65505453 male; Q15906708 male; Q65505451 male; Q17385911 male
 Bazzi,Q48720231,male,solo,pop music,United States,American-born Lebanese singer-songwriter (born 1997)
 beabadoobee,Q66817366,female,solo,indie rock; space rock; alternative rock; slacker rock; indie pop; folk-pop; bedroom pop,Philippines,Filipino singer
 Bebe Rexha,Q16185856,female,solo,pop music; contemporary R&B,United States,American singer
@@ -48,14 +48,14 @@ Billie Eilish,Q29564107,female,solo,electropop; indie pop; alternative pop,Unite
 Billy Ray Cyrus,Q231259,male,solo,country music; country pop; country rock; country blues,United States,American country singer and actor
 Bipolar Sunshine,Q16727521,male,solo,pop music,United Kingdom,British musician
 Bizarrap,Q99937928,male,solo,Latin trap; reggaeton,Argentina,Argentine DJ and producer (born 1998)
-Black Eyed Peas,Q134541,,group,alternative hip-hop; pop rap; hip-hop; pop music; Latin hip-hop,United States,American hip hop group from California
+Black Eyed Peas,Q134541,mixed,group,alternative hip-hop; pop rap; hip-hop; pop music; Latin hip-hop,United States,American hip hop group from California; gender derived from members: Q180004 female; Q185610 male; Q293590 male; Q145480 male; Q96278502 female
 blackbear,Q22974007,male,solo,pop music; emo; contemporary R&B; hip-hop,United States,"American singer, songwriter, and record producer (born 1990)"
 Blake Shelton,Q94831,male,solo,country music,United States,American country music singer and television personality
 Blanco Brown,Q64736729,male,solo,country rap; trap music; hip-hop,United States,American rapper and singer
 BlocBoy JB,Q49481016,male,solo,hip-hop; trap music,United States,American rapper from Tennessee
 Blueface,Q60463134,male,solo,hip-hop; trap music; West Coast hip-hop; gangsta rap,United States,American rapper (born 1997)
 Bobby Helms,Q888554,male,solo,country music,United States,American male singer (1933–1997)
-Bomba Estéreo,Q887911,,group,cumbia,Colombia,Colombian band
+Bomba Estéreo,Q887911,mixed,group,cumbia,Colombia,Colombian band; gender derived from members: Q140937062 male; Q29064683 female
 Bradley Cooper,Q205707,male,solo,,United States,American actor (born 1975)
 Brandon Lake,Q100314823,male,solo,contemporary Christian music; Christian rock,United States,American Christian musician
 Brenda Lee,Q230925,female,solo,rock and roll; country music; pop music; rockabilly,United States,American singer and recording artist (born 1944)
@@ -64,7 +64,7 @@ Brett Young,Q25189679,male,solo,country music,United States,American country mus
 BRS Kash,Q105409004,male,solo,hip-hop,United States,American rapper
 Bruno Mars,Q1450,male,solo,pop music; contemporary R&B; hip-hop; new wave; reggae; funk,United States,American singer-songwriter and record producer (born 1985)
 Bryson Tiller,Q21066641,male,solo,contemporary R&B; hip-hop; trap music; soul,United States,American singer and rapper (born 1993)
-BTS,Q13580495,,group,K-pop; dance-pop; Korean hip-hop,South Korea,South Korean musical group; boy band
+BTS,Q13580495,male,group,K-pop; dance-pop; Korean hip-hop,South Korea,South Korean musical group; boy band; gender derived from members: Q18388296 male; Q16236223 male; Q24276424 male; Q22338877 male; Q21075020 male; Q20514446 male; Q20947093 male
 Burl Ives,Q315723,male,solo,folk music,United States,American musician (1909–1995)
 Calboy,Q66085272,male,solo,hip-hop,United States,American rapper (born 1999)
 Calvin Harris,Q81637,male,solo,electronic dance music; electronic pop; acid house,United Kingdom,Scottish electronic music producer and DJ (born 1984)
@@ -79,26 +79,26 @@ Chance the Rapper,Q12470060,male,solo,hip-hop; alternative hip-hop; contemporary
 Chappell Roan,Q110281146,female,solo,synth-pop; pop music; electronic music,United States,American singer (born 1998)
 Charlie Puth,Q19810390,male,solo,pop music; contemporary R&B,United States,"American singer, songwriter, and record producer"
 Chase Rice,Q5087189,male,solo,country music,United States,American singer-songwriter and football player
-Cheat Codes,Q23978754,,group,electronic music; electronic dance music; tropical house; dancehall,United States,electronic music DJ trio
+Cheat Codes,Q23978754,male,group,electronic music; electronic dance music; tropical house; dancehall,United States,electronic music DJ trio; gender derived from members: Q140937063 male; Q140937064 male; Q140937065 male
 Chencho Corleone,Q113625582,male,solo,reggaeton,United States,Puerto Rican singer (born 1979)
 Childish Gambino,Q1239933,male,solo,hip-hop; funk; contemporary R&B; soul; psychedelic music; indie pop; comedy hip-hop,United States,"American actor, comedian, musician, and filmmaker (born 1983)"
 Chris Brown,Q155700,male,solo,contemporary R&B; pop music; hip-hop,United States,American singer and rapper (born 1989)
 Chris Stapleton,Q5108148,male,solo,country music,United States,American country musician
 Chris Young,Q952176,male,solo,country music,United States,American country music artist
-City Girls,Q60658858,,group,hip-hop,United States,American musical duo
+City Girls,Q60658858,female,group,hip-hop,United States,American musical duo; gender derived from members: Q106747932 female; Q97959266 female
 CJ,Q103868817,male,solo,drill; trap music; East Coast hip-hop; hip-hop,United States,American rapper
 CKay,Q98312451,male,solo,Afrobeats,Nigeria,Nigerian singer-songwriter
-Clean Bandit,Q11838808,,group,electropop,United Kingdom,English electronic music group
+Clean Bandit,Q11838808,mixed,group,electropop,United Kingdom,English electronic music group; gender derived from members: Q29033349 female; Q64754197 male
 Cody Johnson,Q17916913,male,solo,country music; country rock,United States,American country singer and songwriter
 Coi Leray,Q106376206,female,solo,hip-hop; pop music,United States,American rapper and singer
-Coldplay,Q45188,,group,alternative rock; pop music,United Kingdom,British rock band
+Coldplay,Q45188,male,group,alternative rock; pop music,United Kingdom,British rock band; gender derived from members: Q712860 male; Q822029 male; Q601617 male; Q822036 male
 Cole Swindell,Q15101510,male,solo,country music,United States,American singer-songwriter
 Corey Kent,Q113452679,male,solo,country music,United States,American singer
 Cris MJ,Q111425015,male,solo,reggaeton,Chile,Chilean singer-songwriter
 D.R.A.M.,Q25138504,male,solo,Southern hip-hop; contemporary R&B; trap music,United States,American rapper and singer (born 1988)
 DaBaby,Q62107457,male,solo,hip-hop; trap music; pop rap; Southern hip-hop,United States,American rapper (born 1991)
 Daddy Yankee,Q272591,male,solo,reggaeton; Latin hip-hop,United States,Puerto Rican rapper and actor (born 1976)
-Daft Punk,Q185828,,group,house music; electronic music; French house; synth-pop; electronic rock; electronica; nu-disco; dance music; leftfield house,France,French electronic music band
+Daft Punk,Q185828,male,group,house music; electronic music; French house; synth-pop; electronic rock; electronica; nu-disco; dance music; leftfield house,France,French electronic music band; gender derived from members: Q471656 male; Q471650 male
 Dan Smyers,Q57630595,male,solo,country music,United States,songwriter and member of the duo Dan + Shay
 Daniel Caesar,Q29589083,male,solo,contemporary R&B; soul; neo soul,Canada,Canadian R&B singer
 Danny Chung,Q140814119,male,solo,hip-hop; K-pop,United States,"Korean-American rapper, singer and songwriter"
@@ -116,7 +116,7 @@ Diplo,Q533781,male,solo,electronic dance music; trap music; hip-hop; pop music; 
 DJ Khaled,Q80805,male,solo,hip-hop; pop rap,United States,American DJ and rapper (born 1975)
 DJ Snake,Q16728588,male,solo,electronic dance music; EDM trap music,France,French record producer (born 1986)
 Djo,Q27064031,male,solo,synth-pop,United States,American actor and musician (born 1992)
-DNCE,Q21648421,,group,pop rock,United States,American pop band
+DNCE,Q21648421,mixed,group,pop rock,United States,American pop band; gender derived from members: Q191088 male; Q6113606 male; Q24287375 female; Q97570445 male
 Doechii,Q106629186,female,solo,hip-hop; contemporary R&B; pop music; alternative hip-hop; pop rap,United States,American rapper and singer
 Doja Cat,Q51120673,female,solo,contemporary R&B; pop music; electronic music; indie pop; hip-hop,United States,American singer and rapper (born 1995)
 Don Toliver,Q56513383,male,solo,hip-hop; trap music; contemporary R&B,United States,American singer and rapper (born 1994)
@@ -138,32 +138,32 @@ Eminem,Q5608,male,solo,hip-hop; horrorcore; hardcore hip-hop; comedy hip-hop; Mi
 Encanto Cast,Q140814124,,,,United States,ensemble cast credited on songs from the 2021 Disney animated film Encanto
 Eric Church,Q975911,male,solo,country music,United States,American country singer
 ERNEST,Q110442717,male,solo,country music,United States,American hip hop and country musician
-Eslabón Armado,Q112702265,,group,regional Mexican,United States,American hispanic radio music group
+Eslabón Armado,Q112702265,male,group,regional Mexican,United States,American hispanic radio music group; gender derived from members: Q140937066 male; Q140937067 male; Q140937068 male; Q122998482 male
 Fat Joe,Q309888,male,solo,East Coast hip-hop; gangsta rap; hardcore hip-hop; boom bap; mafioso rap,United States,American rapper
 Fetty Wap,Q19361511,male,solo,hip-hop; trap music; pop rap,United States,American rapper and singer (born 1991)
-Fifth Harmony,Q3087893,,group,pop music,United States,American girl group
-Fifty Fifty,Q116731010,,group,K-pop; J-pop,South Korea,South Korean girl group
+Fifth Harmony,Q3087893,female,group,pop music,United States,American girl group; gender derived from members: Q18810940 female; Q22965780 female; Q18921974 female; Q28148022 female; Q28065951 female
+Fifty Fifty,Q116731010,female,group,K-pop; J-pop,South Korea,South Korean girl group; gender derived from members: Q117178583 female; Q129547871 female; Q129548065 female; Q129548220 female; Q129548317 female
 Flipp Dinero,Q57584556,male,solo,hip-hop,United States,American rapper
 Flo Milli,Q89352069,female,solo,hip-hop,United States,American rapper
 Flo Rida,Q213538,male,solo,hip-hop; pop music; dance music; electronic dance music; Southern hip-hop; contemporary R&B; house music; electro hop; electro house; electropop; electro; EDM trap music; trap music; bass music; crunk; pop rap; dirty south; dance-pop; hip house; Miami bass; electronic music; techno; trance,United States,American rapper and singer (born 1979)
-Florida Georgia Line,Q3644642,,group,country music,United States,American country music duo
+Florida Georgia Line,Q3644642,male,group,country music,United States,American country music duo; gender derived from members: Q20740966 male; Q20744476 male
 FloyyMenor,Q125819969,male,solo,reggaeton,Chile,Chilean singer-songwriter
 Flume,Q4038837,male,solo,electronica; trip hop; future bass,Australia,Australian music producer
 Frank Ocean,Q357645,male,solo,alternative R&B; psychedelic soul; progressive soul; contemporary R&B; pop music; soul; hip-hop; avant-pop,United States,"American singer, songwriter, and rapper"
 French Montana,Q1455261,male,solo,East Coast hip-hop; gangsta rap; hardcore hip-hop,Morocco,Moroccan and American rapper
-Fuerza Regida,Q118466501,,group,regional Mexican; banda music; corrido; corridos tumbados; sierreña; norteño,United States,regional Mexican group
+Fuerza Regida,Q118466501,male,group,regional Mexican; banda music; corrido; corridos tumbados; sierreña; norteño,United States,regional Mexican group; gender derived from members: Q140937069 male; Q140937070 male; Q140937071 male; Q140937072 male; Q63801293 male
 Future,Q3445057,male,solo,Southern hip-hop; trap music; mumble rap; contemporary R&B,United States,American rapper (born 1983)
 G-Eazy,Q5511893,male,solo,hip-hop,United States,American rapper
 Gabby Barrett,Q53912835,female,solo,country pop,United States,American country singer
 GAYLE,Q109768702,female,solo,pop-punk; pop rock; power pop; emo pop; alternative pop; alternative rock,United States,American singer-songwriter
 Gigi Perez,Q130235359,female,solo,indie folk,United States,American singer-songwriter
 Giveon,Q96418479,male,solo,contemporary R&B,United States,American R&B singer
-Glass Animals,Q16839267,,group,indie rock; psychedelic pop; indietronica; alternative pop; electronic rock; psychedelic rock,United Kingdom,English indie rock band
+Glass Animals,Q16839267,male,group,indie rock; psychedelic pop; indietronica; alternative pop; electronic rock; psychedelic rock,United Kingdom,English indie rock band; gender derived from members: Q140937073 male; Q140937074 male; Q140937075 male; Q105007781 male
 GloRilla,Q114132368,female,solo,hip-hop; trap music; crunk; Memphis rap; Southern hip-hop,United States,American rapper
 gnash,Q23978226,male,solo,pop music; hip-hop; alternative R&B; indie folk,United States,American musician
 Gracie Abrams,Q106301562,female,solo,bedroom pop; pop music,United States,American singer-songwriter (born 1999)
-Grey,Q28451953,,group,electronic music; pop music; future bass,United States,American electronic music group consisting of brothers Kyle and Michael Trewartha
-Grupo Frontera,Q118141487,,group,regional Mexican; norteño; cumbia norteña mexicana,United States,Mexican-American musical band
+Grey,Q28451953,male,group,electronic music; pop music; future bass,United States,American electronic music group consisting of brothers Kyle and Michael Trewartha; gender derived from members: Q132418188 male; Q132419038 male
+Grupo Frontera,Q118141487,male,group,regional Mexican; norteño; cumbia norteña mexicana,United States,Mexican-American musical band; gender derived from members: Q140937076 male; Q140937077 male; Q140937078 male; Q140937079 male; Q140937080 male
 Gucci Mane,Q206032,male,solo,Southern hip-hop; trap music; gangsta rap; hardcore hip-hop; dirty south; Atlanta hip-hop; dirty rap,United States,American rapper and music executive (born 1980)
 Gunna,Q55613105,male,solo,hip-hop; trap music; Southern hip-hop; contemporary R&B,United States,American rapper (born 1993)
 Gus Dapperton,Q51858412,male,solo,pop music,United States,American singer-songwriter
@@ -173,11 +173,12 @@ Hailee Steinfeld,Q231726,female,solo,pop music; dance-pop,United States,American
 Halsey,Q18534249,female,solo,pop music; electropop; synth-pop; art pop; alternative pop; alternative rock; alternative R&B; indie pop; contemporary R&B,United States,American singer-songwriter (born 1994)
 HARDY,Q63341424,male,solo,country music,United States,American country singer
 Harry Styles,Q3626966,male,solo,soft rock; pop music; rock music; Britpop; traditional folk music,United Kingdom,"English singer, songwriter and actor"
+Hope Segoine,Q140937470,female,solo,children's music,United States,"American singer and voice actress, vocalist on the Pinkfong song Baby Shark"
 Hozier,Q16233232,male,solo,blues; blues rock; rhythm and blues; traditional folk music; soul; indie rock,Ireland,Irish musician and singer
 Hudson Westbrook,Q134125831,male,solo,country music,United States,American singer
 iann dior,Q65631841,male,solo,emo rap; pop rap; rap rock; pop rock,United States,American rapper and singer
 Ice Spice,Q114114977,female,solo,Bronx drill; hip-hop; East Coast hip-hop; Jersey club; pop rap,United States,American rapper (born 2000)
-Imagine Dragons,Q391348,,group,pop rock; electropop; alternative rock; new wave,United States,American pop rock band
+Imagine Dragons,Q391348,male,group,pop rock; electropop; alternative rock; new wave,United States,American pop rock band; gender derived from members: Q5214275 male; Q17403213 male; Q18637722 male; Q18719116 male
 Infared,Q140814135,male,solo,hip-hop,,hip-hop songwriter and rapper featured on the 2016 single All the Way Up
 Internet Money,Q99691610,,,hip-hop,United States,American record label and record producer collective
 J Balvin,Q966845,male,solo,reggaeton; Latin pop; Latin trap,Colombia,Colombian singer
@@ -205,7 +206,7 @@ John Legend,Q44857,male,solo,soul; pop music; contemporary R&B,United States,Ame
 Joji,Q23826617,male,solo,contemporary R&B; alternative R&B; trip hop; lo-fi music; surreal humour; satirical music; satire; comedy hip-hop; black comedy; alternative rock; comedy music,Japan,Japanese-Australian entertainer (born 1992)
 Jon Bellion,Q18044284,male,solo,pop music; contemporary R&B; hip-hop; indie rock; pop rap; alternative hip-hop; indie pop; alternative rock; dance-pop; soul,United States,"American singer, rapper, songwriter, and record producer"
 Jon Pardi,Q6271354,male,solo,country music,United States,American country singer
-Jonas Brothers,Q134233,,group,pop music; pop rock,United States,American pop rock band
+Jonas Brothers,Q134233,male,group,pop music; pop rock,United States,American pop rock band; gender derived from members: Q210172 male; Q191088 male; Q201656 male
 Jordan Davis,Q44274417,male,solo,country pop; country music; pop music,United States,American country music singer and songwriter
 JP Saxe,Q86009464,male,solo,pop music,Canada,Canadian singer and musician
 Juice WRLD,Q52151598,male,solo,hip-hop; emo rap; alternative rock; trap music; pop rap; SoundCloud rap; contemporary R&B; alternative hip-hop; mumble rap,United States,American rapper and singer (1998–2019)
@@ -269,18 +270,18 @@ Lizzo,Q16232225,female,solo,hip-hop; soul; contemporary R&B; gospel music,United
 Logic,Q6667429,male,solo,hip-hop; pop rap; conscious hip-hop; East Coast hip-hop,United States,American rapper from Maryland
 Lola Young,Q115869427,female,solo,pop music; soul; contemporary R&B,United Kingdom,British singer-songwriter (born 2001)
 Luis Fonsi,Q1387726,male,solo,pop music; Latin pop; ballad; reggaeton,United States,Puerto Rican singer
-Lukas Graham,Q300935,,group,soul; pop music; pop rock; funk,Denmark,Danish band
+Lukas Graham,Q300935,male,group,soul; pop music; pop rock; funk,Denmark,Danish band; gender derived from members: Q15125833 male; Q16324115 male; Q99730956 male; Q108604119 male
 Luke Bryan,Q166197,male,solo,country music,United States,American country music singer
 Luke Combs,Q23884740,male,solo,country music,United States,American country singer
 Machine Gun Kelly,Q1354843,male,solo,hip-hop; pop rap; rap rock; pop-punk; alternative rock; alternative hip-hop,United States,American musician (born 1990)
 Maddie,Q54607228,female,solo,country music,United States,"Singer, part of Maddie & Tae"
 Mae Muller,Q83696883,female,solo,pop music; rhythm and blues,United Kingdom,British singer
-Major Lazer,Q2604214,,group,dancehall; moombahton; reggae fusion; trap music; electronic dance music; hip-hop; electro house; rocksteady,United States,Jamaican-American electronic music band
+Major Lazer,Q2604214,male,group,dancehall; moombahton; reggae fusion; trap music; electronic dance music; hip-hop; electro house; rocksteady,United States,Jamaican-American electronic music band; gender derived from members: Q533781 male; Q20684243 male; Q25344650 male
 Maren Morris,Q21622122,female,solo,country music; country pop; folk rock; folk music,United States,American country singer
 Mariah Carey,Q41076,female,solo,contemporary R&B; pop music; adult contemporary music; dance-pop; hip-hop,United States,American singer (born 1969)
 Mariah the Scientist,Q84356665,female,solo,alternative R&B,United States,American singer (born 1997)
-Marian Hill,Q20858093,,group,electronic music,United States,American musical duo
-Maroon 5,Q182223,,group,alternative rock; funk rock; pop rock; pop music,United States,American pop rock band
+Marian Hill,Q20858093,mixed,group,electronic music,United States,American musical duo; gender derived from members: Q140937081 female; Q30189878 male
+Maroon 5,Q182223,male,group,alternative rock; funk rock; pop rock; pop music,United States,American pop rock band; gender derived from members: Q219631 male; Q1200118 male; Q445136 male; Q1200152 male; Q5354186 male; Q1527502 male
 Marshmello,Q26334949,male,solo,electronic dance music,United States,American DJ and electronic music producer (born 1992)
 Masked Wolf,Q105490126,male,solo,hip-hop,Australia,Australian rapper
 Mauro Castillo,Q16605580,male,solo,salsa,Colombia,"Colombian singer, composer, and actor"
@@ -290,7 +291,7 @@ Megan Moroney,Q116786312,female,solo,country music; folk music,United States,Ame
 Megan Thee Stallion,Q59268408,female,solo,hip-hop; trap music; dirty rap; pop rap; pop music,United States,"American rapper, singer and songwriter"
 Meghan Trainor,Q17403494,female,solo,pop music; contemporary R&B; dance-pop; soul; doo-wop,United States,American singer-songwriter (born 1993)
 Metro Boomin,Q16235273,male,solo,hip-hop; trap music,United States,American record producer (born 1993)
-Migos,Q15777045,,group,Southern hip-hop; trap music; mumble rap,United States,American hip hop group
+Migos,Q15777045,male,group,Southern hip-hop; trap music; mumble rap,United States,American hip hop group; gender derived from members: Q48719890 male; Q30072039 male; Q30612480 male; Q30072039 male; Q48719890 male; Q30612480 male
 Miguel,Q73463,male,solo,contemporary R&B; alternative R&B; hip-hop; pop music; soul,United States,American R&B singer
 Mike Posner,Q268284,male,solo,pop music,United States,American musician
 Miley Cyrus,Q4235,genderfluid,solo,pop music; country music; pop rock; dance-pop; electropop; rock music; hip-hop; teen pop; country pop,United States,"American singer, actress, and television personality (born 1992)"
@@ -303,14 +304,14 @@ Muni Long,Q7245622,female,solo,contemporary R&B; pop music,United States,America
 Murda Beatz,Q27970613,male,solo,hip-hop,Canada,Canadian record producer (born 1994)
 Mustard,Q15941115,male,solo,hip-hop; ratchet music; West Coast hip-hop; contemporary R&B,United States,American record producer
 Myles Smith,Q126076580,male,solo,folk-pop; folk music; pop music; folk rock,United Kingdom,British singer
-Måneskin,Q56884561,,group,pop rock; glam rock,Italy,Italian rock band
+Måneskin,Q56884561,mixed,group,pop rock; glam rock,Italy,Italian rock band; gender derived from members: Q57415344 male; Q106859392 female; Q106859395 male; Q106859398 male
 MØ,Q10670047,female,solo,indie pop; electronic music,Kingdom of Denmark,Danish singer and songwriter
-N*E*R*D,Q941293,,group,funk rock; bossa nova; orchestral pop; hip-hop; skate punk,United States,American rock and hip-hop band
+N*E*R*D,Q941293,male,group,funk rock; bossa nova; orchestral pop; hip-hop; skate punk,United States,American rock and hip-hop band; gender derived from members: Q14313 male; Q706641 male; Q2584176 male
 Natanael Cano,Q104904549,male,solo,corridos tumbados; regional Mexican,Mexico,Mexican rapper and singer
 Nate Smith,Q110707312,male,solo,country music; country rock,United States,"American country music singer, musician and songwriter"
 NAV,Q28831246,male,solo,hip-hop; cloud rap; trap music; contemporary R&B,Canada,"Canadian rapper, singer, and record producer (born 1989)"
 Neckwav,Q140814188,male,solo,contemporary R&B,South Korea,South Korean R&B singer
-NEIKED,Q26703294,,group,,Sweden,Swedish artist collective
+NEIKED,Q26703294,male,group,,Sweden,Swedish artist collective; gender derived from members: Q140937096 male
 Nelly,Q218992,male,solo,Midwest hip-hop; pop rap; contemporary R&B; pop music; country rap; country music,United States,"American rapper, singer and actor (born 1974)"
 Netón Vega,Q129208676,male,solo,regional Mexican; corridos tumbados,Mexico,Mexican singer-songwriter
 NF,Q19571648,male,solo,hip-hop,United States,American rapper from Michigan
@@ -326,40 +327,39 @@ Noah Kahan,Q53832755,male,solo,folk-pop,United States,American singer-songwriter
 Normani,Q28148022,female,solo,pop music; contemporary R&B,United States,American singer and dancer
 O.T. Genasis,Q18623749,male,solo,hip-hop; trap music,United States,American rapper
 Offset,Q30612480,male,solo,hip-hop; trap music; Southern hip-hop,United States,American rapper
-Old Dominion,Q20685018,,group,country pop,United States,American country pop music group (2007–)
+Old Dominion,Q20685018,male,group,country pop,United States,American country pop music group (2007–); gender derived from members: Q140937082 male; Q140937083 male; Q140937084 male; Q22095817 male; Q22073693 male
 Oliver Anthony Music,Q121391237,male,solo,country music; folk music,United States,American singer-songwriter
 Olivia O'Brien,Q23978275,female,solo,dance-pop; pop music,United States,American singer
 Olivia Rodrigo,Q63243883,female,solo,indie pop; pop music; rock music,United States,American singer and actress (born 2003)
-One Direction,Q146027,,group,dance-pop; teen pop; pop rock,United Kingdom,English-Irish musical group; boy band
-OneRepublic,Q1438730,,group,pop rock; alternative rock; cello rock,United States,American pop rock band
+One Direction,Q146027,male,group,dance-pop; teen pop; pop rock,United Kingdom,English-Irish musical group; boy band; gender derived from members: Q2756349 male; Q3624971 male; Q3626966 male; Q775231 male
+OneRepublic,Q1438730,male,group,pop rock; alternative rock; cello rock,United States,American pop rock band; gender derived from members: Q351061 male; Q4484208 male; Q2617484 male; Q11694992 male; Q5336031 male; Q108109438 male
 Ozuna,Q28739901,male,solo,reggaeton; Latin trap; Latin pop; dancehall,United States,Puerto Rican singer
 P!nk,Q160009,female,solo,pop music; pop rock; contemporary R&B,United States,"American singer, songwriter, and actress (born 1979)"
-Panic! At The Disco,Q277551,,group,pop rock; synth-pop; pop-punk; baroque pop; emo pop; alternative rock,United States,American musical group; rock solo project band
+Panic! At The Disco,Q277551,male,group,pop rock; synth-pop; pop-punk; baroque pop; emo pop; alternative rock,United States,American musical group; rock solo project band; gender derived from members: Q1047474 male
 Parker McCollum,Q20684755,male,solo,Americana; country music,United States,American musician
-Parmalee,Q7139162,,group,country music,United States,American country music band
+Parmalee,Q7139162,male,group,country music,United States,American country music band; gender derived from members: Q140937085 male; Q140937086 male; Q140937087 male; Q140937088 male
 PARTYNEXTDOOR,Q15929398,male,solo,Canadian hip-hop; alternative R&B,Canada,Canadian singer (born 1993)
 Paul Russell,Q122932071,male,solo,hip-hop; contemporary R&B; pop rap,United States,American singer
 Peso Pluma,Q117242724,male,solo,regional Mexican; corridos tumbados; reggaeton; Latin trap; cumbia norteña mexicana,Mexico,Mexican singer (born 1999)
 Pharrell Williams,Q14313,male,solo,contemporary R&B; hip-hop; pop music; funk; rock music; pop rap,United States,American record producer and songwriter
-Pinkfong,Q55735607,,,children's music,South Korea,Korean children's entertainment brand
 PinkPantheress,Q107570416,female,solo,pop music; bedroom pop; dance music; alternative pop; drum and bass; 2-step garage; jungle; hyperpop,United Kingdom,British singer-songwriter
 Playboi Carti,Q27671080,male,solo,Southern hip-hop; trap music; mumble rap; cloud rap; rage; punk rap; alternative hip-hop; plugg music; lo-fi music; SoundCloud rap,United States,American rapper
 PnB Rock,Q28155029,male,solo,hip-hop; contemporary R&B; trap music; pop music; pop rap,United States,American rapper (1991–2022)
 Polo G,Q62953486,male,solo,hip-hop; drill; trap music; conscious hip-hop; Midwest hip-hop; Chicago hip-hop,United States,American rapper
 Pooh Shiesty,Q105105274,male,solo,trap music; Southern hip-hop; drill; hardcore hip-hop; gangsta rap; Memphis rap,United States,American rapper from Tennessee (born. 1999)
 Pop Smoke,Q81698554,male,solo,East Coast hip-hop; Brooklyn drill; trap music; gangsta rap; drill; hip-hop,United States,American rapper (1999–2020)
-Portugal. The Man,Q606879,,group,pop music; indie rock,United States,American rock band
+Portugal. The Man,Q606879,mixed,group,pop music; indie rock,United States,American rock band; gender derived from members: Q3192614 male; Q23901842 male; Q99693053 male; Q99690335 male; Q99731864 female; Q99695322 male
 Post Malone,Q21621919,male,solo,hip-hop; pop music; country music,United States,American musician (born 1995)
 Powfu,Q89069821,male,solo,hip-hop; lo-fi music; power pop; rock music,Canada,Canadian rapper and singer
 Project Pat,Q593741,male,solo,Memphis rap; gangsta rap; hardcore hip-hop; Southern hip-hop; crunk; dirty south; trap music; horrorcore,United States,American rapper
 Quavo,Q30072039,male,solo,hip-hop; trap music,United States,American rapper
-Rae Sremmurd,Q18123226,,group,hip-hop; trap music; pop music; pop rap,United States,American hip hop duo
+Rae Sremmurd,Q18123226,male,group,hip-hop; trap music; pop music; pop rap,United States,American hip hop duo; gender derived from members: Q31401627 male; Q30103025 male
 Rauw Alejandro,Q61586861,male,solo,contemporary R&B; urban contemporary; Latin R&B; reggaeton; Latin trap; Latin pop; salsa,United States,Puerto Rican singer and songwriter
 Ravyn Lenae,Q28962463,female,solo,contemporary R&B; alternative R&B; neo soul,United States,American singer
 RAYE,Q28071144,female,solo,contemporary R&B,United Kingdom,British singer-songwriter
 REI AMI,Q104842557,female,solo,K-pop; pop music; hip-hop; contemporary R&B,South Korea,South Korean singer and rapper
 Rema,Q65071082,male,solo,Afrobeats,Nigeria,Nigerian singer-songwriter and rapper (2000–)
-Remy Boyz,Q63405888,,group,hip-hop,United States,musical group
+Remy Boyz,Q63405888,male,group,hip-hop,United States,musical group; gender derived from members: Q63405905 male; Q19361511 male
 Remy Ma,Q275437,female,solo,East Coast hip-hop,United States,American rapper
 Rhenzy Feliz,Q34344805,male,solo,,United States,American actor
 Rich The Kid,Q18637908,male,solo,hip-hop; trap music; mumble rap; plugg music; Southern hip-hop,United States,American rapper
@@ -387,7 +387,7 @@ Sean Paul,Q200577,male,solo,dancehall; pop music,Jamaica,Jamaican dancehall sing
 Selena Gomez,Q83287,female,solo,pop music; dance-pop; electropop; pop rock; contemporary R&B; alternative R&B,United States,American singer and actress (born 1992)
 Sexyy Red,Q119842023,female,solo,hip-hop; trap music; dirty rap; Midwest hip-hop,United States,American rapper (born 1998)
 Shaboozey,Q125295750,male,solo,alternative country; country music; hip-hop; Americana,United States,American singer (born 1995)
-SHAED,Q60643444,,group,electropop; indie pop,United States,American musical group
+SHAED,Q60643444,mixed,group,electropop; indie pop,United States,American musical group; gender derived from members: Q140937089 female; Q140937090 male; Q140937091 male
 Shakira,Q34424,female,solo,pop music; Latin pop; pop rock; Latin rock; dance music; folk music; world music; contemporary R&B; rock music,Spain,"Colombian singer, songwriter, and actress"
 Shawn Mendes,Q17198340,male,solo,folk-pop; pop music; pop rock,Canada,Canadian singer
 Shay Mooney,Q116536996,male,solo,country music,United States,"American musician and songwriter, part of Dan + Shay"
@@ -396,7 +396,7 @@ Sia,Q181484,female,solo,electropop; indie pop,Australia,Australian singer and so
 Silentó,Q20354248,male,solo,hip-hop; pop rap; trap music; comedy hip-hop; snap music; pop music,United States,American rapper and singer (born 1998)
 Skip Marley,Q21621948,male,solo,reggae; pop music; hip-hop; rock music,Jamaica,Jamaican singer and songwriter
 Snow,Q94708,male,solo,dancehall; reggae; hip-hop; reggae fusion,Canada,Canadian dancehall rapper (born 1969)
-Social House,Q65117469,,group,pop music,United States,American pop duo
+Social House,Q65117469,male,group,pop music,United States,American pop duo; gender derived from members: Q140937092 male; Q59851247 male
 sombr,Q133444448,male,solo,alternative pop; bedroom pop,United States,American singer-songwriter
 SpotemGottem,Q105105325,male,solo,mumble rap; trap music; drill; Southern hip-hop,United States,American rapper
 StaySolidRocky,Q95918251,male,solo,hip-hop,United States,American rapper
@@ -405,7 +405,7 @@ Stephen Sanchez,Q113023532,male,solo,pop music,United States,American singer-son
 Steve Lacy,Q56733980,male,solo,alternative R&B,United States,"American singer, songwriter, guitarist, and record producer (born 1998)"
 Summer Walker,Q61959478,female,solo,contemporary R&B,United States,American R&B singer
 Surf Mesa,Q93771412,male,solo,tropical house,United States,American record producer and multi-instrumentalist
-Surfaces,Q76330429,,group,pop music,United States,American musical duo
+Surfaces,Q76330429,male,group,pop music,United States,American musical duo; gender derived from members: Q140937093 male; Q130538756 male
 Swae Lee,Q30103025,male,solo,hip-hop; trap music,United States,American rapper and singer-songwriter (born 1993)
 SZA,Q16210722,female,solo,contemporary R&B; alternative R&B; neo soul; pop music; hip-hop,United States,American singer
 Tae,Q54607285,female,solo,country music,United States,"Singer, part of Maddie & Tae"
@@ -414,9 +414,9 @@ Taylor Swift,Q26876,female,solo,pop music; country music,United States,American 
 Teddy Swims,Q105542333,male,solo,country music; pop music; rhythm and blues; soul,United States,American singer-songwriter
 Tems,Q72759173,female,solo,alternative R&B; Afrobeats,Nigeria,Nigerian singer-songwriter (born 1995)
 Teo,Q55860035,male,solo,hip-hop,United States,American singer and dancer
-The Chainsmokers,Q7721993,,group,electronic dance music,United States,American electronic music duo
+The Chainsmokers,Q7721993,male,group,electronic dance music,United States,American electronic music duo; gender derived from members: Q48774228 male; Q48774469 male
 The Kid LAROI,Q82890761,male,solo,Australian hip-hop; contemporary R&B; pop music; emo rap,Australia,Australian rapper and singer (born 2003)
-The Marías,Q85807852,,group,indie pop; psychedelic soul; dream pop; synth-pop,United States,American band
+The Marías,Q85807852,mixed,group,indie pop; psychedelic soul; dream pop; synth-pop,United States,American band; gender derived from members: Q136479092 female; Q140937094 male; Q140937095 male; Q140799579 male
 The Weeknd,Q2121062,male,solo,alternative R&B; pop music; electropop,Canada,Canadian singer and songwriter (born 1990)
 Thomas Rhett,Q7793491,male,solo,country music,United States,American country singer
 Tim McGraw,Q356487,male,solo,country music,United States,American country singer and actor (born 1967)
@@ -428,7 +428,7 @@ Tove Lo,Q15948790,female,solo,pop music; indie pop; synth-pop; electropop,Sweden
 Travis Scott,Q13605596,male,solo,hip-hop; trap music; pop rap; psychedelic rap; rock music; Southern hip-hop; contemporary R&B; psychedelic music; pop rock; alternative rock; alternative hip-hop; alternative R&B; psychedelic rock; psychedelic hip-hop,United States,"American rapper, singer and record producer"
 Trevor Daniel,Q81738417,male,solo,contemporary R&B; pop music,United States,American singer-songwriter
 Tucker Wetmore,Q124754909,male,solo,country music,United States,American country music artist
-twenty one pilots,Q7857806,,group,reggae; alternative rock; electropop; alternative hip-hop; rap rock; indie pop; pop rock,United States,American musical duo
+twenty one pilots,Q7857806,male,group,reggae; alternative rock; electropop; alternative hip-hop; rap rock; indie pop; pop rock,United States,American musical duo; gender derived from members: Q17306112 male; Q17305889 male
 Ty Dolla $ign,Q7859785,male,solo,contemporary R&B; West Coast hip-hop; trap music; hip-hop,United States,American singer and rapper (born 1982)
 Tyga,Q358087,male,solo,West Coast hip-hop; pop rap,United States,American rapper
 Tyla,Q118105408,female,solo,contemporary R&B; pop music; Amapiano; new jack swing,South Africa,South African singer-songwriter
@@ -439,12 +439,12 @@ Usher,Q165911,male,solo,contemporary R&B; pop music; soul; hip-hop; dance music;
 Victoria Monét,Q19864989,female,solo,pop music; contemporary R&B; hip-hop,United States,American singer and songwriter (born 1989)
 Walker Hayes,Q7962267,male,solo,country music,United States,American musician
 Warren Zeiders,Q120986980,male,solo,country music,United States,American country musician
-Wham!,Q744087,,group,pop music; new wave; blue-eyed soul,United Kingdom,British pop band
+Wham!,Q744087,male,group,pop music; new wave; blue-eyed soul,United Kingdom,British pop band; gender derived from members: Q130311 male; Q1195390 male
 WILLOW,Q298209,female,solo,indie pop; alternative R&B; experimental pop; neo soul; hip-hop; electronic dance music; pop music; dream pop; contemporary R&B; rock music; indie rock; progressive rock; pop-punk; alternative rock; alternative pop; jazz,United States,American singer and actress (born 2000)
 Willy William,Q17016749,male,solo,house music; reggaeton; zouk,France,"French DJ, record producer, and singer (born 1981)"
 Wiz Khalifa,Q117139,male,solo,East Coast hip-hop; pop rap,United States,"American rapper, singer and actor (born 1987)"
 Wizkid,Q16233663,male,solo,Afrobeats; dancehall; rhythm and blues,Nigeria,Nigerian singer and songwriter (born 1990)
-X Ambassadors,Q15963313,,group,alternative rock,United States,"American rock band from Ithaca, New York"
+X Ambassadors,Q15963313,male,group,alternative rock,United States,"American rock band from Ithaca, New York; gender derived from members: Q107370454 male; Q107370536 male; Q107370879 male; Q107370898 male"
 Xavi,Q124219723,male,solo,regional Mexican; corridos tumbados,United States,American singer
 XXXTENTACION,Q28561969,male,solo,hip-hop; emo rap; SoundCloud rap; rap rock; lo-fi music; hardcore hip-hop; alternative rock; lofi hip-hop; indie rock; nu metal; cloud rap; trap music; hardcore punk; trap metal; punk rock; rock music; rap metal; alternative R&B; contemporary R&B; punk rap; heavy metal music,United States,American rapper (1998–2018)
 Yeat,Q108761978,male,solo,experimental hip-hop; rage; trap music,United States,"American rapper, singer-songwriter, and record producer (born 2000)"

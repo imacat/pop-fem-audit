@@ -40,6 +40,11 @@ spelling, except for the names listed in
 ``ArtistImporter.CANONICAL_ARTIST_NAMES``, which always store the
 canonical spelling regardless of which variant is seen first.
 
+Once the artists carry their captured attributes, every song
+takes a performer gender derived from the genders of the artists
+credited on it, primary and featured alike; see
+`PerformerGenderDeriver.performer_gender`.
+
 On a successful build, two review CSV files, ``songs.csv`` and
 ``artists.csv``, are (re)written under the given output directory,
 mirroring the stored songs and artists without their IDs; see
@@ -311,6 +316,7 @@ class ArtistImporter:
         "cris mj": "Cris MJ",
         "mariah the scientist": "Mariah the Scientist",
         "surf mesa": "Surf Mesa",
+        "pinkfong": "Hope Segoine",
     }
     """The canonical artist spellings, keyed by the case-folded
     identity."""
@@ -609,6 +615,66 @@ class CaptureImporter:
                         setattr(artist, attribute, row[column])
 
 
+class PerformerGenderDeriver:
+    """The performer-gender job: derives the song-level performer
+    gender from the genders of the credited artists."""
+
+    MIXED: str = "mixed"
+    """The performer gender of a song whose credited artists do not
+    all share one gender."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the deriver.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def derive_performer_genders(self) -> None:
+        """Set the performer gender of every stored song.
+
+        Reads the songs back from the database, including any songs
+        pending in the same session, and sets
+        ``Song.performer_gender`` from the genders of the artists
+        credited on the song, primary and featured alike (see
+        `performer_gender`).  When the method returns, the derived
+        performer genders are queryable in the session.
+
+        :return: None.
+        """
+        song: Song
+        for song in self.__session.scalars(sa.select(Song)):
+            song.performer_gender = self.performer_gender(
+                [x.artist.gender for x in song.song_artists])
+        self.__session.flush()
+
+    @classmethod
+    def performer_gender(
+            cls, genders: Iterable[str | None]) -> str | None:
+        """Combine the credited artists' genders into one value.
+
+        A gender that is None or empty counts as unknown.  Two or
+        more distinct known genders give ``MIXED``, an unknown one
+        notwithstanding, as an unknown cannot undo a disagreement.
+        A single known gender shared by every credited artist gives
+        that gender.  Anything else -- a single known gender
+        alongside an unknown one, or no known gender at all -- gives
+        None.
+
+        :param genders: The genders of the artists credited on one
+            song, in any order.
+        :return: The performer gender of the song, or None when it
+            is undetermined.
+        """
+        values: list[str | None] = list(genders)
+        known: set[str] = {x for x in values if x}
+        if len(known) > 1:
+            return cls.MIXED
+        if len(known) == 1 and all(x for x in values):
+            return known.pop()
+        return None
+
+
 class CodingImporter:
     """The coding-import job: loads the settled coding table onto
     the stored songs."""
@@ -760,7 +826,8 @@ def reset_store(session: Session) -> None:
 class CSVExporter:
     """Writes the review CSV files mirroring the working store."""
 
-    __SONGS_HEADER: tuple[str, ...] = ("Title", "Artists", "Positions")
+    __SONGS_HEADER: tuple[str, ...] = (
+        "Title", "Artists", "Positions", "Performer Gender")
     """The header row of ``songs.csv``, for human readers."""
     __ARTISTS_HEADER: tuple[str, ...] = (
         "Name", "Wikidata QID", "Gender", "Type", "Genre", "Country",
@@ -852,7 +919,8 @@ class CSVExporter:
         for song in songs:
             row: list[str] = [
                 song.title, song.artist_credit,
-                self.__song_positions(song)]
+                self.__song_positions(song),
+                song.performer_gender or ""]
             rows.append(row)
         return rows
 
@@ -912,6 +980,7 @@ def main(argv: list[str] | None = None) -> int:
         ArtistImporter(session).import_artists()
         CaptureImporter(session).import_captures(
             args.lyrics_dir, args.wikidata_csv)
+        PerformerGenderDeriver(session).derive_performer_genders()
         CodingImporter(session).import_codings(args.codings)
         counts = StoreCounts.get_instance(session)
         CSVExporter(session, args.derived_dir).write()

@@ -292,6 +292,14 @@ class TestBuildDB(unittest.TestCase):
         """
         self.__chart.write_text(content, encoding="utf-8")
 
+    def __write_wikidata(self, content: str) -> None:
+        """Write the Wikidata artist snapshot CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__wikidata.write_text(content, encoding="utf-8")
+
     def __write_codings(self, content: str) -> None:
         """Write the coding CSV fixture.
 
@@ -538,6 +546,92 @@ class TestBuildDB(unittest.TestCase):
         assert artist is not None
         self.assertEqual(artist.name, "Surf Mesa")
 
+    def test_canonical_pinkfong_resolves_to_hope_segoine(
+            self) -> None:
+        """Test that a "Pinkfong" credit stores the artist named
+        "Hope Segoine", leaving the printed credit untouched."""
+        self.__write_chart(
+            "year,rank,title,artist\n"
+            "2016,1,Baby Shark,Pinkfong\n"
+            "2016,2,filler,Filler Artist\n"
+            "2017,1,filler2,Filler Artist Two\n"
+            "2017,2,filler3,Filler Artist Three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        session: Session = self.__session()
+        song: Song | None = session.scalar(
+            sa.select(Song).where(Song.title == "Baby Shark"))
+        assert song is not None
+        self.assertEqual(song.artist_credit, "Pinkfong")
+        self.assertEqual(
+            [x.artist.name for x in song.song_artists],
+            ["Hope Segoine"])
+
+    GENDER_CHART_CSV: str = (
+        "year,rank,title,artist\n"
+        "2016,1,Mixed Song,\"Adele, Drake & Nobody\"\n"
+        "2016,2,Female Song,Adele & Taylor Swift\n"
+        "2017,1,Unknown Song,Adele featuring Nobody\n"
+        "2017,2,No Gender Song,Nobody Else\n")
+    """The chart CSV fixture exercising the performer gender: a
+    disagreement with an unknown artist, an all-known agreement, an
+    agreement with an unknown artist, and no known gender."""
+
+    GENDER_WIKIDATA_CSV: str = (
+        "name,qid,gender,type,genre,country,note\n"
+        "Adele,Q2831,female,solo,pop,GB,\n"
+        "Drake,Q33240,male,solo,hip-hop,CA,\n"
+        "Taylor Swift,Q26876,female,solo,pop,US,\n")
+    """The artist snapshot fixture for the performer gender, leaving
+    "Nobody" and "Nobody Else" without a gender."""
+
+    def __performer_genders(self) -> dict[str, str | None]:
+        """Read the stored performer genders keyed by the titles.
+
+        :return: The stored performer genders, keyed by the song
+            titles.
+        """
+        session: Session = self.__session()
+        return {x.title: x.performer_gender
+                for x in session.scalars(sa.select(Song))}
+
+    def test_performer_gender_derived(self) -> None:
+        """Test the performer gender of every song: a disagreement
+        gives "mixed" even with an unknown artist, an all-known
+        agreement gives that gender, and an unknown artist otherwise
+        leaves it unset."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata))
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            self.__performer_genders(),
+            {"Mixed Song": "mixed",
+             "Female Song": "female",
+             "Unknown Song": None,
+             "No Gender Song": None})
+
+    def test_performer_gender_in_songs_csv(self) -> None:
+        """Test that songs.csv mirrors the performer gender, empty
+        when it is unset."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.assertEqual(
+            self.__run_build("--wikidata-csv",
+                             str(self.__wikidata))[0], 0)
+        rows: list[list[str]] = self.__read_csv_rows("songs.csv")
+        self.assertEqual(
+            [(row[0], row[3]) for row in rows],
+            [("Female Song", "female"),
+             ("Mixed Song", "mixed"),
+             ("No Gender Song", ""),
+             ("Unknown Song", "")])
+
     def test_first_run_on_fresh_store(self) -> None:
         """Test that a build on a fresh store creates the tables."""
         self.assertEqual(
@@ -727,7 +821,7 @@ class TestBuildDB(unittest.TestCase):
         self.assertEqual(self.__run_build()[0], 0)
         self.assertEqual(
             self.__read_csv_header("songs.csv"),
-            ["Title", "Artists", "Positions"])
+            ["Title", "Artists", "Positions", "Performer Gender"])
         rows: list[list[str]] = self.__read_csv_rows("songs.csv")
         self.assertEqual(
             [row[:2] for row in rows],

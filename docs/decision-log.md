@@ -576,3 +576,27 @@
   更正而合流），逐字可對回的引述由 43,098 升至 44,122。
   更正表為外部參數而非寫死於程式——研究者的介入因此
   出現在重現命令上，且逐列可審、可 diff。
+
+## 2026-08-08
+
+- **署名 Pinkfong 的演出者實體指認為 Hope Segoine**：
+  Billboard 署名 Pinkfong 為品牌（Wikidata Q55735607，型態
+  brand），非演唱者；其唯一上榜曲 Baby Shark（2019#75）
+  的實際演唱者為 Hope Segoine（KTVB 2019-03-06 報導、
+  Songfacts、經紀簡介，出處詳私人留存的
+  QuickStatements 草稿）。藉既有的
+  署名正規化機制（`ArtistImporter.CANONICAL_ARTIST_NAMES`）
+  指認：歌曲的署名字串維持榜單所印的 "Pinkfong"，解析出
+  的演出者實體為 Hope Segoine。品牌無性別可言，人有；
+  本表記錄的其他項目為拼寫正規化，此筆為實體指認，屬
+  研究者裁定。
+
+- **歌曲層演出者性別的推導規則**：`build-db` 於套用
+  Wikidata 快照後，為每首歌自全體署名者（primary 與
+  featured 一律計入）的性別推導 `performer_gender`：已知
+  性別有兩種以上相異值即 `mixed`——未知者不可能翻案；
+  已知者全部同值且無未知，取該值；其餘（已知同值但有
+  未知，或全未知）留空。值域不折疊：non-binary、
+  genderfluid、trans woman 依快照原值參與比較，與 male／
+  female 相異即計入 `mixed`。此欄同步鏡射於
+  `data/derived/songs.csv` 的 `Performer Gender` 欄。

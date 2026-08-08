@@ -41,6 +41,11 @@ class Song(Base):
     """The combined artist credit string as printed on the chart."""
     lyrics: Mapped[str | None]
     """The lyrics text, when available."""
+    performer_gender: Mapped[str | None]
+    """The gender of the credited performers taken together:
+    "mixed" when they disagree, their common gender when every
+    credited artist's gender is known and they agree, and None
+    otherwise."""
     chart_entries: Mapped[list[ChartEntry]] \
         = relationship(back_populates="song")
     """The chart entries of the song."""

@@ -251,11 +251,10 @@ class TestTallyCodings(unittest.TestCase):
             b"Alpha,A Singer,kw,"
             b"\"she said \"\"no\"\", twice\"\r\n")
 
-    def test_newline_in_quote_written_as_two_characters(
-            self) -> None:
-        r"""Test that a quote spanning two lyric lines is written
-        with the two characters ``\n`` where the newline is,
-        needing no RFC 4180 quoting."""
+    def test_newline_in_quote_written_as_line_break(self) -> None:
+        """Test that a quote spanning two lyric lines is written
+        with the lyric line-break convention " / " where the
+        newline is, needing no RFC 4180 quoting."""
         self.__seed([("Alpha", "A Singer")])
         codings: dict[int, dict[str, list[str]]] = {
             1: {"kw": ["You needed me\nTo feel a little more"]}}
@@ -267,13 +266,12 @@ class TestTallyCodings(unittest.TestCase):
             self.__output_csv.read_bytes(),
             b"Song,Artist Credit,Keyword,Quote\r\n"
             b"Alpha,A Singer,kw,"
-            b"You needed me\\nTo feel a little more\r\n")
+            b"You needed me / To feel a little more\r\n")
 
     def test_multi_line_quotes_keep_one_row_per_line(self) -> None:
-        r"""Test that the file holds exactly one line per row, no
-        field carrying a line break, and that turning the two
-        characters ``\n`` back into a single LF gives the quotes
-        as the runs wrote them."""
+        """Test that the file holds exactly one line per row, no
+        field carrying a line break, every LF inside a quote
+        carried as the line-break convention " / " verbatim."""
         self.__seed([("Alpha", "A Singer")])
         codings: dict[int, dict[str, list[str]]] = {
             1: {"kw1": ["one line"],
@@ -289,8 +287,9 @@ class TestTallyCodings(unittest.TestCase):
         rows: list[list[str]] = self.__read_rows()
         self.assertEqual(len(rows), 4)
         self.assertEqual(
-            [x[3].replace("\\n", "\n") for x in rows[1:]],
-            ["one line", "first line\nsecond line", "a\nb\nc|d\ne"])
+            [x[3] for x in rows[1:]],
+            ["one line", "first line / second line",
+             "a / b / c|d / e"])
 
     def test_empty_quote_lists_yield_an_empty_cell(self) -> None:
         """Test that a settled keyword whose runs all gave an empty
@@ -711,11 +710,11 @@ class TestTallyCodings(unittest.TestCase):
         self.assertEqual(self.__read_rows()[1:], [
             ["Alpha", "A Singer", "kw", ""]])
 
-    def test_correction_with_an_escaped_newline(self) -> None:
-        r"""Test that a correction whose two text fields carry the
-        two characters ``\n`` matches and replaces a quote that
-        genuinely spans two lines, the file itself holding one row
-        per line."""
+    def test_correction_with_a_line_break_quote(self) -> None:
+        """Test that a correction whose two text fields carry the
+        line-break convention " / " matches and replaces a quote
+        that genuinely spans two lines, the file itself holding
+        one row per line."""
         self.__seed([("Alpha", "A Singer")])
         quote: str = "You needed me\nTo feel a little more"
         codings: dict[int, dict[str, list[str]]] \
@@ -725,16 +724,16 @@ class TestTallyCodings(unittest.TestCase):
         path.write_bytes(
             b"Song ID,Run,Type,To Be Replaced,Correct Term\r\n"
             b"song-1,run1,evidence,"
-            b"You needed me\\nTo feel a little more,"
-            b"you needed me\\nTo feel a little more\r\n")
+            b"You needed me / To feel a little more,"
+            b"you needed me / To feel a little more\r\n")
         self.assertEqual(len(path.read_bytes().split(b"\r\n")), 3)
         status: int
         status, _ = self.__run_tally("--corrections", str(path))
         self.assertEqual(status, 0)
         self.assertEqual(self.__read_rows()[1:], [
             ["Alpha", "A Singer", "kw",
-             "You needed me\\nTo feel a little more"
-             "|you needed me\\nTo feel a little more"]])
+             "You needed me / To feel a little more"
+             "|you needed me / To feel a little more"]])
 
     def test_stale_correction_row_rejected(self) -> None:
         """Test that a correction matching nothing fails the run,

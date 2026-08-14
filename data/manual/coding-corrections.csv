@@ -2,7 +2,7 @@ Song ID,Run,Type,To Be Replaced,Correct Term
 song-1,run1,evidence,You still hit my phone up,you still hit my phone up
 song-1,run2,evidence,You still hit my phone up,you still hit my phone up
 song-1,run3,evidence,You still hit my phone up,you still hit my phone up
-song-13,run1,evidence,"You needed me\nTo feel a little more, and give a little less","you needed me\nTo feel a little more, and give a little less"
+song-13,run1,evidence,"You needed me / To feel a little more, and give a little less","you needed me / To feel a little more, and give a little less"
 song-15,run1,evidence,The people still think I'm a star,the people still think I'm a star
 song-15,run2,evidence,The people still think I'm a star,the people still think I'm a star
 song-15,run3,evidence,The people still think I'm a star,the people still think I'm a star
@@ -11,7 +11,7 @@ song-18,run3,evidence,Let's start living dangerously,let's start living dangerou
 song-19,run1,evidence,"It's just me, myself and I","it's just me, myself and I"
 song-19,run2,evidence,"It's just me, myself and I","it's just me, myself and I"
 song-19,run3,evidence,"It's just me, myself and I","it's just me, myself and I"
-song-20,run1,evidence,"""Who would you live for?"" ""Who would you die for?""\nAnd ""would you ever kill?""","""who would you live for?"" ""Who would you die for?""\nAnd ""would you ever kill?"""
+song-20,run1,evidence,"""Who would you live for?"" ""Who would you die for?"" / And ""would you ever kill?""","""who would you live for?"" ""Who would you die for?"" / And ""would you ever kill?"""
 song-21,run3,keyword,warning-and-danger,**REMOVE**
 song-29,run1,evidence,Last night I think I lost my patience,last night I think I lost my patience
 song-29,run2,evidence,Last night I came to a realization,"Last night, I came to a realization"
@@ -39,22 +39,22 @@ song-63,run2,evidence,And then I let him go,and then I let him go
 song-63,run3,evidence,And then I let him go,and then I let him go
 song-64,run1,evidence,And that red dress brings me to my knees,and that red dress brings me to my knees
 song-64,run1,evidence,If I never get to build my mansion in Georgia,if I never get to build my mansion in Georgia
-song-64,run2,evidence,Baby last night was hands down one of the best nights,Baby last night was hands down\nOne of the best nights
-song-64,run2,evidence,Between the bottle of wine and the look in your eyes and the Marvin Gaye,Between the bottle of wine\nAnd the look in your eyes and the Marvin Gaye
+song-64,run2,evidence,Baby last night was hands down one of the best nights,Baby last night was hands down / One of the best nights
+song-64,run2,evidence,Between the bottle of wine and the look in your eyes and the Marvin Gaye,Between the bottle of wine / And the look in your eyes and the Marvin Gaye
 song-64,run2,evidence,But that black dress makes it hard to breathe,but that black dress makes it hard to breathe
-song-64,run3,evidence,Baby last night was hands down one of the best nights,Baby last night was hands down\nOne of the best nights
-song-64,run3,evidence,Between the bottle of wine and the look in your eyes and the Marvin Gaye,Between the bottle of wine\nAnd the look in your eyes and the Marvin Gaye
+song-64,run3,evidence,Baby last night was hands down one of the best nights,Baby last night was hands down / One of the best nights
+song-64,run3,evidence,Between the bottle of wine and the look in your eyes and the Marvin Gaye,Between the bottle of wine / And the look in your eyes and the Marvin Gaye
 song-64,run3,evidence,But that black dress makes it hard to breathe,but that black dress makes it hard to breathe
 song-65,run3,evidence,Jump all them Jordans,jump all them Jordans
-song-79,run1,evidence,I bet these memories follow you around,I bet these memories\nFollow you around
-song-86,run1,evidence,He knows dirty secrets that I keep,He knows\nDirty secrets that I keep
-song-90,run1,evidence,"Any car, any house\nBaby you can get like any ring, anything","any car, any house\nBaby you can get like any ring, anything"
-song-90,run1,evidence,"Baby the cars on decline\nYou roll with me, you miss shine","baby the cars on decline\nYou roll with me, you miss shine"
-song-90,run2,evidence,"Any car, any house\nBaby you can get like any ring, anything","any car, any house\nBaby you can get like any ring, anything"
+song-79,run1,evidence,I bet these memories follow you around,I bet these memories / Follow you around
+song-86,run1,evidence,He knows dirty secrets that I keep,He knows / Dirty secrets that I keep
+song-90,run1,evidence,"Any car, any house / Baby you can get like any ring, anything","any car, any house / Baby you can get like any ring, anything"
+song-90,run1,evidence,"Baby the cars on decline / You roll with me, you miss shine","baby the cars on decline / You roll with me, you miss shine"
+song-90,run2,evidence,"Any car, any house / Baby you can get like any ring, anything","any car, any house / Baby you can get like any ring, anything"
 song-90,run2,evidence,Baby the cars on decline,baby the cars on decline
 song-90,run2,evidence,You don't have to worry 'bout a thing,You don't have to worry ‘bout a thing
 song-90,run3,evidence,"'Cause I may not know you, just let me hold you","‘Cause I may not know you, just let me hold you"
-song-90,run3,evidence,"Any car, any house\nBaby you can get like any ring, anything","any car, any house\nBaby you can get like any ring, anything"
+song-90,run3,evidence,"Any car, any house / Baby you can get like any ring, anything","any car, any house / Baby you can get like any ring, anything"
 song-90,run3,evidence,Baby the cars on decline,baby the cars on decline
 song-90,run3,evidence,"You be my soldier, and you from the 'Nolia","You be my soldier, and you from the ‘Nolia"
 song-92,run1,evidence,All my diamonds shine 'cause they really diamonds,All my diamonds shine ‘cause they really diamonds
@@ -74,8 +74,8 @@ song-98,run3,evidence,"Ten niggas with 'em, ten clappin' on 'em","Ten niggas wit
 song-98,run3,evidence,"Young boy walkin', wishin' for a burner","Young boy walkin’, wishin’ for a burner"
 song-99,run3,evidence,Hard work forever pays now I see you in a better place,hard work forever pays now I see you in a better place
 song-106,run3,evidence,"Sim, armadilha jovem negro com o Ak (rrah)","Sim, dessa forma, armadilha jovem negro com o Ak (rrah)"
-song-110,run1,evidence,You made me feel as though I was enough,You made me feel as though\nI was enough
-song-110,run2,evidence,You made me feel as though I was enough,You made me feel as though\nI was enough
+song-110,run1,evidence,You made me feel as though I was enough,You made me feel as though / I was enough
+song-110,run2,evidence,You made me feel as though I was enough,You made me feel as though / I was enough
 song-112,run1,keyword,alcohol-and-substance-use,alcohol-and-substance-abuse
 song-113,run1,evidence,"Buy my Range, make 'em go insane","Buy my Range, make ‘em go insane"
 song-113,run1,evidence,"Tек and beams, go to those extremes","Tek and beams, go to those extremes"
@@ -85,9 +85,9 @@ song-113,run3,evidence,"Buy my Range, make 'em go insane","Buy my Range, make �
 song-120,run3,keyword,manipulation,**REMOVE**
 song-128,run2,evidence,So she tries to cover up her pain,"So, she tries to cover up her pain"
 song-128,run3,evidence,So she tries to cover up her pain,"So, she tries to cover up her pain"
-song-129,run1,evidence,"It's the lightness in the air\nWhen you're there, chest to chest with a lover","it's the lightness in the air\nWhen you're there, chest to chest with a lover"
-song-129,run2,evidence,"It's the lightness in the air\nWhen you're there, chest to chest with a lover","it's the lightness in the air\nWhen you're there, chest to chest with a lover"
-song-129,run3,evidence,"It's the lightness in the air\nWhen you're there, chest to chest with a lover","it's the lightness in the air\nWhen you're there, chest to chest with a lover"
+song-129,run1,evidence,"It's the lightness in the air / When you're there, chest to chest with a lover","it's the lightness in the air / When you're there, chest to chest with a lover"
+song-129,run2,evidence,"It's the lightness in the air / When you're there, chest to chest with a lover","it's the lightness in the air / When you're there, chest to chest with a lover"
+song-129,run3,evidence,"It's the lightness in the air / When you're there, chest to chest with a lover","it's the lightness in the air / When you're there, chest to chest with a lover"
 song-136,run2,keyword,reputation-and-gossess,reputation-and-gossip
 song-141,run1,keyword,sacrifice,**REMOVE**
 song-141,run2,keyword,sacrifice-and-surrender,**REMOVE**
@@ -104,11 +104,11 @@ song-156,run2,evidence,Sleepin' in a villa,sleepin' in a villa
 song-156,run3,evidence,Pessimists never struck my nerve,pessimists never struck my nerve
 song-156,run3,evidence,Sleepin' in a villa,sleepin' in a villa
 song-159,run1,evidence,Cleansing my soul of addiction for now,Cleansin' my soul of addiction for now
-song-159,run1,evidence,Tension\nBetween us just like picket fences,tension\nBetween us just like picket fences
+song-159,run1,evidence,Tension / Between us just like picket fences,tension / Between us just like picket fences
 song-159,run2,evidence,Cleansing my soul of addiction for now,Cleansin' my soul of addiction for now
-song-159,run2,evidence,Tension\nBetween us just like picket fences,tension\nBetween us just like picket fences
+song-159,run2,evidence,Tension / Between us just like picket fences,tension / Between us just like picket fences
 song-159,run3,evidence,Cleansing my soul of addiction for now,Cleansin' my soul of addiction for now
-song-159,run3,evidence,Tension\nBetween us just like picket fences,tension\nBetween us just like picket fences
+song-159,run3,evidence,Tension / Between us just like picket fences,tension / Between us just like picket fences
 song-161,run1,evidence,"Some things, only God can forgive","some things, only God can forgive"
 song-161,run2,evidence,"Some things, only God can forgive","some things, only God can forgive"
 song-161,run3,evidence,"Some things, only God can forgive","some things, only God can forgive"
@@ -117,8 +117,8 @@ song-162,run2,evidence,Back the fuck up off me,back the fuck up off me
 song-162,run3,evidence,Back the fuck up off me,back the fuck up off me
 song-165,run3,evidence,"What if I hurt you, what if I leave you","what if I hurt you, what if I leave you"
 song-172,run2,evidence,Bitch can't stop me,bitch can't stop me
-song-175,run2,evidence,But how you called the cops on me my nig? You grew up with me,But how you called the cops on me my nig?\nYou grew up with me
-song-175,run3,evidence,But how you called the cops on me my nig? You grew up with me,But how you called the cops on me my nig?\nYou grew up with me
+song-175,run2,evidence,But how you called the cops on me my nig? You grew up with me,But how you called the cops on me my nig? / You grew up with me
+song-175,run3,evidence,But how you called the cops on me my nig? You grew up with me,But how you called the cops on me my nig? / You grew up with me
 song-177,run1,evidence,All she wear is red bottom heels,all she wear is red bottom heels
 song-177,run2,evidence,All she wear is red bottom heels,all she wear is red bottom heels
 song-177,run3,evidence,All she wear is red bottom heels,all she wear is red bottom heels
@@ -130,7 +130,7 @@ song-187,run1,evidence,He said there's a lot of girls I can do with,He said ther
 song-187,run2,evidence,"Half of my heart is in Havana, ooh-na-na (ayy)","Half of my heart is in Havana, ooh-na-na (ayy"
 song-187,run2,evidence,He said there's a lot of girls I can do with,He said there’s a lot of girls I can do with
 song-187,run3,evidence,"Half of my heart is in Havana, ooh-na-na (ayy)","Half of my heart is in Havana, ooh-na-na (ayy"
-song-187,run3,evidence,"Half of my heart is in Havana, ooh-na-na (ayy)\nHe took me back to East Atlanta, oh-na-na-na","Half of my heart is in Havana, ooh-na-na (ayy, ayy)\nHe took me back to East Atlanta, oh-na-na-na"
+song-187,run3,evidence,"Half of my heart is in Havana, ooh-na-na (ayy) / He took me back to East Atlanta, oh-na-na-na","Half of my heart is in Havana, ooh-na-na (ayy, ayy) / He took me back to East Atlanta, oh-na-na-na"
 song-187,run3,evidence,He said there's a lot of girls I can do with,He said there’s a lot of girls I can do with
 song-188,run1,evidence,Aren't we too grown to mess around? Yeah,Are we too grown to mess around? Yeah
 song-188,run2,evidence,Aren't we too grown to mess around? Yeah,Are we too grown to mess around? Yeah
@@ -151,9 +151,9 @@ song-207,run2,evidence,"Just one hit of you, I knew I'll never ever, ever be the
 song-207,run3,evidence,"Just one hit of you, I knew I'll never ever, ever be the same","Just one hit of you, I knew I’ll never ever, ever be the same"
 song-210,run1,evidence,"I just gotta tell you how I feel, look","Just gotta tell you how I feel, look"
 song-210,run3,evidence,"I just gotta tell you how I feel, look","Just gotta tell you how I feel, look"
-song-211,run1,evidence,Pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama),pull up with that Draco (huh?)\nPlay with Drake and I'ma shoot (that's on my mama
+song-211,run1,evidence,Pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama),pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama
 song-211,run3,evidence,"Pull up broad day with a K, now he shiverin' (he shiverin')","pull up broad day with a K, now he shiverin' (he shiverin')"
-song-211,run3,evidence,Pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama),pull up with that Draco (huh?)\nPlay with Drake and I'ma shoot (that's on my mama
+song-211,run3,evidence,Pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama),pull up with that Draco (huh?) / Play with Drake and I'ma shoot (that's on my mama
 song-216,run2,evidence,Fuck what a nigga say,fuck what a nigga say
 song-217,run1,evidence,Let's put my fake face on and pretend now,let's put my fake face on and pretend now
 song-217,run3,evidence,Let's put my fake face on and pretend now,let's put my fake face on and pretend now
@@ -161,7 +161,7 @@ song-218,run1,evidence,Pussy poppin' on the charts,Pussy poppin’ on the charts
 song-218,run2,evidence,Pussy poppin' on the charts,Pussy poppin’ on the charts
 song-218,run3,evidence,Pussy poppin' on the charts,Pussy poppin’ on the charts
 song-219,run1,evidence,Come through rockin' fashions,come through rockin' fashions
-song-219,run2,evidence,"Come through rockin' fashions\nThat got all these bitches like ""Yo, what's that?""","come through rockin' fashions\nThat got all these bitches like ""Yo, what's that?"""
+song-219,run2,evidence,"Come through rockin' fashions / That got all these bitches like ""Yo, what's that?""","come through rockin' fashions / That got all these bitches like ""Yo, what's that?"""
 song-219,run3,evidence,Come through rockin' fashions,come through rockin' fashions
 song-223,run1,evidence,So I'm just a dead man crawling tonight,So I’m just a dead man crawling tonight
 song-223,run1,evidence,"So who you've been calling, baby? Nobody could take my place","So who you’ve been calling, baby? Nobody could take my place"
@@ -173,20 +173,20 @@ song-223,run3,evidence,"So who you've been calling, baby? Nobody could take my p
 song-223,run3,evidence,You used to call me baby now you're calling me by name,you used to call me baby now you're calling me by name
 song-226,run1,evidence,"She left me with a broken heart, yeah","she left me with a broken heart, yeah"
 song-226,run3,evidence,"She left me with a broken heart, yeah","she left me with a broken heart, yeah"
-song-227,run1,evidence,If I gotta be sacrificed for the greater good\nThen that's what it gotta be,if I gotta be sacrificed for the greater good\nThen that's what it gotta be
-song-227,run2,evidence,If I gotta be sacrificed for the greater good\nThen that's what it gotta be,if I gotta be sacrificed for the greater good\nThen that's what it gotta be
+song-227,run1,evidence,If I gotta be sacrificed for the greater good / Then that's what it gotta be,if I gotta be sacrificed for the greater good / Then that's what it gotta be
+song-227,run2,evidence,If I gotta be sacrificed for the greater good / Then that's what it gotta be,if I gotta be sacrificed for the greater good / Then that's what it gotta be
 song-228,run1,evidence,And I gotta convince myself I don't want it even though I do,And I gotta convince myself I don’t want it even though I do
 song-228,run2,evidence,And I gotta convince myself I don't want it even though I do,And I gotta convince myself I don’t want it even though I do
 song-228,run3,evidence,And I gotta convince myself I don't want it even though I do,And I gotta convince myself I don’t want it even though I do
 song-228,run3,evidence,Overthinking every word and I hate it 'cause it's not me,Overthinking every word and I hate it 'cause it’s not me
-song-229,run2,evidence,"Checks over stripes, that's what I like",Checks over stripes (yeah)\nThat's what I like
-song-229,run3,evidence,"Checks over stripes, that's what I like",Checks over stripes (yeah)\nThat's what I like
-song-230,run2,evidence,"Take my shoes and walk a mile, Something that you can't do",Take my shoes and walk a mile\nSomething that you can't do
-song-230,run2,evidence,"Think it came with stripes, But you ain't straight with the gang",Think it came with stripes\nBut you ain't straight with the gang
-song-230,run3,evidence,"I bought a 'Plain Jane' Rollie, These niggas bought they fame",I bought a 'Plain Jane' Rollie\nThese niggas bought they fame
+song-229,run2,evidence,"Checks over stripes, that's what I like",Checks over stripes (yeah) / That's what I like
+song-229,run3,evidence,"Checks over stripes, that's what I like",Checks over stripes (yeah) / That's what I like
+song-230,run2,evidence,"Take my shoes and walk a mile, Something that you can't do",Take my shoes and walk a mile / Something that you can't do
+song-230,run2,evidence,"Think it came with stripes, But you ain't straight with the gang",Think it came with stripes / But you ain't straight with the gang
+song-230,run3,evidence,"I bought a 'Plain Jane' Rollie, These niggas bought they fame",I bought a 'Plain Jane' Rollie / These niggas bought they fame
 song-230,run3,evidence,Quadruple the profit (Profit),quadruple the profit (Profit)
-song-230,run3,evidence,"Take my shoes and walk a mile, Something that you can't do",Take my shoes and walk a mile\nSomething that you can't do
-song-230,run3,evidence,"Think it came with stripes, But you ain't straight with the gang (Gang, gang!)","Think it came with stripes\nBut you ain't straight with the gang (Gang, gang"
+song-230,run3,evidence,"Take my shoes and walk a mile, Something that you can't do",Take my shoes and walk a mile / Something that you can't do
+song-230,run3,evidence,"Think it came with stripes, But you ain't straight with the gang (Gang, gang!)","Think it came with stripes / But you ain't straight with the gang (Gang, gang"
 song-232,run1,evidence,"What the fuck is love with no pain, no suffer","what the fuck is love with no pain, no suffer"
 song-232,run2,evidence,She gon' ride for me until this thing over,she gon' ride for me until this thing over
 song-232,run2,evidence,We'd both go crazy (crazy) if we was to sever,we'd both go crazy (crazy) if we was to sever
@@ -207,15 +207,15 @@ song-242,run3,evidence,"Fuck 12, I'm a G, ain't no stoppin' me (ain't no stoppin
 song-247,run1,evidence,You love it how I move you,you love it how I move you
 song-247,run2,evidence,You love it how I move you,you love it how I move you
 song-247,run3,evidence,You love it how I move you,you love it how I move you
-song-252,run1,evidence,face up 'cause you're a natural,face up 'cause you're a...\n\nNatural
-song-252,run2,evidence,Will somebody let me see the light within the dark trees' shadows,Will somebody\nLet me see the light within the dark trees' shadows
-song-252,run2,evidence,"Will you hold the line when every one of them is giving up or giving in, tell me","Will you hold the line\nWhen every one of them is giving up or giving in, tell me"
-song-252,run2,evidence,You gotta be so cold to make it in this world,You gotta be so cold\nTo make it in this world
-song-252,run2,evidence,face up 'cause you're a natural,face up 'cause you're a...\n\nNatural
-song-252,run3,evidence,"I can taste it, the end is upon us, I swear gonna make it","I can taste it, the end is upon us, I swear\nGonna make it"
-song-252,run3,evidence,Will somebody let me see the light within the dark trees' shadows and,Will somebody\nLet me see the light within the dark trees' shadows and
-song-252,run3,evidence,You gotta be so cold to make it in this world,You gotta be so cold\nTo make it in this world
-song-252,run3,evidence,face up 'cause you're a natural,face up 'cause you're a...\n\nNatural
+song-252,run1,evidence,face up 'cause you're a natural,face up 'cause you're a... /  / Natural
+song-252,run2,evidence,Will somebody let me see the light within the dark trees' shadows,Will somebody / Let me see the light within the dark trees' shadows
+song-252,run2,evidence,"Will you hold the line when every one of them is giving up or giving in, tell me","Will you hold the line / When every one of them is giving up or giving in, tell me"
+song-252,run2,evidence,You gotta be so cold to make it in this world,You gotta be so cold / To make it in this world
+song-252,run2,evidence,face up 'cause you're a natural,face up 'cause you're a... /  / Natural
+song-252,run3,evidence,"I can taste it, the end is upon us, I swear gonna make it","I can taste it, the end is upon us, I swear / Gonna make it"
+song-252,run3,evidence,Will somebody let me see the light within the dark trees' shadows and,Will somebody / Let me see the light within the dark trees' shadows and
+song-252,run3,evidence,You gotta be so cold to make it in this world,You gotta be so cold / To make it in this world
+song-252,run3,evidence,face up 'cause you're a natural,face up 'cause you're a... /  / Natural
 song-258,run1,evidence,Every day she found a way out of the window to sneak out late,every day she found a way out of the window to sneak out late
 song-258,run2,evidence,Every day she found a way out of the window to sneak out late,every day she found a way out of the window to sneak out late
 song-258,run3,evidence,Every day she found a way out of the window to sneak out late,every day she found a way out of the window to sneak out late
@@ -244,8 +244,8 @@ song-282,run3,evidence,"See the igloo in my mouth when I be grinnin' (I be grinn
 song-283,run1,evidence,Breakfast at Tiffany's and bottles of bubbles,breakfast at Tiffany's and bottles of bubbles
 song-283,run2,evidence,Breakfast at Tiffany's and bottles of bubbles,breakfast at Tiffany's and bottles of bubbles
 song-283,run3,evidence,Breakfast at Tiffany's and bottles of bubbles,breakfast at Tiffany's and bottles of bubbles
-song-287,run2,evidence,I've learned from the pain\nTurned out amazing,I've learned from the pain (pain)\nTurned out amazing
-song-287,run3,evidence,Look what I got\nLook what you taught me,look what I got\nLook what you taught me
+song-287,run2,evidence,I've learned from the pain / Turned out amazing,I've learned from the pain (pain) / Turned out amazing
+song-287,run3,evidence,Look what I got / Look what you taught me,look what I got / Look what you taught me
 song-291,run1,evidence,But I'm told its where I'm supposed to be,But I’m told its where I’m supposed to be
 song-291,run1,evidence,Coz I don't care when I'm with my baby yeah,Coz I don’t care when I’m with my baby yeah
 song-291,run1,evidence,Don't think I fit in at this party,Don’t think I fit in at this party
@@ -288,9 +288,9 @@ song-293,run3,evidence,Aren't you tired tryin' to fill that void?,Aren’t you t
 song-293,run3,evidence,"Crash through the surface, where they can't hurt us","Crash through the surface, where they can’t hurt us"
 song-293,run3,evidence,"I'm off the deep end, watch as I dive in","I’m off the deep end, watch as I dive in"
 song-293,run3,evidence,We're far from the shallow now,We’re far from the shallow now
-song-297,run3,evidence,That lil' nigga ain't gon' shoot shit with that gun\nHe just pull it out in his pictures,that lil' nigga ain't gon' shoot shit with that gun\nHe just pull it out in his pictures
-song-303,run1,evidence,There's no way I could save you\n'Cause I need to be saved too,There's no way I could save you (Save you)\n'Cause I need to be saved too
-song-303,run3,evidence,There's no way I could save you\n'Cause I need to be saved too,There's no way I could save you (Save you)\n'Cause I need to be saved too
+song-297,run3,evidence,That lil' nigga ain't gon' shoot shit with that gun / He just pull it out in his pictures,that lil' nigga ain't gon' shoot shit with that gun / He just pull it out in his pictures
+song-303,run1,evidence,There's no way I could save you / 'Cause I need to be saved too,There's no way I could save you (Save you) / 'Cause I need to be saved too
+song-303,run3,evidence,There's no way I could save you / 'Cause I need to be saved too,There's no way I could save you (Save you) / 'Cause I need to be saved too
 song-313,run1,evidence,"But I'm 21 4L, ain't no way I'ma switch","But I'm 21 4L, ain’t no way I'ma switch"
 song-313,run1,evidence,"Every day that I'm alive, I'ma ride with the stick","Every day that I'm alive, I’ma ride with the stick"
 song-313,run1,evidence,It's got to the point that these rappers don't even like rappin' with me,It’s got to the point that these rappers don't even like rappin' with me
@@ -330,33 +330,33 @@ song-335,run2,evidence,"I like your ""poom poom"" girl",I like your “poom poom
 song-335,run3,evidence,Desde que te vi supe que eras pa' mi,Desde que te vi supe que eras pa’ mi
 song-335,run3,evidence,"I like your ""poom poom"" girl",I like your “poom poom” girl
 song-340,run1,evidence,"'Cause you different, you can't play your part (no damn, ay)","'Cause you different, you can’t play your part (no damn, ay)"
-song-340,run1,evidence,How could you\nMoving like you're crazy\nI ain't call you back (damn),How could you\nMoving like you’re crazy\nI ain’t call you back (damn)
-song-340,run1,evidence,How you just gon' play me\nI ain't fine with that,How you just gon’ play me\nI ain’t fine with that
+song-340,run1,evidence,How could you / Moving like you're crazy / I ain't call you back (damn),How could you / Moving like you’re crazy / I ain’t call you back (damn)
+song-340,run1,evidence,How you just gon' play me / I ain't fine with that,How you just gon’ play me / I ain’t fine with that
 song-340,run1,evidence,I can't sweat you I'm like who dat?,I can’t sweat you I’m like who dat?
 song-340,run1,evidence,I wanted you but I can't fuck with you,I wanted you but I can’t fuck with you
-song-340,run1,evidence,Play me you're my lady\nGot no time for that,Play me you’re my lady\nGot no time for that
-song-340,run1,evidence,Tell you the truth\nI ain't want you to depart (ay),Tell you the truth\nI ain’t want you to depart (ay)
-song-340,run1,evidence,Thinking 'bout you daily\nSmoking crazy while I'm off the tac (damn),Thinking ‘bout you daily\nSmoking crazy while I’m off the tac (damn)
+song-340,run1,evidence,Play me you're my lady / Got no time for that,Play me you’re my lady / Got no time for that
+song-340,run1,evidence,Tell you the truth / I ain't want you to depart (ay),Tell you the truth / I ain’t want you to depart (ay)
+song-340,run1,evidence,Thinking 'bout you daily / Smoking crazy while I'm off the tac (damn),Thinking ‘bout you daily / Smoking crazy while I’m off the tac (damn)
 song-340,run1,evidence,"You can't play me, I'm just wavy","You can’t play me, I’m just wavy"
 song-340,run2,evidence,Hit my bop like I'm Lil Kodak,Hit my bop like I’m Lil Kodak
-song-340,run2,evidence,How you just gon' play me\nI ain't fine with that,How you just gon’ play me\nI ain’t fine with that
-song-340,run2,evidence,I cannot fuck on no bitch\nI can't love when the bitch is not playing her part (like damn),I cannot fuck on no bitch\nI can’t love when the bitch is not playing her part (like damn)
-song-340,run2,evidence,"I wanted you but I can't fuck with you\n'Cause you different, you can't play your part (no damn, ay)","I wanted you but I can’t fuck with you\n'Cause you different, you can’t play your part (no damn, ay)"
-song-340,run2,evidence,Moving like you're crazy\nI ain't call you back (damn),Moving like you’re crazy\nI ain’t call you back (damn)
-song-340,run2,evidence,Tell you the truth\nI ain't want you to depart (ay),Tell you the truth\nI ain’t want you to depart (ay)
+song-340,run2,evidence,How you just gon' play me / I ain't fine with that,How you just gon’ play me / I ain’t fine with that
+song-340,run2,evidence,I cannot fuck on no bitch / I can't love when the bitch is not playing her part (like damn),I cannot fuck on no bitch / I can’t love when the bitch is not playing her part (like damn)
+song-340,run2,evidence,"I wanted you but I can't fuck with you / 'Cause you different, you can't play your part (no damn, ay)","I wanted you but I can’t fuck with you / 'Cause you different, you can’t play your part (no damn, ay)"
+song-340,run2,evidence,Moving like you're crazy / I ain't call you back (damn),Moving like you’re crazy / I ain’t call you back (damn)
+song-340,run2,evidence,Tell you the truth / I ain't want you to depart (ay),Tell you the truth / I ain’t want you to depart (ay)
 song-340,run2,evidence,Thinking 'bout you daily,Thinking ‘bout you daily
 song-340,run2,evidence,"You can't play me, I'm just wavy","You can’t play me, I’m just wavy"
 song-340,run3,evidence,"'Cause you different, you can't play your part (no damn, ay)","'Cause you different, you can’t play your part (no damn, ay)"
 song-340,run3,evidence,Hit my bop like I'm Lil Kodak,Hit my bop like I’m Lil Kodak
-song-340,run3,evidence,How you just gon' play me\nI ain't fine with that,How you just gon’ play me\nI ain’t fine with that
+song-340,run3,evidence,How you just gon' play me / I ain't fine with that,How you just gon’ play me / I ain’t fine with that
 song-340,run3,evidence,I ain't fine with that,I ain’t fine with that
-song-340,run3,evidence,I cannot fuck on no bitch\nI can't love when the bitch is not playing her part (like damn),I cannot fuck on no bitch\nI can’t love when the bitch is not playing her part (like damn)
+song-340,run3,evidence,I cannot fuck on no bitch / I can't love when the bitch is not playing her part (like damn),I cannot fuck on no bitch / I can’t love when the bitch is not playing her part (like damn)
 song-340,run3,evidence,I wanted you but I can't fuck with you,I wanted you but I can’t fuck with you
 song-340,run3,evidence,Leave and I'm gone (yah),Leave and I’m gone (yah)
-song-340,run3,evidence,Moving like you're crazy\nI ain't call you back (damn),Moving like you’re crazy\nI ain’t call you back (damn)
-song-340,run3,evidence,Tell you the truth\nI ain't want you to depart (ay),Tell you the truth\nI ain’t want you to depart (ay)
+song-340,run3,evidence,Moving like you're crazy / I ain't call you back (damn),Moving like you’re crazy / I ain’t call you back (damn)
+song-340,run3,evidence,Tell you the truth / I ain't want you to depart (ay),Tell you the truth / I ain’t want you to depart (ay)
 song-340,run3,evidence,Thinking 'bout you daily,Thinking ‘bout you daily
-song-340,run3,evidence,Thinking 'bout you daily\nSmoking crazy while I'm off the tac (damn),Thinking ‘bout you daily\nSmoking crazy while I’m off the tac (damn)
+song-340,run3,evidence,Thinking 'bout you daily / Smoking crazy while I'm off the tac (damn),Thinking ‘bout you daily / Smoking crazy while I’m off the tac (damn)
 song-340,run3,evidence,"You can't play me, I'm just wavy","You can’t play me, I’m just wavy"
 song-344,run1,evidence,"It's the end, doo doo doo doo doo doo","It’s the end, doo doo doo doo doo doo"
 song-344,run1,evidence,"Let's go hunt, doo doo doo doo doo doo","Let’s go hunt, doo doo doo doo doo doo"
@@ -382,12 +382,12 @@ song-348,run1,evidence,Small town nights need both ends burnin',small town night
 song-348,run2,evidence,And ice needs whiskey,and ice needs whiskey
 song-348,run2,evidence,Back seats need I want you so bad,back seats need I want you so bad
 song-348,run2,evidence,Birds need bees and ice needs whiskey,birds need bees and ice needs whiskey
-song-348,run2,evidence,Friday nights need to do what Friday nights need to do,Friday nights need to do\nWhat Friday nights need to do
+song-348,run2,evidence,Friday nights need to do what Friday nights need to do,Friday nights need to do / What Friday nights need to do
 song-348,run2,evidence,Small town nights need both ends burnin',small town nights need both ends burnin'
 song-348,run3,evidence,And ice needs whiskey,and ice needs whiskey
 song-348,run3,evidence,Back seats need I want you so bad,back seats need I want you so bad
 song-348,run3,evidence,Birds need bees and ice needs whiskey,birds need bees and ice needs whiskey
-song-348,run3,evidence,Friday nights need to do what Friday nights need to do,Friday nights need to do\nWhat Friday nights need to do
+song-348,run3,evidence,Friday nights need to do what Friday nights need to do,Friday nights need to do / What Friday nights need to do
 song-348,run3,evidence,Small town nights need both ends burnin',small town nights need both ends burnin'
 song-350,run1,evidence,"I swear I ain't no killer, but test me if you want","I swear I ain’t no killer, but test me if you want"
 song-350,run1,evidence,"I thought everything was right, that's when you left, yeah","I thought everything was right, that’s when you left, yeah"
@@ -403,7 +403,7 @@ song-356,run1,evidence,I've cheated and I've lied,I've cheated and I’ve lied
 song-356,run1,evidence,I've got nothing to hide no more,I’ve got nothing to hide no more
 song-356,run2,evidence,I've cheated and I've lied,I've cheated and I’ve lied
 song-356,run2,evidence,I've got nothing to hide no more,I’ve got nothing to hide no more
-song-356,run2,evidence,"When I was gettin' crazy, reckless, and wild\nActin' like my mama's little devilish child\nIt took a heart like yours to find its place","When I was gettin' crazy, reckless, and wild\nActin’ like my mama's little devilish child\nIt took a heart like yours to find its place"
+song-356,run2,evidence,"When I was gettin' crazy, reckless, and wild / Actin' like my mama's little devilish child / It took a heart like yours to find its place","When I was gettin' crazy, reckless, and wild / Actin’ like my mama's little devilish child / It took a heart like yours to find its place"
 song-356,run3,evidence,I've cheated and I've lied,I've cheated and I’ve lied
 song-356,run3,evidence,I've got nothing to hide no more,I’ve got nothing to hide no more
 song-357,run1,evidence,"and that's why every time you see me, I got some new shoes","And that's why every time you see me, I got some new shoes"
@@ -411,21 +411,21 @@ song-357,run2,evidence,"and that's why every time you see me, I got some new sho
 song-357,run3,evidence,"and that's why every time you see me, I got some new shoes","And that's why every time you see me, I got some new shoes"
 song-359,run2,evidence,"College girl, but a freak on the weekend (On the weekend)","college girl, but a freak on the weekend (On the weekend)"
 song-360,run1,evidence,"I talked you into taking up my time, making up your mind","Talked you into taking up my time, making up your mind"
-song-360,run1,evidence,There's a look in your eyes\nLooks like we ain't leavin' now,there's a look in your eyes\nLooks like we ain't leavin' now
-song-360,run2,evidence,There's a look in your eyes\nLooks like we ain't leavin' now,there's a look in your eyes\nLooks like we ain't leavin' now
-song-360,run3,evidence,There's a look in your eyes\nLooks like we ain't leavin' now,there's a look in your eyes\nLooks like we ain't leavin' now
+song-360,run1,evidence,There's a look in your eyes / Looks like we ain't leavin' now,there's a look in your eyes / Looks like we ain't leavin' now
+song-360,run2,evidence,There's a look in your eyes / Looks like we ain't leavin' now,there's a look in your eyes / Looks like we ain't leavin' now
+song-360,run3,evidence,There's a look in your eyes / Looks like we ain't leavin' now,there's a look in your eyes / Looks like we ain't leavin' now
 song-362,run1,keyword,travel-and-adventure,**REMOVE**
-song-369,run2,evidence,"Aren't you the guy who tried to hurt me with the word ""goodbye""?","Aren't you the guy who tried to\nHurt me with the word ""goodbye""?"
+song-369,run2,evidence,"Aren't you the guy who tried to hurt me with the word ""goodbye""?","Aren't you the guy who tried to / Hurt me with the word ""goodbye""?"
 song-370,run2,evidence,She know that her youngest son was always guaranteed to get the money,she know that her youngest son was always guaranteed to get the money
-song-374,run1,evidence,"But we built this right, so nothing's ever gonna move it","but\nWe built this right, so nothing's ever gonna move it"
+song-374,run1,evidence,"But we built this right, so nothing's ever gonna move it","but / We built this right, so nothing's ever gonna move it"
 song-374,run1,evidence,The wolves came and went and we're still standing,the wolves came and went and we're still standing
 song-374,run2,evidence,The wolves came and went and we're still standing,the wolves came and went and we're still standing
 song-374,run3,evidence,The wolves came and went and we're still standing,the wolves came and went and we're still standing
-song-376,run2,evidence,I hope you make me smile the way you made me smile on the other end of a phone,I hope she makes you smile\nThe way you made me smile on the other end of a phone
+song-376,run2,evidence,I hope you make me smile the way you made me smile on the other end of a phone,I hope she makes you smile / The way you made me smile on the other end of a phone
 song-390,run2,evidence,Shit hit different when it's Thursday night,shit hit different when it's Thursday night
 song-397,run2,evidence,"I should've stayed at home, 'cause I was doing better alone","I whould've stayed at home, 'cause I was doing better alone"
 song-398,run1,evidence,Chasing that feeling that got gone too soon,chasing that feeling that got gone too soon
-song-399,run1,evidence,"Your savage love\nDid somebody, did somebody break your heart?\nLookin' like an angel but your savage love","your\n\nSavage love\nDid somebody, did somebody break your heart?\nLookin' like an angel but your savage love"
+song-399,run1,evidence,"Your savage love / Did somebody, did somebody break your heart? / Lookin' like an angel but your savage love","your /  / Savage love / Did somebody, did somebody break your heart? / Lookin' like an angel but your savage love"
 song-400,run1,evidence,She drop a pin and I'd come met her,she drop a pin and I'd come met her
 song-400,run2,evidence,She drop a pin and I'd come met her,she drop a pin and I'd come met her
 song-406,run2,evidence,"Yeah, we still young, there's so much we haven't done","yeah, we still young, there's so much we haven't done"
@@ -459,7 +459,7 @@ song-423,run3,evidence,"She drinkin' Four Lokos, I can't get with those","She dr
 song-423,run3,evidence,"She say: You say you love me, but I don't know what love means","She say: You say you love me, but I don’t know what love means"
 song-423,run3,evidence,"They say you ain't wifey type, but I don't care, I want you","They say you ain’t wifey type, but I don’t care, I want you"
 song-425,run1,evidence,"Shawty with the long text, I don't talk, ayy","shawty with the long text, I don't talk, ayy"
-song-426,run2,evidence,Make my wish come true\nBaby all I want for Christmas is you,Make my wish come true\nBaby all I want for Christmas is\nYou
+song-426,run2,evidence,Make my wish come true / Baby all I want for Christmas is you,Make my wish come true / Baby all I want for Christmas is / You
 song-427,run1,evidence,You broke every heart in your hometown,"You one of them girls, broke every heart in your hometown"
 song-427,run1,evidence,You're one of them girls that ain't tryna meet nobody,you're one of them girls that ain't tryna meet nobody
 song-427,run2,evidence,You're one of them girls that ain't tryna meet nobody,you're one of them girls that ain't tryna meet nobody
@@ -475,11 +475,11 @@ song-435,run1,evidence,"She only liked the guap, red light these hoes","she only
 song-435,run1,evidence,"The Bentley came with the wings like a number nine, yeah","the Bentley came with the wings like a number nine, yeah"
 song-435,run2,evidence,"She only liked the guap, red light these hoes","she only liked the guap, red light these hoes"
 song-435,run3,evidence,"The Bentley came with the wings like a number nine, yeah","the Bentley came with the wings like a number nine, yeah"
-song-436,run1,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty\nI gotta be one of them greats"
+song-436,run1,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty / I gotta be one of them greats"
 song-436,run1,evidence,"Wake up every day, somebody harassin' me","Wake up every day, somebody harrassin' me"
-song-436,run2,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty\nI gotta be one of them greats"
+song-436,run2,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty / I gotta be one of them greats"
 song-436,run2,evidence,"Wake up every day, somebody harassin' me","Wake up every day, somebody harrassin' me"
-song-436,run3,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty\nI gotta be one of them greats"
+song-436,run3,evidence,"Peep all the moves I been makin', by time I get forty, I gotta be one of them greats","Peep all the moves I been makin', by time I get forty / I gotta be one of them greats"
 song-437,run1,evidence,Lock the door and throw out the key,lock the door and throw out the key
 song-437,run2,evidence,Lock the door and throw out the key,lock the door and throw out the key
 song-437,run2,evidence,"You never let me down, no, no","you never let me down, no, no"
@@ -512,13 +512,13 @@ song-465,run3,evidence,Remember when I couldn't hold her,Remember when I couldn�
 song-467,run1,evidence,'Cause you ain't ever left me empty-handed,'Cause you ain’t ever left me empty-handed
 song-467,run2,evidence,'Cause you ain't ever left me empty-handed,'Cause you ain’t ever left me empty-handed
 song-467,run3,evidence,'Cause you ain't ever left me empty-handed,'Cause you ain’t ever left me empty-handed
-song-468,run1,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her\nThat we did that, too?"
-song-468,run2,evidence,"Play her piano, but she doesn't know that I was the one who taught you Billy Joel","Play her piano, but she doesn't know (oh, oh)\nThat I was the one who taught you Billy Joel"
-song-468,run2,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her\nThat we did that, too?"
-song-468,run3,evidence,I made the jokes you tell to her when she's with you,I made the jokes you tell to her\nWhen she's with you
-song-468,run3,evidence,"Play her piano, but she doesn't know that I was the one who taught you Billy Joel","Play her piano, but she doesn't know (oh, oh)\nThat I was the one who taught you Billy Joel"
-song-468,run3,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her\nThat we did that, too?"
-song-468,run3,evidence,"That was the show we talked about, played you the songs she's singing now",That was the show we talked about\nPlayed you the songs she's singing now
+song-468,run1,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her / That we did that, too?"
+song-468,run2,evidence,"Play her piano, but she doesn't know that I was the one who taught you Billy Joel","Play her piano, but she doesn't know (oh, oh) / That I was the one who taught you Billy Joel"
+song-468,run2,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her / That we did that, too?"
+song-468,run3,evidence,I made the jokes you tell to her when she's with you,I made the jokes you tell to her / When she's with you
+song-468,run3,evidence,"Play her piano, but she doesn't know that I was the one who taught you Billy Joel","Play her piano, but she doesn't know (oh, oh) / That I was the one who taught you Billy Joel"
+song-468,run3,evidence,"So when you gonna tell her that we did that, too?","So when you gonna tell her / That we did that, too?"
+song-468,run3,evidence,"That was the show we talked about, played you the songs she's singing now",That was the show we talked about / Played you the songs she's singing now
 song-478,run2,evidence,"I turn my haters to consumers, I make vets feel like they juniors","Turn my haters to consumers, I make vets feel like they juniors"
 song-480,run1,evidence,Bitches ain't fucking with me now and I can see why,Bitches ain’t fucking with me now and I can see why
 song-480,run1,evidence,Broke boys don't deserve no pussy,Broke boys don’t deserve no pussy
@@ -535,14 +535,14 @@ song-483,run1,evidence,"Best friend, you the baddest and you know it (You know)"
 song-483,run2,evidence,"Best friend, you the baddest and you know it (You know)","best friend, you the baddest and you know it (You know)"
 song-485,run3,evidence,Like when you walked out my life,like when you walked out my life
 song-487,run1,evidence,I fill my nights with broken dreams,And fill my nights with broken dreams
-song-487,run1,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best)\nBest you ever had and best you gon' get (Gon' get)
+song-487,run1,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best) / Best you ever had and best you gon' get (Gon' get)
 song-487,run2,evidence,I fill my nights with broken dreams,And fill my nights with broken dreams
-song-487,run2,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best)\nBest you ever had and best you gon' get (Gon' get)
+song-487,run2,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best) / Best you ever had and best you gon' get (Gon' get)
 song-487,run3,evidence,I fill my nights with broken dreams,And fill my nights with broken dreams
-song-487,run3,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best)\nBest you ever had and best you gon' get (Gon' get)
-song-491,run1,evidence,Ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it,ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it
-song-491,run2,evidence,Ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it,ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it
-song-491,run3,evidence,Ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it,ain't it funny\nHow you said you were friends?\nNow it sure as hell don't look like it
+song-487,run3,evidence,I'm the best you ever had and best you gon' get (Gon' get),I'm the best (I'm the best) / Best you ever had and best you gon' get (Gon' get)
+song-491,run1,evidence,Ain't it funny / How you said you were friends? / Now it sure as hell don't look like it,ain't it funny / How you said you were friends? / Now it sure as hell don't look like it
+song-491,run2,evidence,Ain't it funny / How you said you were friends? / Now it sure as hell don't look like it,ain't it funny / How you said you were friends? / Now it sure as hell don't look like it
+song-491,run3,evidence,Ain't it funny / How you said you were friends? / Now it sure as hell don't look like it,ain't it funny / How you said you were friends? / Now it sure as hell don't look like it
 song-492,run1,evidence,"All that wolfin' on the net, nigga, I thought you was a thug","All that wolfin' on the net (Ugh), nigga, I thought you was a thug"
 song-492,run2,evidence,"All that wolfin' on the net, nigga, I thought you was a thug","All that wolfin' on the net (Ugh), nigga, I thought you was a thug"
 song-492,run3,evidence,"All that wolfin' on the net, nigga, I thought you was a thug","All that wolfin' on the net (Ugh), nigga, I thought you was a thug"
@@ -556,9 +556,9 @@ song-501,run1,evidence,Kicked the PJs on a PJ (a PJ),"Kickin' my feet up, left t
 song-513,run2,evidence,love-as-fleeting-and-transient,**REMOVE**
 song-513,run3,evidence,love-as-fleeting-and-transient,**REMOVE**
 song-516,run1,evidence,"So put your loving hand out, baby",So put your loving hand out baby
-song-520,run1,evidence,"And she said, ""Take me to the country\nShow me where you from""","And she said, “Take me to the country\nShow me where you from”"
-song-520,run2,evidence,"And she said, ""Take me to the country\nShow me where you from""","And she said, “Take me to the country\nShow me where you from”"
-song-520,run3,evidence,"And she said, ""Take me to the country\nShow me where you from""","And she said, “Take me to the country\nShow me where you from”"
+song-520,run1,evidence,"And she said, ""Take me to the country / Show me where you from""","And she said, “Take me to the country / Show me where you from”"
+song-520,run2,evidence,"And she said, ""Take me to the country / Show me where you from""","And she said, “Take me to the country / Show me where you from”"
+song-520,run3,evidence,"And she said, ""Take me to the country / Show me where you from""","And she said, “Take me to the country / Show me where you from”"
 song-521,run1,evidence,None of these hoes finna see me at the bank,none of these hoes finna see me at the bank
 song-521,run1,evidence,"Order '42 for the table, let's pop shit","Order '42 for the table, let’s pop shit"
 song-521,run1,evidence,Why the fuck you in the club when niggas wildin'?,Why the fuck you in the club when niggas wildin’?
@@ -568,9 +568,9 @@ song-521,run2,evidence,Why the fuck you in the club when niggas wildin'?,Why the
 song-521,run3,evidence,None of these hoes finna see me at the bank,none of these hoes finna see me at the bank
 song-521,run3,evidence,"Order '42 for the table, let's pop shit","Order '42 for the table, let’s pop shit"
 song-521,run3,evidence,Why the fuck you in the club when niggas wildin'?,Why the fuck you in the club when niggas wildin’?
-song-524,run1,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to\nLove you the way that I want
-song-524,run2,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to\nLove you the way that I want
-song-524,run3,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to\nLove you the way that I want
+song-524,run1,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to / Love you the way that I want
+song-524,run2,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to / Love you the way that I want
+song-524,run3,evidence,Forever's not enough time to love you the way that I want,Forever's not enough time to / Love you the way that I want
 song-532,run2,evidence,"si me da' tu cuenta de banco, un millón de peso'","Si me da' tu cuenta de banco, un millón de peso'"
 song-532,run3,evidence,"si me da' tu cuenta de banco, un millón de peso'","Si me da' tu cuenta de banco, un millón de peso'"
 song-538,run1,evidence,"Girl, I don't want to be the one who pays the price","Girl, I don’t want to be the one who pays the price"
@@ -585,15 +585,15 @@ song-538,run3,evidence,"Girl, I don't want to be the one who pays the price","Gi
 song-538,run3,evidence,"It's like a dream, what she feels with me","It’s like a dream, what she feels with me"
 song-538,run3,evidence,You're offering yourself to me like sacrifice,You’re offering yourself to me like sacrifice
 song-538,run3,evidence,You're way too young to end your life,You’re way too young to end your life
-song-539,run1,evidence,How can I judge you when you're with somebody else as long as you swear,How can I judge you when you're with\nSomebody else as long as you swear
-song-539,run2,evidence,How can I judge you when you're with somebody else,How can I judge you when you're with\nSomebody else
-song-539,run3,evidence,How can I judge you when you're with somebody else as long as you swear,How can I judge you when you're with\nSomebody else as long as you swear
-song-540,run1,evidence,But I was your first and your last ticket outta there,But I was your first and your\nLast ticket outta there
-song-540,run1,evidence,Go out like shooting stars chasing what's in our hearts,Go out like shooting stars\nChasing what's in our hearts
-song-540,run1,evidence,I caught your wings on fire when I smoked my Bronco tires outta that town,I caught your wings on fire\nWhen I smoked my Bronco tires\nOutta that town
-song-540,run1,evidence,"We're livin' wreckless, nothin' to catch us, baby","We're livin' wreckless\nNothin' to catch us, baby"
-song-540,run1,evidence,"You holdin' me holdin' you, it's a hell of a view",You holdin' me holdin' you\nIt's a hell of a view
-song-540,run1,evidence,You liked the thought of chasin' life instead of dollar bills,You liked the thought of chasin'\nLife instead of dollar bills
+song-539,run1,evidence,How can I judge you when you're with somebody else as long as you swear,How can I judge you when you're with / Somebody else as long as you swear
+song-539,run2,evidence,How can I judge you when you're with somebody else,How can I judge you when you're with / Somebody else
+song-539,run3,evidence,How can I judge you when you're with somebody else as long as you swear,How can I judge you when you're with / Somebody else as long as you swear
+song-540,run1,evidence,But I was your first and your last ticket outta there,But I was your first and your / Last ticket outta there
+song-540,run1,evidence,Go out like shooting stars chasing what's in our hearts,Go out like shooting stars / Chasing what's in our hearts
+song-540,run1,evidence,I caught your wings on fire when I smoked my Bronco tires outta that town,I caught your wings on fire / When I smoked my Bronco tires / Outta that town
+song-540,run1,evidence,"We're livin' wreckless, nothin' to catch us, baby","We're livin' wreckless / Nothin' to catch us, baby"
+song-540,run1,evidence,"You holdin' me holdin' you, it's a hell of a view",You holdin' me holdin' you / It's a hell of a view
+song-540,run1,evidence,You liked the thought of chasin' life instead of dollar bills,You liked the thought of chasin' / Life instead of dollar bills
 song-543,run3,evidence,You only listen to your fucking friends,you only listen to your fucking friends
 song-544,run1,evidence,But damn if I didn't find what I wasn't even looking for,But damn if I didn’t find what I wasn't even looking for
 song-544,run1,evidence,I wasn't looking for love when I walked through the door,I wasn’t looking for love when I walked through the door
@@ -611,22 +611,22 @@ song-547,run3,evidence,I'm a young nigga though,I’m a young nigga though
 song-547,run3,evidence,Just talked to pops about the feds,just talked to pops about the feds
 song-547,run3,evidence,"This shit comes with a lot, it's a lot of pressure, I'm a young nigga though","This shit comes with a lot, it’s a lot of pressure, I’m a young nigga though"
 song-548,run1,evidence,EVEN THOUGH IT'S A FRIDAY NIGHT,EVEN THOUGH IT’S A FRIDAY NIGHT
-song-548,run1,evidence,I AIN'T NEVER\nBEEN THE CHURCH GOING TYPE,I AIN’T NEVER\nBEEN THE CHURCH GOING TYPE
+song-548,run1,evidence,I AIN'T NEVER / BEEN THE CHURCH GOING TYPE,I AIN’T NEVER / BEEN THE CHURCH GOING TYPE
 song-548,run1,evidence,IF IT'S LIKE DOWN HERE UP THERE TONIGHT,IF IT’S LIKE DOWN HERE UP THERE TONIGHT
 song-548,run1,evidence,"SITTIN' HERE, DRINKIN' BEER, TALKIN' GOD, AMEN","SITTIN’ HERE, DRINKIN’ BEER, TALKIN’ GOD, AMEN"
 song-548,run1,evidence,WHEN THE WORLD'S GONE CRAZY MAN IT ALL MAKES SENSE,WHEN THE WORLD’S GONE CRAZY MAN IT ALL MAKES SENSE
 song-548,run2,evidence,EVEN THOUGH IT'S A FRIDAY NIGHT,EVEN THOUGH IT’S A FRIDAY NIGHT
-song-548,run2,evidence,I AIN'T NEVER\nBEEN THE CHURCH GOING TYPE,I AIN’T NEVER\nBEEN THE CHURCH GOING TYPE
+song-548,run2,evidence,I AIN'T NEVER / BEEN THE CHURCH GOING TYPE,I AIN’T NEVER / BEEN THE CHURCH GOING TYPE
 song-548,run2,evidence,IF IT'S LIKE DOWN HERE UP THERE TONIGHT,IF IT’S LIKE DOWN HERE UP THERE TONIGHT
 song-548,run2,evidence,"SITTIN' HERE, DRINKIN' BEER, TALKIN' GOD, AMEN","SITTIN’ HERE, DRINKIN’ BEER, TALKIN’ GOD, AMEN"
 song-548,run2,evidence,WHEN THE WORLD'S GONE CRAZY MAN IT ALL MAKES SENSE,WHEN THE WORLD’S GONE CRAZY MAN IT ALL MAKES SENSE
 song-548,run3,evidence,EVEN THOUGH IT'S A FRIDAY NIGHT,EVEN THOUGH IT’S A FRIDAY NIGHT
-song-548,run3,evidence,GOTTA COUNTRY ANGEL I DON'T DESERVE\nTHE KIND THAT YOU NEVER LET GO OF,GOTTA COUNTRY ANGEL I DON’T DESERVE\nTHE KIND THAT YOU NEVER LET GO OF
-song-548,run3,evidence,I AIN'T NEVER\nBEEN THE CHURCH GOING TYPE,I AIN’T NEVER\nBEEN THE CHURCH GOING TYPE
+song-548,run3,evidence,GOTTA COUNTRY ANGEL I DON'T DESERVE / THE KIND THAT YOU NEVER LET GO OF,GOTTA COUNTRY ANGEL I DON’T DESERVE / THE KIND THAT YOU NEVER LET GO OF
+song-548,run3,evidence,I AIN'T NEVER / BEEN THE CHURCH GOING TYPE,I AIN’T NEVER / BEEN THE CHURCH GOING TYPE
 song-548,run3,evidence,IF IT'S LIKE DOWN HERE UP THERE TONIGHT,IF IT’S LIKE DOWN HERE UP THERE TONIGHT
 song-548,run3,evidence,"SITTIN' HERE, DRINKIN' BEER, TALKIN' GOD, AMEN","SITTIN’ HERE, DRINKIN’ BEER, TALKIN’ GOD, AMEN"
 song-548,run3,evidence,WHEN THE WORLD'S GONE CRAZY MAN IT ALL MAKES SENSE,WHEN THE WORLD’S GONE CRAZY MAN IT ALL MAKES SENSE
-song-550,run1,evidence,Nothing to say\nAnd everything gets in the way,Nothin' to say\nAnd everything gets in the way
+song-550,run1,evidence,Nothing to say / And everything gets in the way,Nothin' to say / And everything gets in the way
 song-560,run1,evidence,"Tell me: That's life, when I'm stressin' at night","tell me: That's life, when I'm stressin' at night"
 song-560,run3,evidence,"Tell me: That's life, when I'm stressin' at night","tell me: That's life, when I'm stressin' at night"
 song-563,run1,evidence,All of the these sorries I don't owe you honey,All of the these sorries I don’t owe you honey
@@ -649,8 +649,8 @@ song-563,run3,evidence,My heart wouldn't listen to my head and these boots on my
 song-563,run3,evidence,Sure as hell can't keep leanin' on you,Sure as hell can’t keep leanin’ on you
 song-563,run3,evidence,You're gone and I've gone 3 sheets to the wind,You’re gone and I’ve gone 3 sheets to the wind
 song-566,run2,evidence,Las de PR que todita' son mía',las de PR que todita' son mía'
-song-567,run1,evidence,"And if I only could, I'd make a deal with God,","And if I only could,\nI'd make a deal with God,"
-song-567,run2,evidence,"And if I only could, I'd make a deal with God,","And if I only could,\nI'd make a deal with God,"
+song-567,run1,evidence,"And if I only could, I'd make a deal with God,","And if I only could, / I'd make a deal with God,"
+song-567,run2,evidence,"And if I only could, I'd make a deal with God,","And if I only could, / I'd make a deal with God,"
 song-570,run1,evidence,"Stolen the pussy, you ain't get sued for that (Sued)","Stole the pussy, you ain't get sued for that (Sued)"
 song-570,run3,evidence,"Stolen the pussy, you ain't get sued for that (Sued)","Stole the pussy, you ain't get sued for that (Sued)"
 song-575,run1,evidence,Guess I'm just broken and broke,Guess I’m just broken and broke
@@ -658,9 +658,9 @@ song-575,run2,evidence,Guess I'm just broken and broke,Guess I’m just broken a
 song-575,run3,evidence,Guess I'm just broken and broke,Guess I’m just broken and broke
 song-581,run1,evidence,To me you're all I am,to me you're all I am
 song-581,run2,evidence,To me you're all I am,to me you're all I am
-song-582,run1,evidence,I hope that your triflin' ass\nIs walkin' 'round barefoot in these streets,I also hope that your triflin' ass\nIs walkin' 'round barefoot in these streets
-song-582,run2,evidence,I hope that your triflin' ass\nIs walkin' 'round barefoot in these streets,I also hope that your triflin' ass\nIs walkin' 'round barefoot in these streets
-song-582,run3,evidence,I hope that your triflin' ass\nIs walkin' 'round barefoot in these streets,I also hope that your triflin' ass\nIs walkin' 'round barefoot in these streets
+song-582,run1,evidence,I hope that your triflin' ass / Is walkin' 'round barefoot in these streets,I also hope that your triflin' ass / Is walkin' 'round barefoot in these streets
+song-582,run2,evidence,I hope that your triflin' ass / Is walkin' 'round barefoot in these streets,I also hope that your triflin' ass / Is walkin' 'round barefoot in these streets
+song-582,run3,evidence,I hope that your triflin' ass / Is walkin' 'round barefoot in these streets,I also hope that your triflin' ass / Is walkin' 'round barefoot in these streets
 song-584,run1,evidence,Aún te debo una noche en la suite,aún te debo una noche en la suite
 song-584,run1,evidence,"Hoy tú no va' a trabajar, jeje, no","hoy tú no va' a trabajar, jeje, no"
 song-584,run1,evidence,"Yo no sé tú, pero yo quisiera amanecer esnú'","yo no sé tú, pero yo quisiera amanecer esnú'"
@@ -670,15 +670,15 @@ song-584,run3,evidence,"Yo no sé tú, pero yo quisiera amanecer esnú'","yo no 
 song-587,run1,evidence,"Bought her a P, not a pill, a Porsche","bought her a P, not a pill, a Porsche"
 song-587,run2,evidence,"Bought her a P, not a pill, a Porsche","bought her a P, not a pill, a Porsche"
 song-587,run3,evidence,"Bought her a P, not a pill, a Porsche","bought her a P, not a pill, a Porsche"
-song-588,run1,evidence,'Cause the truth about it is\nIt all goes by real quick,‘Cause the truth about it is\nIt all goes by real quick
+song-588,run1,evidence,'Cause the truth about it is / It all goes by real quick,‘Cause the truth about it is / It all goes by real quick
 song-588,run1,evidence,Find the one you can't live without,Find the one you can’t live without
-song-588,run1,evidence,You can't buy happiness\nBut you can buy dirt,You can’t buy happiness\nBut you can buy dirt
-song-588,run2,evidence,'Cause the truth about it is\nIt all goes by real quick,‘Cause the truth about it is\nIt all goes by real quick
+song-588,run1,evidence,You can't buy happiness / But you can buy dirt,You can’t buy happiness / But you can buy dirt
+song-588,run2,evidence,'Cause the truth about it is / It all goes by real quick,‘Cause the truth about it is / It all goes by real quick
 song-588,run2,evidence,Find the one you can't live without,Find the one you can’t live without
-song-588,run2,evidence,You can't buy happiness\nBut you can buy dirt,You can’t buy happiness\nBut you can buy dirt
-song-588,run3,evidence,'Cause the truth about it is\nIt all goes by real quick,‘Cause the truth about it is\nIt all goes by real quick
+song-588,run2,evidence,You can't buy happiness / But you can buy dirt,You can’t buy happiness / But you can buy dirt
+song-588,run3,evidence,'Cause the truth about it is / It all goes by real quick,‘Cause the truth about it is / It all goes by real quick
 song-588,run3,evidence,Find the one you can't live without,Find the one you can’t live without
-song-588,run3,evidence,You can't buy happiness\nBut you can buy dirt,You can’t buy happiness\nBut you can buy dirt
+song-588,run3,evidence,You can't buy happiness / But you can buy dirt,You can’t buy happiness / But you can buy dirt
 song-590,run1,evidence,He's not with you,he's not with you
 song-593,run1,evidence,Love's a smoke ring wrapped around your finger,love's a smoke ring wrapped around your finger
 song-593,run2,evidence,Love's a smoke ring wrapped around your finger,love's a smoke ring wrapped around your finger
@@ -710,20 +710,20 @@ song-617,run3,evidence,"Hold up a minute, don't go","hold up a minute, don't go"
 song-622,run1,evidence,"Iба por mi camino y me perdí (Ey, ey)","Iba por mi camino y me perdí (Ey, ey)"
 song-622,run2,evidence,"Iба por mi camino y me perdí (Ey, ey)","Iba por mi camino y me perdí (Ey, ey)"
 song-622,run3,evidence,"Iба por mi camino y me perdí (Ey, ey)","Iba por mi camino y me perdí (Ey, ey)"
-song-625,run1,evidence,When I already know\nWhat she's thinkin'\nShe don't have to say it yeah,When I already know\n\nWhat she's thinkin'\nShe don't have to say it yeah
-song-625,run2,evidence,When I already know\nWhat she's thinkin'\nShe don't have to say it yeah,When I already know\n\nWhat she's thinkin'\nShe don't have to say it yeah
-song-625,run3,evidence,When I already know\nWhat she's thinkin'\nShe don't have to say it yeah,When I already know\n\nWhat she's thinkin'\nShe don't have to say it yeah
+song-625,run1,evidence,When I already know / What she's thinkin' / She don't have to say it yeah,When I already know /  / What she's thinkin' / She don't have to say it yeah
+song-625,run2,evidence,When I already know / What she's thinkin' / She don't have to say it yeah,When I already know /  / What she's thinkin' / She don't have to say it yeah
+song-625,run3,evidence,When I already know / What she's thinkin' / She don't have to say it yeah,When I already know /  / What she's thinkin' / She don't have to say it yeah
 song-627,run1,evidence,"Damn Strait, you're killing me man","Damn Strait, you’re killing me man"
 song-627,run1,evidence,I couldn't turn it off fast enough,I couldn’t turn it off fast enough
-song-627,run1,evidence,I know it ain't your fault\nThat she left me,I know it ain’t your fault\nThat she left me
-song-627,run1,evidence,Now I can't even listen\n'Cause I'll get to missin' her,Now I can’t even listen\n‘Cause I’ll get to missin’ her
-song-627,run2,evidence,'Cause I'll get to missin' her\nThen thehurt gets worse,‘Cause I’ll get to missin’ her\nThen thehurt gets worse
-song-627,run2,evidence,I know it ain't your fault\nThat she left me,I know it ain’t your fault\nThat she left me
-song-627,run2,evidence,Now I can't even listen\n'Cause I'll get to missin' her\nThen thehurt gets worse,Now I can’t even listen\n‘Cause I’ll get to missin’ her\nThen thehurt gets worse
-song-627,run3,evidence,'Cause I'll get to missin' her\nThen thehurt gets worse,‘Cause I’ll get to missin’ her\nThen thehurt gets worse
+song-627,run1,evidence,I know it ain't your fault / That she left me,I know it ain’t your fault / That she left me
+song-627,run1,evidence,Now I can't even listen / 'Cause I'll get to missin' her,Now I can’t even listen / ‘Cause I’ll get to missin’ her
+song-627,run2,evidence,'Cause I'll get to missin' her / Then thehurt gets worse,‘Cause I’ll get to missin’ her / Then thehurt gets worse
+song-627,run2,evidence,I know it ain't your fault / That she left me,I know it ain’t your fault / That she left me
+song-627,run2,evidence,Now I can't even listen / 'Cause I'll get to missin' her / Then thehurt gets worse,Now I can’t even listen / ‘Cause I’ll get to missin’ her / Then thehurt gets worse
+song-627,run3,evidence,'Cause I'll get to missin' her / Then thehurt gets worse,‘Cause I’ll get to missin’ her / Then thehurt gets worse
 song-627,run3,evidence,"Damn Strait, you're killing me man","Damn Strait, you’re killing me man"
-song-627,run3,evidence,I know it ain't your fault\nThat she left me,I know it ain’t your fault\nThat she left me
-song-627,run3,evidence,Now I can't even listen\n'Cause I'll get to missin' her\nThen thehurt gets worse,Now I can’t even listen\n‘Cause I’ll get to missin’ her\nThen thehurt gets worse
+song-627,run3,evidence,I know it ain't your fault / That she left me,I know it ain’t your fault / That she left me
+song-627,run3,evidence,Now I can't even listen / 'Cause I'll get to missin' her / Then thehurt gets worse,Now I can’t even listen / ‘Cause I’ll get to missin’ her / Then thehurt gets worse
 song-630,run1,evidence,It's all gone to hell she's gone to her mom's,it's all gone to hell she's gone to her mom's
 song-630,run3,evidence,It's a bad day for love but a good day for flower shops,it's a bad day for love but a good day for flower shops
 song-630,run3,evidence,It's all gone to hell she's gone to her mom's,it's all gone to hell she's gone to her mom's
@@ -747,41 +747,41 @@ song-641,run3,evidence,I'm findin' ways to manipulate the feelin' you're goin' t
 song-645,run1,evidence,I'm a Slaughter Gang CEO,It's a Slaughter Gang CEO
 song-645,run2,evidence,I'm a Slaughter Gang CEO,It's a Slaughter Gang CEO
 song-650,run1,evidence,See you're tired thinkin' 'bout if he cheat,see you're tired thinkin' 'bout if he cheat
-song-650,run1,evidence,Somebody who can open up those gates to your heart,Somebody who can open up those gates\nOpen up those gates to your heart
+song-650,run1,evidence,Somebody who can open up those gates to your heart,Somebody who can open up those gates / Open up those gates to your heart
 song-650,run1,evidence,"Someone to bring you peace, uh","someone to bring you peace, uh"
 song-650,run2,evidence,See you're tired thinkin' 'bout if he cheat,see you're tired thinkin' 'bout if he cheat
-song-650,run2,evidence,Somebody who can open up those gates to your heart,Somebody who can open up those gates\nOpen up those gates to your heart
+song-650,run2,evidence,Somebody who can open up those gates to your heart,Somebody who can open up those gates / Open up those gates to your heart
 song-650,run2,evidence,"Someone to bring you peace, uh","someone to bring you peace, uh"
 song-650,run3,evidence,See you're tired thinkin' 'bout if he cheat,see you're tired thinkin' 'bout if he cheat
 song-650,run3,evidence,"Someone to bring you peace, uh","someone to bring you peace, uh"
-song-654,run1,evidence,All my life\nThey been tryin' to keep me down,All my life)\nThey been tryin' to keep me down
-song-654,run2,evidence,All my life\nThey been tryin' to keep me down,All my life)\nThey been tryin' to keep me down
-song-654,run3,evidence,All my life\nThey been tryin' to keep me down,All my life)\nThey been tryin' to keep me down
-song-655,run3,evidence,"Le dije\n""Voy a conquistar tu familia""","Le dije\n""Voy a conquistar tu familia"
-song-661,run1,evidence,All they keep asking me\nIs if I'm gonna be your bride,all they keep asking me)\nIs if I'm gonna be your bride
-song-661,run1,evidence,The only kind of girl they see\nIs a one-night or a wife,the only kind of girl they see)\nIs a one-night or a wife
-song-661,run2,evidence,All they keep asking me is if I'm gonna be your bride,all they keep asking me)\nIs if I'm gonna be your bride
-song-661,run2,evidence,The only kind of girl they see is a one-night or a wife,the only kind of girl they see)\nIs a one-night or a wife
-song-661,run3,evidence,All they keep asking me is if I'm gonna be your bride,all they keep asking me)\nIs if I'm gonna be your bride
-song-661,run3,evidence,The only kind of girl they see is a one-night or a wife,the only kind of girl they see)\nIs a one-night or a wife
-song-666,run3,evidence,If you want me to stop some of that\nOr you want me to stop lovin' you?,You want me to stop some of that\nOr you want me to stop lovin' you?
+song-654,run1,evidence,All my life / They been tryin' to keep me down,All my life) / They been tryin' to keep me down
+song-654,run2,evidence,All my life / They been tryin' to keep me down,All my life) / They been tryin' to keep me down
+song-654,run3,evidence,All my life / They been tryin' to keep me down,All my life) / They been tryin' to keep me down
+song-655,run3,evidence,"Le dije / ""Voy a conquistar tu familia""","Le dije / ""Voy a conquistar tu familia"
+song-661,run1,evidence,All they keep asking me / Is if I'm gonna be your bride,all they keep asking me) / Is if I'm gonna be your bride
+song-661,run1,evidence,The only kind of girl they see / Is a one-night or a wife,the only kind of girl they see) / Is a one-night or a wife
+song-661,run2,evidence,All they keep asking me is if I'm gonna be your bride,all they keep asking me) / Is if I'm gonna be your bride
+song-661,run2,evidence,The only kind of girl they see is a one-night or a wife,the only kind of girl they see) / Is a one-night or a wife
+song-661,run3,evidence,All they keep asking me is if I'm gonna be your bride,all they keep asking me) / Is if I'm gonna be your bride
+song-661,run3,evidence,The only kind of girl they see is a one-night or a wife,the only kind of girl they see) / Is a one-night or a wife
+song-666,run3,evidence,If you want me to stop some of that / Or you want me to stop lovin' you?,You want me to stop some of that / Or you want me to stop lovin' you?
 song-671,run1,evidence,Your lovin' so deep,your lovin' so deep
 song-671,run2,evidence,Your lovin' so deep,your lovin' so deep
 song-672,run1,evidence,I'm feeling lonely (lonely),I’m feeling lonely (lonely)
 song-672,run1,evidence,I'm gonna make it mineI'm gonna make it mine,I’m gonna make it mineI’m gonna make it mine
 song-672,run2,evidence,I'm feeling lonely (lonely)I'm feeling lonely (lonely),I’m feeling lonely (lonely)I’m feeling lonely (lonely)
 song-672,run3,evidence,I'm feeling lonely (lonely)I'm feeling lonely (lonely),I’m feeling lonely (lonely)I’m feeling lonely (lonely)
-song-675,run1,evidence,Your left hand's gettin' used to that ring,your\nLeft hand's gettin' used to that ring
-song-675,run2,evidence,Your left hand's gettin' used to that ring,your\nLeft hand's gettin' used to that ring
+song-675,run1,evidence,Your left hand's gettin' used to that ring,your / Left hand's gettin' used to that ring
+song-675,run2,evidence,Your left hand's gettin' used to that ring,your / Left hand's gettin' used to that ring
 song-680,run1,evidence,I'm goin' to glow up one more time,I’m goin’ to glow up one more time
 song-680,run1,evidence,You gon' see me sleepin' in courtside,You gon' see me sleepin’ in courtside
 song-680,run2,evidence,I'm goin' to glow up one more time,I’m goin’ to glow up one more time
 song-680,run2,evidence,You gon' see me sleepin' in courtside,You gon' see me sleepin’ in courtside
 song-680,run3,evidence,I'm goin' to glow up one more time,I’m goin’ to glow up one more time
 song-680,run3,evidence,You gon' see me sleepin' in courtside,You gon' see me sleepin’ in courtside
-song-690,run2,evidence,So I'll keep dancing with my eyes closed,"So I'll keep dancing with my\nEy-ey-ey-eyes, ey-ey-ey-eyes closed"
-song-691,run2,evidence,Lo que ella no sabe es que tú todavía\nMe estás viendo toa' la' historia',Lo que ella no sabe es que tú todavía (au)\nMe estás viendo toa' la' historia'
-song-691,run3,evidence,Lo que ella no sabe es que tú todavía\nMe estás viendo toa' la' historia',Lo que ella no sabe es que tú todavía (au)\nMe estás viendo toa' la' historia'
+song-690,run2,evidence,So I'll keep dancing with my eyes closed,"So I'll keep dancing with my / Ey-ey-ey-eyes, ey-ey-ey-eyes closed"
+song-691,run2,evidence,Lo que ella no sabe es que tú todavía / Me estás viendo toa' la' historia',Lo que ella no sabe es que tú todavía (au) / Me estás viendo toa' la' historia'
+song-691,run3,evidence,Lo que ella no sabe es que tú todavía / Me estás viendo toa' la' historia',Lo que ella no sabe es que tú todavía (au) / Me estás viendo toa' la' historia'
 song-693,run2,evidence,He's got a smile that makes me forget,he's got a smile that makes me forget
 song-694,run1,evidence,and I just fell in love with a gangsta (like),And I just fell in love with a gangsta (like)
 song-694,run1,evidence,"and I'm young, still gettin' money my pockets is chubby, nothin' was the same (huh)","And I'm young, still gettin' money my pockets is chubby, nothin' was the same (huh)"
@@ -811,17 +811,17 @@ song-695,run3,evidence,"All they doin' is talkin' down, 'cause they can't get up
 song-695,run3,evidence,"I can't put you in my business, you might wish me dead tomorrow","I can't put you in my business (No), you might wish me dead tomorrow"
 song-695,run3,evidence,"Ridin' with my twin and 'nem, and we all look good as fuck","Ridin' with my twin and 'nem (Skrrt), and we all look good as fuck"
 song-696,run3,evidence,"Desde que nos vimo' pienso en cómo nos comimo', ey","desde que nos vimo' pienso en cómo nos comimo', ey"
-song-697,run1,evidence,No quisiera que\nPase otro día y no te vea al amanecer,no quisiera que\nPase otro día y no te vea al amanecer
-song-697,run2,evidence,No quisiera que\nPase otro día y no te vea al amanecer,no quisiera que\nPase otro día y no te vea al amanecer
-song-697,run3,evidence,No quisiera que\nPase otro día y no te vea al amanecer,no quisiera que\nPase otro día y no te vea al amanecer
+song-697,run1,evidence,No quisiera que / Pase otro día y no te vea al amanecer,no quisiera que / Pase otro día y no te vea al amanecer
+song-697,run2,evidence,No quisiera que / Pase otro día y no te vea al amanecer,no quisiera que / Pase otro día y no te vea al amanecer
+song-697,run3,evidence,No quisiera que / Pase otro día y no te vea al amanecer,no quisiera que / Pase otro día y no te vea al amanecer
 song-703,run3,evidence,"Looks so alive, turns out, I'm not real","Looked so alive, turns out, I'm not real"
-song-705,run1,evidence,But if you kissed me now I know you'd fool me again,But if you kissed me now\nI know you'd fool me again
-song-705,run1,evidence,Last Christmas I gave you my heart,Last Christmas\nI gave you my heart
-song-705,run1,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone\nI'll give it to someone special
-song-705,run2,evidence,Last Christmas I gave you my heart,Last Christmas\nI gave you my heart
-song-705,run2,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone\nI'll give it to someone special
-song-705,run3,evidence,Last Christmas I gave you my heart,Last Christmas\nI gave you my heart
-song-705,run3,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone\nI'll give it to someone special
+song-705,run1,evidence,But if you kissed me now I know you'd fool me again,But if you kissed me now / I know you'd fool me again
+song-705,run1,evidence,Last Christmas I gave you my heart,Last Christmas / I gave you my heart
+song-705,run1,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone / I'll give it to someone special
+song-705,run2,evidence,Last Christmas I gave you my heart,Last Christmas / I gave you my heart
+song-705,run2,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone / I'll give it to someone special
+song-705,run3,evidence,Last Christmas I gave you my heart,Last Christmas / I gave you my heart
+song-705,run3,evidence,Maybe next year I'll give it to someone special,Maybe next year I'll give it to someone / I'll give it to someone special
 song-708,run3,evidence,"We'd never fade, never fade","we'd never fade, never fade"
 song-709,run1,evidence,He designered down (down),he designered down (down)
 song-711,run1,evidence,Y bien jalados con La Doble P,y bien jalados con La Doble P
@@ -838,22 +838,22 @@ song-737,run3,evidence,When you wake up next to him in the middle of the night,w
 song-737,run3,evidence,You don't wanna call it love,you don't wanna call it love
 song-744,run2,evidence,She got a cold heart but she got a warm smile,she got a cold heart but she got a warm smile
 song-744,run3,evidence,She got a cold heart but she got a warm smile,she got a cold heart but she got a warm smile
-song-746,run1,evidence,Rugged whiskey\n'Cause we survivin',rugged whiskey)\n'Cause we survivin
-song-746,run2,evidence,Rugged whiskey\n'Cause we survivin',rugged whiskey)\n'Cause we survivin
-song-746,run3,evidence,Rugged whiskey\n'Cause we survivin',rugged whiskey)\n'Cause we survivin
+song-746,run1,evidence,Rugged whiskey / 'Cause we survivin',rugged whiskey) / 'Cause we survivin
+song-746,run2,evidence,Rugged whiskey / 'Cause we survivin',rugged whiskey) / 'Cause we survivin
+song-746,run3,evidence,Rugged whiskey / 'Cause we survivin',rugged whiskey) / 'Cause we survivin
 song-747,run1,evidence,Before it called you a lying traitor,before it called you a lying traitor
-song-747,run2,evidence,"Oh, lord, I think about jumpin' / Off of very tall somethings","Oh, lord, I think about jumpin'\nOff of very tall somethings"
+song-747,run2,evidence,"Oh, lord, I think about jumpin' / Off of very tall somethings","Oh, lord, I think about jumpin' / Off of very tall somethings"
 song-747,run2,evidence,You called you a lying traitor,You dream of my mouth before it called you a lying traitor
 song-750,run1,keyword,alcohol-and-substance-use,alcohol-and-substance-abuse
 song-750,run2,keyword,alcohol-and-substance-use,alcohol-and-substance-abuse
 song-750,run3,keyword,alcohol-and-substance-use,**REMOVE**
-song-753,run1,evidence,You're never gon' see me\nCaught sleepin',you're never gon' see me\nCaught sleepin'
+song-753,run1,evidence,You're never gon' see me / Caught sleepin',you're never gon' see me / Caught sleepin'
 song-753,run3,evidence,"You debate who the best, but opps, I'm white chalkin' when","you debate who the best, but opps, I'm white chalkin' when"
 song-755,run2,keyword,guilt-and-remorse,**REMOVE**
-song-755,run2,evidence,I'm\nIn my head right now,I'm\n\nIn my head right now
-song-759,run1,evidence,You just might get that G-Wagon out of me,You just might\nJust might get that G-Wagon out of me
-song-759,run2,evidence,You just might get that G-Wagon out of me,You just might\nJust might get that G-Wagon out of me
-song-759,run3,evidence,You just might get that G-Wagon out of me,You just might\nJust might get that G-Wagon out of me
+song-755,run2,evidence,I'm / In my head right now,I'm /  / In my head right now
+song-759,run1,evidence,You just might get that G-Wagon out of me,You just might / Just might get that G-Wagon out of me
+song-759,run2,evidence,You just might get that G-Wagon out of me,You just might / Just might get that G-Wagon out of me
+song-759,run3,evidence,You just might get that G-Wagon out of me,You just might / Just might get that G-Wagon out of me
 song-763,run1,evidence,It wasn't no thing to give you up,it wasn't no thing to give you up
 song-775,run1,evidence,"Fuck y'all niggas, I don't trust y'all niggas","fuck y'all niggas, I don't trust y'all niggas"
 song-777,run1,evidence,They said he hit that guardrail at half past three,they said he hit that guardrail at half past three
@@ -867,37 +867,37 @@ song-784,run2,evidence,"I'll be shooting that shot like 2K, girl, I know","I’l
 song-784,run2,evidence,"So I don't give a hoot what your dude say, girl, I know","So I don’t give a hoot what your dude say, girl, I know"
 song-784,run3,evidence,"I'll be shooting that shot like 2K, girl, I know","I’ll be shooting that shot like 2K, girl, I know"
 song-784,run3,evidence,"So I don't give a hoot what your dude say, girl, I know","So I don’t give a hoot what your dude say, girl, I know"
-song-785,run3,evidence,You always been a real one\nEven though we ain't together,you always been a real one\nEven though we ain't together
+song-785,run3,evidence,You always been a real one / Even though we ain't together,you always been a real one / Even though we ain't together
 song-787,run1,evidence,"If I catch you with her, you gon' catch me with him","If I catch you with her, you gon’ catch me with him"
-song-787,run1,evidence,Since the day that we met\nIt's always who cut first and never who bleeds last,Since the day that we met\nIt’s always who cut first and never who bleeds last
+song-787,run1,evidence,Since the day that we met / It's always who cut first and never who bleeds last,Since the day that we met / It’s always who cut first and never who bleeds last
 song-787,run1,evidence,"You think I don't hear about it, you better think again","You think I don’t hear about it, you better think again"
 song-787,run2,evidence,"If I catch you with her, you gon' catch me with him","If I catch you with her, you gon’ catch me with him"
-song-787,run2,evidence,Since the day that we met\nIt's always who cut first and never who bleeds last,Since the day that we met\nIt’s always who cut first and never who bleeds last
+song-787,run2,evidence,Since the day that we met / It's always who cut first and never who bleeds last,Since the day that we met / It’s always who cut first and never who bleeds last
 song-787,run2,evidence,"You think I don't hear about it, you better think again","You think I don’t hear about it, you better think again"
 song-787,run3,evidence,"If I catch you with her, you gon' catch me with him","If I catch you with her, you gon’ catch me with him"
 song-787,run3,evidence,It's always who cut first and never who bleeds last,It’s always who cut first and never who bleeds last
-song-787,run3,evidence,Since the day that we met\nIt's always who cut first and never who bleeds last,Since the day that we met\nIt’s always who cut first and never who bleeds last
+song-787,run3,evidence,Since the day that we met / It's always who cut first and never who bleeds last,Since the day that we met / It’s always who cut first and never who bleeds last
 song-787,run3,evidence,"You think I don't hear about it, you better think again","You think I don’t hear about it, you better think again"
-song-791,run1,evidence,"Singin' 'bout it don't mean I care\nYeah, I know I've been known to share","singin' 'bout it don't mean I care\nYeah, I know I've been known to share"
-song-791,run2,evidence,"Singin' 'bout it don't mean I care\nYeah, I know I've been known to share","singin' 'bout it don't mean I care\nYeah, I know I've been known to share"
+song-791,run1,evidence,"Singin' 'bout it don't mean I care / Yeah, I know I've been known to share","singin' 'bout it don't mean I care / Yeah, I know I've been known to share"
+song-791,run2,evidence,"Singin' 'bout it don't mean I care / Yeah, I know I've been known to share","singin' 'bout it don't mean I care / Yeah, I know I've been known to share"
 song-793,run1,evidence,Who wanna play with Nicki?,who wanna play with Nicki?
 song-793,run2,evidence,Who wanna play with Nicki?,who wanna play with Nicki?
 song-794,run1,evidence,Fell out of love and you both let go,fell out of love and you both let go
-song-794,run1,evidence,She couldn't be more different from me\nHappy and free in leather,she couldn't be more different from me\nHappy and free in leather
+song-794,run1,evidence,She couldn't be more different from me / Happy and free in leather,she couldn't be more different from me / Happy and free in leather
 song-794,run2,evidence,"Every time you touch me, I just wonder how she felt","every time you touch me, I just wonder how she felt"
 song-801,run1,evidence,"Pistols all in the kitchen, can't give the zip code up, hold up, yeah (Wow)","pistols all in the kitchen, can't give the zip code up, hold up, yeah (Wow)"
-song-802,run3,evidence,I don't remember life before she came into the picture,I don't remember\nLife before she came into the picture
-song-807,run2,evidence,I'm gonna keep on dancing at the Pink Pony Club,I'm gonna keep on dancing at the\nPink Pony Club
-song-807,run3,evidence,I'm gonna keep on dancing at the Pink Pony Club,I'm gonna keep on dancing at the\nPink Pony Club
+song-802,run3,evidence,I don't remember life before she came into the picture,I don't remember / Life before she came into the picture
+song-807,run2,evidence,I'm gonna keep on dancing at the Pink Pony Club,I'm gonna keep on dancing at the / Pink Pony Club
+song-807,run3,evidence,I'm gonna keep on dancing at the Pink Pony Club,I'm gonna keep on dancing at the / Pink Pony Club
 song-812,run2,evidence,"They'll play it one day, it's a hell of a show","They'll play it one day (Yeah), it's a hell of a show"
 song-812,run3,evidence,"They'll play it one day, it's a hell of a show","They'll play it one day (Yeah), it's a hell of a show"
 song-818,run1,evidence,We got sticks in the club illegally,we got sticks in the club illegally
 song-818,run2,evidence,We got sticks in the club illegally,we got sticks in the club illegally
 song-818,run3,evidence,We got sticks in the club illegally,we got sticks in the club illegally
-song-819,run2,evidence,Given the throne i don't know\nHow to believe,Given the throne i don't know (hah)\nHow to believe
-song-819,run3,evidence,Given the throne i don't know\nHow to believe,Given the throne i don't know (hah)\nHow to believe
+song-819,run2,evidence,Given the throne i don't know / How to believe,Given the throne i don't know (hah) / How to believe
+song-819,run3,evidence,Given the throne i don't know / How to believe,Given the throne i don't know (hah) / How to believe
 song-819,run3,evidence,Waisted so long to break these walls down,Waited so long to break these walls down
-song-819,run3,evidence,Waisted so long to break these walls down\nTo make up and feel like me,Waited so long to break these walls down\nTo make up and feel like me
+song-819,run3,evidence,Waisted so long to break these walls down / To make up and feel like me,Waited so long to break these walls down / To make up and feel like me
 song-821,run1,evidence,"okay, so yeah, I smoke like a chimney","Okay, so yeah, I smoke like a chimney"
 song-821,run2,evidence,"okay, so yeah, I smoke like a chimney","Okay, so yeah, I smoke like a chimney"
 song-821,run3,evidence,"okay, so yeah, I smoke like a chimney","Okay, so yeah, I smoke like a chimney"
@@ -905,31 +905,31 @@ song-824,run2,evidence,"Said you'd never leave, we would fight 'til it's due","S
 song-829,run1,evidence,"It's my anxiety, can't let it conquer me","it's my anxiety, can't let it conquer me"
 song-829,run2,evidence,"It's my anxiety, can't let it conquer me","it's my anxiety, can't let it conquer me"
 song-829,run3,evidence,"It's my anxiety, can't let it conquer me","it's my anxiety, can't let it conquer me"
-song-833,run3,evidence,You met someone\nYour dad says he's okay,you met someone\nYour dad says he's okay
+song-833,run3,evidence,You met someone / Your dad says he's okay,you met someone / Your dad says he's okay
 song-842,run1,evidence,Pull off in a Lam',pull off in a Lam'
 song-847,run3,evidence,"You got me all, all, now I'm nodding my head","you got me all, all, now I'm nodding my head"
-song-849,run3,evidence,How could I ever miss something\nThat I'd never had?,How could I ever miss something (go)\nThat I'd never had?
+song-849,run3,evidence,How could I ever miss something / That I'd never had?,How could I ever miss something (go) / That I'd never had?
 song-850,run1,evidence,Made it clear you didn't wanna see the sequel,Made it clear you didn’t wanna see the sequel
 song-850,run2,evidence,Can't recall my mornings ever being this faded,Can’t recall my mornings ever being this faded
 song-850,run2,evidence,Made it clear you didn't wanna see the sequel,Made it clear you didn’t wanna see the sequel
 song-850,run3,evidence,Made it clear you didn't wanna see the sequel,Made it clear you didn’t wanna see the sequel
-song-852,run2,evidence,"He walked in\nLike a 6'2"" dream, heaven-sent","he walked in\nLike a 6'2"" dream, heaven-sent"
+song-852,run2,evidence,"He walked in / Like a 6'2"" dream, heaven-sent","he walked in / Like a 6'2"" dream, heaven-sent"
 song-853,run3,evidence,"Nothing to us, run up, you're done up, we come up from sunup to sundown, so come out to play","Nothin' to us, run up, you're done up, we come up from sunup to sundown, so come out to play"
 song-854,run2,evidence,She's in here chasing tequila with High Noon,she's in here chasing tequila with High Noon
-song-854,run2,evidence,"We did that ""What's your name"" thing\nWhere you from and what's your favorite drink","we did that ""What's your name"" thing\nWhere you from and what's your favorite drink"
+song-854,run2,evidence,"We did that ""What's your name"" thing / Where you from and what's your favorite drink","we did that ""What's your name"" thing / Where you from and what's your favorite drink"
 song-856,run1,evidence,If it was a different time,if it was a different time
 song-856,run2,evidence,If it was a different time,if it was a different time
 song-856,run3,evidence,If it was a different time,if it was a different time
-song-857,run1,evidence,Might be a lot of things\nBut I ain't your savin' grace,might be a lot of things\nBut I ain't your savin' grace
+song-857,run1,evidence,Might be a lot of things / But I ain't your savin' grace,might be a lot of things / But I ain't your savin' grace
 song-857,run1,evidence,"The night I said, ""I'm leavin',"" I turned into Richard Petty","the night I said, ""I'm leavin',"" I turned into Richard Petty"
-song-857,run2,evidence,Might be a lot of things\nBut I ain't your savin' grace,might be a lot of things\nBut I ain't your savin' grace
+song-857,run2,evidence,Might be a lot of things / But I ain't your savin' grace,might be a lot of things / But I ain't your savin' grace
 song-857,run2,evidence,"The night I said, ""I'm leavin',"" I turned into Richard Petty","the night I said, ""I'm leavin',"" I turned into Richard Petty"
-song-857,run3,evidence,Might be a lot of things\nBut I ain't your savin' grace,might be a lot of things\nBut I ain't your savin' grace
+song-857,run3,evidence,Might be a lot of things / But I ain't your savin' grace,might be a lot of things / But I ain't your savin' grace
 song-857,run3,evidence,"The night I said, ""I'm leavin',"" I turned into Richard Petty","the night I said, ""I'm leavin',"" I turned into Richard Petty"
 song-861,run2,evidence,All I ask is don't make my pull up and get to dumping,All I ask is don't make me pull up and get to dumping
 song-863,run1,evidence,"And I'm gonna love you, yeah","I'm gonna love you, yeah"
-song-867,run1,evidence,The struggle keeps me honest\nAnd it breaks down the walls of my pride,the struggle keeps me honest\nAnd it breaks down the walls of my pride
-song-867,run2,evidence,The struggle keeps me honest\nAnd it breaks down the walls of my pride,the struggle keeps me honest\nAnd it breaks down the walls of my pride
+song-867,run1,evidence,The struggle keeps me honest / And it breaks down the walls of my pride,the struggle keeps me honest / And it breaks down the walls of my pride
+song-867,run2,evidence,The struggle keeps me honest / And it breaks down the walls of my pride,the struggle keeps me honest / And it breaks down the walls of my pride
 song-872,run1,evidence,"Con reggaetón y dembow, sí, con reggaetón y dembow","con reggaetón y dembow, sí, con reggaetón y dembow"
 song-872,run2,evidence,"Con reggaetón y dembow, sí, con reggaetón y dembow","con reggaetón y dembow, sí, con reggaetón y dembow"
 song-872,run2,evidence,Pasan los año' y sigo dando palo',pasan los año' y sigo dando palo'

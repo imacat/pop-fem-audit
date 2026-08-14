@@ -15,10 +15,13 @@ three runs assign it, so three votes never tie, and it carries
 the lyric quotes of every run that assigned it, pooled,
 deduplicated, sorted by Unicode code point, and joined with a
 single ``|``: the three runs are peers, so the quote order
-follows the text alone.  The written quote carries the two
-characters ``\n`` where the lyric has a newline, the mirror of
-the unescaping the correction table loader does, so the coding
-table holds one row per line.  The three
+follows the text alone.  A quote carries the lyric line-break
+convention ``" / "`` where the lyric has a newline, applied once
+when the run records load, so the corrections, the coding table,
+and the database all share the one representation and nothing is
+ever converted back.  No lyric of the 883-song corpus contains
+``" / "`` -- a corpus fact checked exhaustively, not a structural
+guarantee -- so the convention is unambiguous here.  The three
 archives must cover exactly the same set of song IDs, every
 record must be a successful result, and every record's "text"
 must parse to a JSON object; otherwise the tally fails and
@@ -161,11 +164,10 @@ class CorrectionsLoader:
         of the runs the command was given, and a known type.  The
         file is read with the CSV reader, so a quoted field may
         hold a comma or a double quote.  No field holds a line
-        break: the two text fields carry the two characters
-        ``\n`` where the text has a newline, so the file holds one
-        row per line, and each of them is unescaped to a single LF
-        before the repair is matched or applied, as that is what
-        the archived records carry.  Nothing is written.
+        break: the two text fields carry the lyric line-break
+        convention ``" / "`` where the text has a newline -- the
+        same representation the loaded run records carry -- and
+        are matched and applied verbatim.  Nothing is written.
 
         :return: The repairs, in file order.
         :raises TallyError: When the file cannot be read, the
@@ -249,21 +251,7 @@ class CorrectionsLoader:
             raise ValueError(f"{label}: unknown type \"{row[2]}\"")
         return Correction(
             line=line, song_id=song_id, run=row[1], type=row[2],
-            to_be_replaced=cls.__unescape(row[3]),
-            correct_term=cls.__unescape(row[4]))
-
-    @staticmethod
-    def __unescape(text: str) -> str:
-        r"""Unescape the newlines of a text field.
-
-        The mirror of the escaping :meth:`CodingTable.write` does
-        to the ``Quote`` field it writes out.
-
-        :param text: The field as the CSV reader gave it.
-        :return: The field with every two-character ``\n``
-            sequence turned into a single LF.
-        """
-        return text.replace("\\n", "\n")
+            to_be_replaced=row[3], correct_term=row[4])
 
     @staticmethod
     def __parse_song_id(item_id: str, label: str) -> int:
@@ -361,6 +349,11 @@ class CodingTallier:
     __QUOTE_SEPARATOR: str = "|"
     """The separator between the distinct lyric quotes of one
     settled code."""
+    __LINE_BREAK: str = " / "
+    """The lyric line-break convention replacing every LF inside a
+    quote.  Unambiguous for this corpus only: none of the 883
+    songs' lyrics contains the three characters, checked
+    exhaustively; a new corpus must be re-checked."""
 
     def __init__(self, run_dir_1: Path, run_dir_2: Path,
                  run_dir_3: Path,
@@ -645,8 +638,8 @@ class CodingTallier:
                 keywords, f"{path}: id {item_id}")
         return records
 
-    @staticmethod
-    def __quote_lists(keywords: dict[str, Any], label: str) \
+    @classmethod
+    def __quote_lists(cls, keywords: dict[str, Any], label: str) \
             -> dict[str, list[str]]:
         """Validate the lyric quote list of every keyword.
 
@@ -654,7 +647,8 @@ class CodingTallier:
         :param label: The location of the record, for the error
             message.
         :return: The lyric quotes of every keyword, in the given
-            order.
+            order, every LF inside a quote turned into the lyric
+            line-break convention ``" / "``.
         :raises ValueError: When a keyword's value is not a list
             of strings.
         """
@@ -667,7 +661,8 @@ class CodingTallier:
                 raise ValueError(
                     f"{label}: keyword \"{keyword}\": the quotes"
                     " are not a list of strings")
-            quotes[keyword] = value
+            quotes[keyword] = [
+                x.replace("\n", cls.__LINE_BREAK) for x in value]
         return quotes
 
     @classmethod
@@ -832,18 +827,17 @@ class CodingTable:
     keyword, by Unicode code point."""
 
     def write(self, output_csv: Path) -> None:
-        r"""Write the coding table CSV file.
+        """Write the coding table CSV file.
 
         Writes an RFC 4180 CSV file, UTF-8, with CRLF line
         endings, carrying the header row
         ``Song,Artist Credit,Keyword,Quote`` and one row per
-        settled keyword, in the row order.  The ``Quote`` field
-        carries the two characters ``\n`` where the quotes have a
-        newline, so no field holds a line break and the file
-        holds one row per line; the correction table loader
-        unescapes its own two text fields the same way, and
-        restoring a single LF gives the lyric text back.  The
-        parent directory is created when it does not exist.
+        settled keyword, in the row order.  Every field is
+        written verbatim; a quote carries the lyric line-break
+        convention ``" / "`` where the lyric has a line break, so
+        no field holds a line break and the file holds one row
+        per line.  The parent directory is created when it does
+        not exist.
 
         :param output_csv: The output CSV file.
         :return: None.
@@ -854,22 +848,7 @@ class CodingTable:
                   newline="") as file:
             writer: Any = csv.writer(file)
             writer.writerow(self.__HEADER)
-            writer.writerows(
-                (*x[:3], self.__escape(x[3])) for x in self.rows)
-
-    @staticmethod
-    def __escape(text: str) -> str:
-        r"""Escape the newlines of the quote field.
-
-        The mirror of the unescaping the correction table loader
-        does to its own two text fields.
-
-        :param text: The joined lyric quotes of one settled
-            keyword.
-        :return: The quotes with every LF turned into the two
-            characters ``\n``.
-        """
-        return text.replace("\n", "\\n")
+            writer.writerows(self.rows)
 
 
 class CodingTableBuilder:
@@ -1017,9 +996,9 @@ def main(argv: list[str] | None = None) -> int:
     song named by its title and its stored artist credit from the
     SQLite working store, and the keyword carrying the pooled,
     deduplicated, and sorted lyric quotes of the runs that
-    assigned it, joined with a single ``|`` and written with the
-    two characters ``\n`` where the quotes have a newline, so the
-    table holds one row per line.  The records are
+    assigned it, joined with a single ``|`` and carrying the
+    lyric line-break convention ``" / "`` where the lyric has a
+    newline, so the table holds one row per line.  The records are
     repaired from the ``--corrections`` table and then checked
     against the ``--valid-keywords`` list, when either is given.
     Nothing is written when the three archives do not cover the

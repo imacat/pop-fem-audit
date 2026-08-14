@@ -984,12 +984,13 @@ class TestBuildDB(unittest.TestCase):
 
     CODINGS_CSV: str = (
         "Song,Artist Credit,Keyword,Quote\n"
-        "Hello,Adele,longing,\"Hello from the other side\\nI must"
+        "Hello,Adele,longing,\"Hello from the other side / I must"
         " have called a thousand times\"\n"
         "Hello,Adele,regret,I'm sorry|It's no secret\n"
         "One Dance,Drake featuring Wizkid,desire,\n")
-    """The coding CSV fixture: a two-line quote, two quotes joined
-    by "|", and an empty quote."""
+    """The coding CSV fixture: a quote carrying the " / "
+    line-break convention, two quotes joined by "|", and an empty
+    quote."""
 
     def __stored_codings(self) -> dict[tuple[str, str], str]:
         """Read the stored codings keyed by the song and keyword.
@@ -1003,8 +1004,7 @@ class TestBuildDB(unittest.TestCase):
 
     def test_codings_imported(self) -> None:
         """Test that the coding CSV imports one row per song and
-        keyword, restoring the newline and keeping the "|"-joined
-        quotes verbatim."""
+        keyword, storing the quote column verbatim."""
         self.__write_codings(self.CODINGS_CSV)
         status: int
         stderr: str
@@ -1015,8 +1015,8 @@ class TestBuildDB(unittest.TestCase):
         self.assertEqual(
             self.__stored_codings(),
             {("Hello", "longing"):
-                "Hello from the other side\n"
-                "I must have called a thousand times",
+                "Hello from the other side / I must have called"
+                " a thousand times",
              ("Hello", "regret"): "I'm sorry|It's no secret",
              ("One Dance", "desire"): ""})
 

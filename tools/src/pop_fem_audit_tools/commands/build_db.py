@@ -690,9 +690,6 @@ class CodingImporter:
     COLUMNS: tuple[str, ...] = (
         "Song", "Artist Credit", "Keyword", "Quote")
     """The required columns of the coding CSV file."""
-    NEWLINE_ESCAPE: str = "\\n"
-    """The two characters standing for a newline in the quote
-    column, so that the CSV file is one row per line."""
 
     def __init__(self, session: Session) -> None:
         """Initialize the importer.
@@ -707,10 +704,11 @@ class CodingImporter:
         A None input leaves the coding unloaded.  Otherwise every
         row of the CSV file yields one coding of the song named by
         its title and artist credit, with the quote column stored
-        verbatim except that each two-character ``\\n`` escape
-        becomes a newline; an empty quote column stores an empty
-        string.  When the method returns, the imported codings are
-        queryable in the session.
+        verbatim; a quote carries the lyric line-break convention
+        ``" / "`` where the lyric has a line break, and an empty
+        quote column stores an empty string.  When the method
+        returns, the imported codings are queryable in the
+        session.
 
         :param path: The settled coding table CSV file to import,
             or None to skip the coding.
@@ -766,7 +764,7 @@ class CodingImporter:
         seen.add(coding_key)
         self.__session.add(Coding(
             song=song, keyword=row["Keyword"],
-            quotes=row["Quote"].replace(self.NEWLINE_ESCAPE, "\n")))
+            quotes=row["Quote"]))
 
     @classmethod
     def __check_columns(cls, path: Path,

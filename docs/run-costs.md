@@ -39,5 +39,10 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_019xcQXwrbwDGFc9nE5M8AjE | 4 分 0 秒 | 763,193 | 42,389 | $1.46 | 已取代（2 首遭內容過濾攔阻、13 首輸出夾帶散文；定義檔修訂後重跑） |
 | 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_01N7bDbXRSfAVUzzaj2thKeR | 4 分 20 秒 | 781,037 | 39,315 | $1.47 | 現行（644 首全數有效，零攔阻；保留 1,481／送裁 1,699） |
 | 2026-08-06 | 03-code | run3 | claude-sonnet-4-6 | msgbatch_01KnkCaGETnFJrPddrxZTYHA | 6 分 26 秒 | 1,625,458 | 363,840 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） |
+| 2026-08-14 | 04-group | run1 | claude-sonnet-4-6 | msgbatch_01UPNedog6feQzJ9WVfSAxBD | 1 分 1 秒 | 3,129 | 470 | $0.01 | 已取代（僅 3 群；改納 women-power 群後重跑） |
+| 2026-08-14 | 04-group | run1 | claude-sonnet-4-6 | msgbatch_01KntJgxdicStaMjNL12P3zi | 1 分 25 秒 | 4,170 | 558 | $0.01 | 已取代（改以 claude-fable-5 執行；vulnerable 輸出含詞彙表外碼 1 筆；歸檔另行私人備份，不入版本庫） |
+| 2026-08-14 | 04-group | run1 | claude-fable-5 | msgbatch_01Mr6goBb2Efa4YrqCprbP4U | 55 秒 | 5,553 | 2,049 | $0.08 | 現行（4 群；零違規碼；temperature 與 thinking 參數不適用於本模型，未送出） |
+| 2026-08-14 | 04-group | run2 | claude-fable-5 | msgbatch_01C17xW3YBefThTYZ83g7KkL | 1 分 21 秒 | 5,553 | 1,891 | $0.08 | 現行（4 群；零違規碼） |
+| 2026-08-14 | 04-group | run3 | claude-fable-5 | msgbatch_01DveEMYyjCAYe6wxpcCD87V | 2 分 9 秒 | 5,553 | 1,975 | $0.08 | 現行（4 群；零違規碼） |
 
-累計支出：$63.22。
+累計支出：$63.48。

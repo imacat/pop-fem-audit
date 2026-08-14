@@ -3,8 +3,11 @@
 ## Analysis pipeline
 
 - LLM analysis runs via Python scripts calling the Anthropic
-  Messages API: model `claude-sonnet-4-6`, `temperature=0`,
-  thinking disabled, Batch API where possible.
+  Messages API, Batch API where possible.  Steps 1 and 3 run
+  on `claude-sonnet-4-6` with `temperature=0` and thinking
+  disabled; step 4 runs on `claude-fable-5`, which accepts
+  neither parameter -- its sampling variance is absorbed by
+  the majority vote.
 - Prompt definition files live in
   `prompts/<step>-<substep>-<task>.md` (e.g. 01-tag.md; no
   version suffix -- versions live in git history) and are
@@ -13,11 +16,13 @@
   deterministic vocabulary step (step 2) has no definition
   file yet holds its own number.  Zero padding is for
   sorting only -- prose says "step 1", "step 3".
-- Per-song LLM judgments (coding) run the same definition
-  file three times, independently, over the same input; a
-  deterministic subcommand then assigns a (song, keyword)
-  pair when at least two of the three runs assign it
-  ("3 runs + majority vote").  Free-generation steps run
+- Itemwise LLM judgments (per-song coding in step 3,
+  per-keyword group selection in step 4) run the same
+  definition file three times, independently, over the same
+  input; a deterministic tally then assigns an item (a
+  (song, keyword) or (group, keyword) pair) when at least
+  two of the three runs assign it ("3 runs + majority
+  vote").  Free-generation steps run
   twice and both outputs are pooled.  The vocabulary is
   built by a deterministic subcommand (embedding +
   clustering), not by an LLM.  If a validation outcome is

@@ -688,3 +688,41 @@
   檢定(women-power/female-empowerment 對三群之 2×2,
   Fisher 精確檢定,6 檢定一族之 BH-FDR 校正 q)之數字
   以本條所載分群為據,論文之編碼群表與群關聯表同此。
+
+- **步驟 4:語意編碼群以三票制定案(claude-fable-5),
+  取代草稿分群**:更正前條——所稱「研究者審定」實未
+  發生,研究者僅將盲選輸出整理歸檔,未作實質裁決;草稿
+  分群(單次 Claude Code 盲選)不具方法學地位。裁定
+  步驟 4 為語意分群的正式程序。任務與盲選同構:每筆輸入
+  為群名加 101 碼字母序清單,輸出為入選碼的單層 JSON
+  陣列;定義檔 `prompts/04-group.md` 只定格式、不含群的
+  語意定義。模型裁定 claude-fable-5:模型對照實驗(同
+  定義檔、同輸入、Batch API)顯示分群對模型高度敏感——
+  claude-sonnet-4-6 將群名成份式拆讀(women+power,凡
+  力量語意即入選,women-power 群 11 碼,並產詞彙表外
+  幻覺碼一筆),claude-fable-5 讀為詞彙化概念(要求女性
+  標記,women-power 群 2 碼),與草稿盲選及深度閱讀輔助
+  判讀同讀法;sonnet 對照執行歸檔另行私人備份,不入
+  版本庫,支出留帳。claude-fable-5 不
+  受理 temperature 與 thinking 參數(均不送出),無法釘
+  temperature=0;執行間變異實測存在(run1/run2 於陽剛、
+  脆弱邊緣碼分歧),由三票多數決吸收;詞彙表外輸出項
+  無效。三次執行(`runs/04-group/run1`–`run3`)多數決
+  定案(22 個(群,碼)中 21 個三次全票,
+  family-and-fatherhood 以 2:1 入群):女性力量群 2 碼
+  ——female-empowerment、women-power;厭女群 1 碼——
+  rejection-of-women;陽剛男性氣質群 9 碼——
+  dominance-and-power、family-and-fatherhood、
+  hustle-and-money、rivalry-and-superiority、
+  self-confidence-and-braggadocio、
+  showing-off-and-impressing、street-loyalty-and-danger、
+  violence-and-street-danger、wealth-and-flexing;脆弱群
+  10 碼——disappointment-and-failure、
+  fear-of-losing-love、heartbreak-and-grief、
+  hidden-emotional-struggle、inner-mental-turmoil、
+  loneliness-and-isolation、longing-and-loss、
+  past-trauma-and-healing、self-worth-and-insecurity、
+  vulnerability-and-betrayal。計票由確定性子命令
+  `tally-groups` 重現,定案寫入 `results/groups.csv`
+  (群、編碼、票數);論文之編碼群表、上標註記與群層次
+  檢定改以本定案為據,相關數表隨之重算。

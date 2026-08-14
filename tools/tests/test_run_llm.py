@@ -169,7 +169,7 @@ class TestRequestBuilding(RunLLMTestCase):
         """Test the shape of a batch request."""
         request: dict[str, Any] = run_llm.build_request(
             run_llm.InputItem(id="song-1", content="the lyrics"),
-            "the system prompt", 2048)
+            "the system prompt", 2048, "claude-sonnet-4-6")
         self.assertEqual(request["custom_id"], "song-1")
         params: dict[str, Any] = request["params"]
         self.assertEqual(params["model"], "claude-sonnet-4-6")
@@ -179,6 +179,20 @@ class TestRequestBuilding(RunLLMTestCase):
         self.assertEqual(params["system"], "the system prompt")
         self.assertEqual(params["messages"],
                          [{"role": "user", "content": "the lyrics"}])
+
+    def test_build_request_fable_5(self) -> None:
+        """Test the request shape for the claude-fable-5 model."""
+        request: dict[str, Any] = run_llm.build_request(
+            run_llm.InputItem(id="group-1", content="the groups"),
+            "the system prompt", 8192, "claude-fable-5")
+        params: dict[str, Any] = request["params"]
+        self.assertEqual(params["model"], "claude-fable-5")
+        self.assertNotIn("temperature", params)
+        self.assertNotIn("thinking", params)
+        self.assertEqual(params["max_tokens"], 8192)
+        self.assertEqual(params["system"], "the system prompt")
+        self.assertEqual(params["messages"],
+                         [{"role": "user", "content": "the groups"}])
 
 
 class TestCollectResults(RunLLMTestCase):

@@ -35,10 +35,18 @@ import anthropic
 from ..config import get_settings
 from ..utils import format_duration
 
-MODEL: str = "claude-sonnet-4-6"
-TEMPERATURE: float = 0.0
-THINKING: dict[str, str] = {"type": "disabled"}
-SCRIPT_VERSION: str = "run_llm.py 3.0.0"
+# claude-fable-5 accepts neither "temperature" nor "thinking";
+# a model's entry holds exactly the extra request parameters it
+# accepts.
+MODELS: dict[str, dict[str, Any]] = {
+    "claude-sonnet-4-6": {
+        "temperature": 0.0,
+        "thinking": {"type": "disabled"},
+    },
+    "claude-fable-5": {},
+}
+DEFAULT_MODEL: str = "claude-sonnet-4-6"
+SCRIPT_VERSION: str = "run_llm.py 3.1.0"
 POLL_INTERVAL_SECONDS: float = 60.0
 
 
@@ -180,6 +188,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "archive_dir", type=Path,
         help="the destination archive directory")
     parser.add_argument(
+        "--model", choices=sorted(MODELS), default=DEFAULT_MODEL,
+        help=f"the model ID (default {DEFAULT_MODEL})")
+    parser.add_argument(
         "--max-tokens", type=int, default=2048,
         help="the maximum output tokens per request (default 2048)")
     parser.add_argument(
@@ -225,21 +236,21 @@ def load_items(path: Path) -> list[InputItem]:
 
 
 def build_request(item: InputItem, system_prompt: str,
-                  max_tokens: int) -> dict[str, Any]:
+                  max_tokens: int, model: str) -> dict[str, Any]:
     """Build one Message Batches request for an input item.
 
     :param item: The input item.
     :param system_prompt: The system prompt text.
     :param max_tokens: The maximum output tokens.
+    :param model: The model ID, a key of ``MODELS``.
     :return: The batch request with "custom_id" and "params".
     """
     return {
         "custom_id": item.id,
         "params": {
-            "model": MODEL,
+            "model": model,
             "max_tokens": max_tokens,
-            "temperature": TEMPERATURE,
-            "thinking": THINKING,
+            **MODELS[model],
             "system": system_prompt,
             "messages": [
                 {"role": "user", "content": item.content},
@@ -418,7 +429,7 @@ def now_iso() -> str:
 
 def execute_run(
         client: anthropic.Anthropic, items: list[InputItem],
-        system_prompt: str, max_tokens: int,
+        system_prompt: str, max_tokens: int, model: str,
         meta: dict[str, Any],
 ) -> Results:
     """Submit the batch of this run and await its results.
@@ -430,11 +441,13 @@ def execute_run(
     :param items: The input items.
     :param system_prompt: The system prompt text.
     :param max_tokens: The maximum output tokens per request.
+    :param model: The model ID, a key of ``MODELS``.
     :param meta: The metadata to record the batch bookkeeping into.
     :return: The results of this run, keyed by item ID.
     """
     requests: list[dict[str, Any]] = [
-        build_request(x, system_prompt, max_tokens) for x in items]
+        build_request(x, system_prompt, max_tokens, model)
+        for x in items]
     info: BatchInfo = BatchInfo(
         batch_id=submit_batch(client, requests),
         submitted_at=now_iso())
@@ -469,9 +482,9 @@ def main(argv: list[str] | None = None) -> int:
     (archive_dir / "prompt.md").write_bytes(args.prompt.read_bytes())
     meta: dict[str, Any] = {
         "script_version": SCRIPT_VERSION,
-        "model": MODEL,
-        "temperature": TEMPERATURE,
-        "thinking": THINKING,
+        "model": args.model,
+        "temperature": MODELS[args.model].get("temperature"),
+        "thinking": MODELS[args.model].get("thinking"),
         "max_tokens": args.max_tokens,
         "prompt_path": str(args.prompt),
         "prompt_sha256": sha256_of(args.prompt),
@@ -486,7 +499,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         write_json(meta_path, meta)
         print(json.dumps(
-            build_request(items[0], prompt_text, args.max_tokens),
+            build_request(items[0], prompt_text, args.max_tokens,
+                          args.model),
             ensure_ascii=False, indent=2))
         elapsed: str = format_duration(time.monotonic() - started)
         print(f"Done.  {len(items)} jobs finished."
@@ -495,7 +509,8 @@ def main(argv: list[str] | None = None) -> int:
     client: anthropic.Anthropic = anthropic.Anthropic(
         api_key=get_settings().ANTHROPIC_API_KEY)
     results: Results = execute_run(
-        client, items, prompt_text, args.max_tokens, meta)
+        client, items, prompt_text, args.max_tokens, args.model,
+        meta)
     item_ids: list[str] = [x.id for x in items]
     write_jsonl(
         archive_dir / "output.jsonl",

@@ -648,3 +648,43 @@
   | 組內一致性（最低組） | 0.166 | 0.170 | 0.200 |
 
   論文方法節所引 k 值比較數字以本條為據。
+
+## 2026-08-14
+
+- **語意編碼群:四群由隔離的 LLM 盲選、研究者審定**:論文
+  研究結果需要語意層的編碼群,以與統計層的關聯檢定互為
+  獨立的對照。程序:四個彼此隔離的 Claude Code subagent
+  (輔助判讀層,非 API 儀器),各自僅收到群名與 101 碼的
+  字母序清單——無研究脈絡、無預期數量、不知其他群與其他
+  subagent 存在——依編碼字面語意挑選。盲選結果經研究者
+  審閱後照案採用:女性力量群(women-power group)2 碼
+  (female-empowerment、women-power);反女性力量/厭女群
+  (misogyny group)4 碼(idealized-beauty、
+  possessiveness-and-exclusivity、predatory-threat、
+  rejection-of-women);陽剛男性氣質群(masculine group)
+  13 碼(criminal-secrecy、dominance-and-power、
+  family-and-fatherhood、hustle-and-money、predatory-threat、
+  rejection-of-women、rivalry-and-superiority、
+  self-confidence-and-braggadocio、showing-off-and-impressing、
+  street-loyalty-and-danger、violence-and-street-danger、
+  wealth-and-flexing、wealth-and-material-success);脆弱群
+  (vulnerable group)24 碼(addiction-and-obsession、
+  alcohol-and-substance-abuse、clinging-to-love、
+  denial-and-self-deception、disappointment-and-failure、
+  fear-of-losing-love、guilt-and-apology、heartbreak-and-grief、
+  hidden-emotional-struggle、inner-mental-turmoil、
+  jealousy-and-bitterness、lingering-memories、
+  loneliness-and-isolation、longing-and-loss、
+  longing-for-clarity、longing-for-reconciliation、
+  nostalgia-and-longing、past-trauma-and-healing、
+  regret-and-reflection、reluctance-to-let-go、
+  self-worth-and-insecurity、societal-pressure、
+  toxic-relationship、vulnerability-and-betrayal)。
+  rejection-of-women 與 predatory-threat 同屬厭女與陽剛
+  兩群,據實保留雙重隸屬。本分群取代題庫時期的臨時
+  ANTI/MASC 清單(彼時 ANTI 含 partner-inadequacy;
+  盲選認其字面不帶性別而未入厭女群)。時序聲明:分群
+  先於群層次關聯檢定定案,非依統計結果回溯挑群;群層次
+  檢定(women-power/female-empowerment 對三群之 2×2,
+  Fisher 精確檢定,6 檢定一族之 BH-FDR 校正 q)之數字
+  以本條所載分群為據,論文之編碼群表與群關聯表同此。

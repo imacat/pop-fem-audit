@@ -139,3 +139,17 @@ class Coding(Base):
     single "|", empty when the keyword carries no evidence."""
     song: Mapped[Song] = relationship(back_populates="codings")
     """The coded song."""
+
+
+class CodeGroup(Base):
+    """A settled member keyword of a semantic code group."""
+    __tablename__ = "groups"
+    """The table name."""
+
+    group: Mapped[str] = mapped_column(primary_key=True)
+    """The group name, as the settled group table carries it."""
+    keyword: Mapped[str] = mapped_column(primary_key=True)
+    """The member coding keyword."""
+    votes: Mapped[int] = mapped_column()
+    """The number of the selection runs that selected the
+    keyword for the group."""

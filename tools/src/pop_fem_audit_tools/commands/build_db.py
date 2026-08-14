@@ -72,6 +72,7 @@ from ..database import Base, ds
 from ..models import (
     Artist,
     ChartEntry,
+    CodeGroup,
     Coding,
     Role,
     Song,
@@ -118,6 +119,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--codings", type=Path, default=None,
         help="the settled coding table CSV file to import")
+    parser.add_argument(
+        "--groups", type=Path, default=None,
+        help="the settled code group table CSV file to import")
     return parser.parse_args(argv)
 
 
@@ -785,6 +789,101 @@ class CodingImporter:
                 f"{path}: missing column(s): {', '.join(missing)}")
 
 
+class GroupImporter:
+    """The group-import job: loads the settled code group table
+    into the working store."""
+
+    COLUMNS: tuple[str, ...] = ("Group", "Keyword", "Votes")
+    """The required columns of the group CSV file."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def import_groups(self, path: Path | None) -> None:
+        """Load the settled code group table into the store.
+
+        A None input leaves the groups unloaded.  Otherwise every
+        row of the CSV file yields one member keyword of one
+        group, with the group name, the keyword, and the integer
+        vote count stored verbatim.  When the method returns, the
+        imported groups are queryable in the session.
+
+        :param path: The settled code group table CSV file to
+            import, or None to skip the groups.
+        :return: None.
+        :raises BuildError: When the file lacks a required
+            column, a votes field is not an integer, or two rows
+            name the same group and keyword.
+        :raises OSError: When the file cannot be read.
+        """
+        if path is None:
+            return
+        seen: set[tuple[str, str]] = set()
+        with open(path, encoding="utf-8", newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(path, reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.__import_group_row(path, seen, row)
+        self.__session.flush()
+
+    def __import_group_row(self, path: Path,
+                           seen: set[tuple[str, str]],
+                           row: dict[str, str]) -> None:
+        """Store one group member row.
+
+        :param path: The group CSV file, for the error messages.
+        :param seen: The (group, keyword) pairs already stored,
+            updated with the pair of this row.
+        :param row: The group CSV row.
+        :return: None.
+        :raises BuildError: When the votes field is not an
+            integer, or the group and keyword repeat an earlier
+            row.
+        """
+        key: tuple[str, str] = (row["Group"], row["Keyword"])
+        if key in seen:
+            raise BuildError(
+                f"{path}: duplicated group member: group"
+                f" \"{row['Group']}\", keyword"
+                f" \"{row['Keyword']}\"")
+        seen.add(key)
+        votes: int
+        try:
+            votes = int(row["Votes"])
+        except ValueError as error:
+            raise BuildError(
+                f"{path}: group \"{row['Group']}\", keyword"
+                f" \"{row['Keyword']}\": votes"
+                f" \"{row['Votes']}\" is not an integer"
+            ) from error
+        self.__session.add(CodeGroup(
+            group=row["Group"], keyword=row["Keyword"],
+            votes=votes))
+
+    @classmethod
+    def __check_columns(cls, path: Path,
+                        fieldnames: Sequence[str] | None) -> None:
+        """Verify the group CSV file has the required columns.
+
+        :param path: The group CSV file.
+        :param fieldnames: The header row of the file, or None
+            when the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in cls.COLUMNS if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{path}: missing column(s): {', '.join(missing)}")
+
+
 @dataclass
 class StoreCounts:
     """The row counts of the working store, for the build summary."""
@@ -795,6 +894,8 @@ class StoreCounts:
     """The number of the artists."""
     codings: int
     """The number of the settled codings."""
+    groups: int
+    """The number of the settled code group members."""
 
     @classmethod
     def get_instance(cls, session: Session) -> Self:
@@ -815,7 +916,9 @@ class StoreCounts:
             artists=count(
                 sa.select(sa.func.count()).select_from(Artist)),
             codings=count(
-                sa.select(sa.func.count()).select_from(Coding)))
+                sa.select(sa.func.count()).select_from(Coding)),
+            groups=count(
+                sa.select(sa.func.count()).select_from(CodeGroup)))
 
 
 def reset_store(session: Session) -> None:
@@ -825,7 +928,8 @@ def reset_store(session: Session) -> None:
     :return: None.
     """
     model: type[Base]
-    for model in (Coding, SongArtist, ChartEntry, Song, Artist):
+    for model in (CodeGroup, Coding, SongArtist, ChartEntry, Song,
+                  Artist):
         session.execute(sa.delete(model))
 
 
@@ -988,6 +1092,7 @@ def main(argv: list[str] | None = None) -> int:
             args.lyrics_dir, args.wikidata_csv)
         PerformerGenderDeriver(session).derive_performer_genders()
         CodingImporter(session).import_codings(args.codings)
+        GroupImporter(session).import_groups(args.groups)
         counts = StoreCounts.get_instance(session)
         CSVExporter(session, args.derived_dir).write()
         session.commit()
@@ -999,6 +1104,7 @@ def main(argv: list[str] | None = None) -> int:
         session.close()
     elapsed: str = format_duration(time.monotonic() - started)
     print(f"Done.  {counts.songs} songs/{counts.artists} artists"
-          f"/{counts.codings} codings.  {elapsed} elapsed.",
+          f"/{counts.codings} codings/{counts.groups} group"
+          f" members.  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

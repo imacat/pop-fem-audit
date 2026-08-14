@@ -138,6 +138,9 @@
   定案分群寫入 `results/groups.csv`，欄位 `Group`、
   `Keyword`、`Votes`，列序先依群名、再依編碼，一律以
   Unicode 碼位比較，換行為 CRLF。
+- **工作儲存**：`build-db --groups <定案分群 CSV>` 將定案
+  分群逐欄照存入 `groups` 資料表（群、編碼、票數），供
+  群層次查詢。
 
 ## 女性力量候選集
 

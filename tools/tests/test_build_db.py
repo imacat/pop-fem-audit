@@ -21,6 +21,7 @@ from pop_fem_audit_tools.database import DataSource
 from pop_fem_audit_tools.models import (
     Artist,
     ChartEntry,
+    CodeGroup,
     Coding,
     Role,
     Song,
@@ -268,6 +269,7 @@ class TestBuildDB(unittest.TestCase):
         self.__wikidata: Path = \
             self.__dir / "artists_wikidata.csv"
         self.__codings: Path = self.__dir / "codings.csv"
+        self.__groups: Path = self.__dir / "groups.csv"
         self.__write_chart(self.CHART_CSV)
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL="sqlite://",
@@ -1121,3 +1123,102 @@ class TestBuildDB(unittest.TestCase):
             self.__stored_codings(),
             {("Shape of You", "attraction"):
                 "I'm in love with your body"})
+
+    GROUPS_CSV: str = (
+        "Group,Keyword,Votes\n"
+        "masculine,dominance-and-power,3\n"
+        "masculine,family-and-fatherhood,2\n"
+        "women-power,women-power,3\n")
+    """The group CSV fixture: two groups, one two-vote member."""
+
+    def __write_groups(self, content: str) -> None:
+        """Write the group CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__groups.write_text(content, encoding="utf-8")
+
+    def __stored_groups(self) -> dict[tuple[str, str], int]:
+        """Read the stored group members keyed by group and keyword.
+
+        :return: The stored votes, keyed by the group name and the
+            keyword.
+        """
+        session: Session = self.__session()
+        return {(x.group, x.keyword): x.votes
+                for x in session.scalars(sa.select(CodeGroup))}
+
+    def test_groups_imported(self) -> None:
+        """Test that the group CSV imports one row per group and
+        keyword, the votes stored as integers."""
+        self.__write_groups(self.GROUPS_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--groups", str(self.__groups))
+        self.assertEqual(status, 0)
+        self.assertIn("3 group members", stderr)
+        self.assertEqual(
+            self.__stored_groups(),
+            {("masculine", "dominance-and-power"): 3,
+             ("masculine", "family-and-fatherhood"): 2,
+             ("women-power", "women-power"): 3})
+
+    def test_groups_replaced_on_rebuild(self) -> None:
+        """Test that a rebuild replaces the previous groups rather
+        than adding to them."""
+        self.__write_groups(self.GROUPS_CSV)
+        self.assertEqual(
+            self.__run_build("--groups", str(self.__groups))[0], 0)
+        self.__write_groups(
+            "Group,Keyword,Votes\n"
+            "vulnerable,longing-and-loss,3\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--groups", str(self.__groups))
+        self.assertEqual(status, 0)
+        self.assertIn("1 group members", stderr)
+        self.assertEqual(
+            self.__stored_groups(),
+            {("vulnerable", "longing-and-loss"): 3})
+
+    def test_duplicated_group_member_fails(self) -> None:
+        """Test that two rows naming the same group and keyword
+        fail the build."""
+        self.__write_groups(
+            "Group,Keyword,Votes\n"
+            "masculine,dominance-and-power,3\n"
+            "masculine,dominance-and-power,2\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--groups", str(self.__groups))
+        self.assertNotEqual(status, 0)
+        self.assertIn("duplicated group member", stderr)
+
+    def test_group_votes_not_an_integer_fails(self) -> None:
+        """Test that a non-integer votes field fails the build."""
+        self.__write_groups(
+            "Group,Keyword,Votes\n"
+            "masculine,dominance-and-power,three\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--groups", str(self.__groups))
+        self.assertNotEqual(status, 0)
+        self.assertIn("is not an integer", stderr)
+
+    def test_groups_missing_column_fails(self) -> None:
+        """Test that a group CSV without a required column fails
+        the build."""
+        self.__write_groups(
+            "Group,Keyword\n"
+            "masculine,dominance-and-power\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--groups", str(self.__groups))
+        self.assertNotEqual(status, 0)
+        self.assertIn("missing column(s): Votes", stderr)

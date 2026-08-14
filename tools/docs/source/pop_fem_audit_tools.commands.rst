@@ -60,6 +60,14 @@ pop\_fem\_audit\_tools.commands.tally\_codings module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.commands.tally\_groups module
+----------------------------------------------------
+
+.. automodule:: pop_fem_audit_tools.commands.tally_groups
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

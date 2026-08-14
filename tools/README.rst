@@ -73,6 +73,12 @@ tally-codings
 Settle the coding step by a majority of the three coding runs' archives, and write the final coding table, naming every song by its title and stored artist credit from the working store.  Check ``pop-fem-audit-tools tally-codings -h`` for complete instructions on its usage.
 
 
+tally-groups
+------------
+
+Settle the semantic code groups by a majority of the three group-selection runs' archives, and write the final group table, dropping any keyword outside the settled vocabulary.  Check ``pop-fem-audit-tools tally-groups -h`` for complete instructions on its usage.
+
+
 Copyright
 =========
 

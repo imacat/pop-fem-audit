@@ -116,3 +116,23 @@ def tally_codings_command(argv: list[str] | None = None) -> int:
     """
     from .tally_codings import main
     return main(argv)
+
+
+def tally_groups_command(argv: list[str] | None = None) -> int:
+    """Settle the code groups by a majority of the three runs.
+
+    Writes the final group table as the given CSV file, holding
+    the header row ``Group,Keyword,Votes`` and one row per
+    (group, keyword) pair at least two of the three selection
+    runs select, ordered by the group name and then by the
+    keyword.  A selected item that is not in the valid keyword
+    list casts no vote.  Nothing is written when the three
+    archives do not cover the same groups or a record is
+    malformed; the error message names what failed.
+
+    :param argv: The command-line arguments, or None for
+        ``sys.argv``.
+    :return: The exit status: 0 on success, non-zero on failure.
+    """
+    from .tally_groups import main
+    return main(argv)

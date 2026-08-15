@@ -1,0 +1,25 @@
+{
+  "script_version": "run_llm.py 3.1.0",
+  "model": "claude-fable-5",
+  "temperature": null,
+  "thinking": null,
+  "max_tokens": 8192,
+  "prompt_path": "../prompts/05-01-read.md",
+  "prompt_sha256": "ef3370e089062f289975f3a8ec0f8db2bda077557f194fc7a5c08b6f8c1f25fc",
+  "input_path": "instance/llm-input-read.jsonl",
+  "input_sha256": "d53b821872cb658b178676707b2fab65b9671404782888e6445f0d82a984daf5",
+  "item_count": 145,
+  "dry_run": false,
+  "started_at": "2026-08-15T14:19:00+08:00",
+  "batch": {
+    "batch_id": "msgbatch_01Unn7C7WCnuVoLraJRXksoG",
+    "submitted_at": "2026-08-15T14:19:08+08:00",
+    "ended_at": "2026-08-15T06:26:59.899135+00:00"
+  },
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 191459,
+    "output_tokens": 190433
+  }
+}

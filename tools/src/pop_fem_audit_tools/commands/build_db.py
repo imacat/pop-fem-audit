@@ -77,10 +77,12 @@ from sqlalchemy.orm import Session
 
 from ..database import Base, ds
 from ..models import (
+    Annotation,
     Artist,
     ChartEntry,
     CodeGroup,
     Coding,
+    Pattern,
     Role,
     Song,
     SongArtist,
@@ -132,6 +134,13 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--gender-corrections", type=Path, default=None,
         help="the gender correction table CSV file to apply")
+    parser.add_argument(
+        "--patterns", type=Path, default=None,
+        help="the pattern definition table CSV file to import")
+    parser.add_argument(
+        "--annotations", type=Path, default=None,
+        help="the settled pattern annotation table CSV file to"
+             " import")
     return parser.parse_args(argv)
 
 
@@ -986,6 +995,216 @@ class GroupImporter:
                 f"{path}: missing column(s): {', '.join(missing)}")
 
 
+class PatternImporter:
+    """The pattern-import job: loads the pattern definition table
+    into the working store."""
+
+    COLUMNS: tuple[str, ...] = (
+        "Pattern", "Group", "Name", "Description")
+    """The required columns of the pattern CSV file."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def import_patterns(self, path: Path | None) -> None:
+        """Load the pattern definition table into the store.
+
+        A None input leaves the patterns unloaded.  Otherwise
+        every row of the CSV file stores one pattern, with the
+        pattern ID, the group, the name, and the description
+        stored verbatim.  When the method returns, the imported
+        patterns are queryable in the session.
+
+        :param path: The pattern definition table CSV file to
+            import, or None to skip the patterns.
+        :return: None.
+        :raises BuildError: When the file lacks a required
+            column, or two rows name the same pattern ID.
+        :raises OSError: When the file cannot be read.
+        """
+        if path is None:
+            return
+        seen: set[str] = set()
+        with open(path, encoding="utf-8", newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(path, reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.__import_pattern_row(path, seen, row)
+        self.__session.flush()
+
+    def __import_pattern_row(self, path: Path, seen: set[str],
+                             row: dict[str, str]) -> None:
+        """Store one pattern row.
+
+        :param path: The pattern CSV file, for the error messages.
+        :param seen: The pattern IDs already stored, updated with
+            this row's pattern ID.
+        :param row: The pattern CSV row.
+        :return: None.
+        :raises BuildError: When the pattern ID repeats an
+            earlier row.
+        """
+        if row["Pattern"] in seen:
+            raise BuildError(
+                f"{path}: duplicated pattern \"{row['Pattern']}\"")
+        seen.add(row["Pattern"])
+        self.__session.add(Pattern(
+            pattern=row["Pattern"], group=row["Group"],
+            name=row["Name"], description=row["Description"]))
+
+    @classmethod
+    def __check_columns(cls, path: Path,
+                        fieldnames: Sequence[str] | None) -> None:
+        """Verify the pattern CSV file has the required columns.
+
+        :param path: The pattern CSV file.
+        :param fieldnames: The header row of the file, or None
+            when the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in cls.COLUMNS if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{path}: missing column(s): {', '.join(missing)}")
+
+
+class AnnotationImporter:
+    """The annotation-import job: loads the settled pattern
+    annotation table onto the stored songs."""
+
+    COLUMNS: tuple[str, ...] = (
+        "Song", "Artist Credit", "Pattern", "Votes")
+    """The required columns of the annotation CSV file."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def import_annotations(self, path: Path | None) -> None:
+        """Load the settled pattern annotation table onto the
+        stored songs.
+
+        A None input leaves the annotations unloaded.  Otherwise
+        every row of the CSV file yields one annotation linking
+        the song named by its title and artist credit to the
+        stored pattern named by its pattern ID, with the integer
+        vote count stored verbatim.  Import the pattern table
+        first (see `PatternImporter`), so every named pattern is
+        already stored.  When the method returns, the imported
+        annotations are queryable in the session.
+
+        :param path: The settled pattern annotation table CSV
+            file to import, or None to skip the annotations.
+        :return: None.
+        :raises BuildError: When the file lacks a required
+            column, a row names a song that the store does not
+            have, a row names a pattern that the store does not
+            have, a votes field is not an integer, or two rows
+            name the same song and pattern.
+        :raises OSError: When the file cannot be read.
+        """
+        if path is None:
+            return
+        songs: dict[tuple[str, str], Song] = {
+            (x.title, x.artist_credit): x
+            for x in self.__session.scalars(sa.select(Song))}
+        patterns: dict[str, Pattern] = {
+            x.pattern: x
+            for x in self.__session.scalars(sa.select(Pattern))}
+        seen: set[tuple[int, str]] = set()
+        with open(path, encoding="utf-8", newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(path, reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.__import_annotation(
+                    path, songs, patterns, seen, row)
+        self.__session.flush()
+
+    def __import_annotation(
+            self, path: Path, songs: dict[tuple[str, str], Song],
+            patterns: dict[str, Pattern],
+            seen: set[tuple[int, str]],
+            row: dict[str, str]) -> None:
+        """Store one annotation row.
+
+        :param path: The annotation CSV file, for the error
+            messages.
+        :param songs: The stored songs, keyed by the title and
+            the artist credit.
+        :param patterns: The stored patterns, keyed by the
+            pattern ID.
+        :param seen: The (song ID, pattern ID) pairs already
+            stored, updated with the pair of this row.
+        :param row: The annotation CSV row.
+        :return: None.
+        :raises BuildError: When the row names a song that the
+            store does not have, names a pattern that the store
+            does not have, its votes field is not an integer, or
+            its song and pattern repeat an earlier row.
+        """
+        key: tuple[str, str] = (row["Song"], row["Artist Credit"])
+        song: Song | None = songs.get(key)
+        if song is None:
+            raise BuildError(
+                f"{path}: no song \"{row['Song']}\" by"
+                f" \"{row['Artist Credit']}\"")
+        pattern: Pattern | None = patterns.get(row["Pattern"])
+        if pattern is None:
+            raise BuildError(
+                f"{path}: no pattern \"{row['Pattern']}\"")
+        annotation_key: tuple[int, str] = (
+            song.id, pattern.pattern)
+        if annotation_key in seen:
+            raise BuildError(
+                f"{path}: duplicated annotation: \"{row['Song']}\""
+                f" by \"{row['Artist Credit']}\", pattern"
+                f" \"{row['Pattern']}\"")
+        seen.add(annotation_key)
+        votes: int
+        try:
+            votes = int(row["Votes"])
+        except ValueError as error:
+            raise BuildError(
+                f"{path}: \"{row['Song']}\" by"
+                f" \"{row['Artist Credit']}\", pattern"
+                f" \"{row['Pattern']}\": votes"
+                f" \"{row['Votes']}\" is not an integer"
+            ) from error
+        self.__session.add(Annotation(
+            song=song, pattern=pattern, votes=votes))
+
+    @classmethod
+    def __check_columns(cls, path: Path,
+                        fieldnames: Sequence[str] | None) -> None:
+        """Verify the annotation CSV file has the required
+        columns.
+
+        :param path: The annotation CSV file.
+        :param fieldnames: The header row of the file, or None
+            when the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in cls.COLUMNS if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{path}: missing column(s): {', '.join(missing)}")
+
+
 @dataclass
 class StoreCounts:
     """The row counts of the working store, for the build summary."""
@@ -998,6 +1217,10 @@ class StoreCounts:
     """The number of the settled codings."""
     groups: int
     """The number of the settled code group members."""
+    patterns: int
+    """The number of the stored patterns."""
+    annotations: int
+    """The number of the settled pattern annotations."""
 
     @classmethod
     def get_instance(cls, session: Session) -> Self:
@@ -1020,7 +1243,12 @@ class StoreCounts:
             codings=count(
                 sa.select(sa.func.count()).select_from(Coding)),
             groups=count(
-                sa.select(sa.func.count()).select_from(CodeGroup)))
+                sa.select(sa.func.count()).select_from(CodeGroup)),
+            patterns=count(
+                sa.select(sa.func.count()).select_from(Pattern)),
+            annotations=count(
+                sa.select(sa.func.count())
+                .select_from(Annotation)))
 
 
 def reset_store(session: Session) -> None:
@@ -1030,8 +1258,8 @@ def reset_store(session: Session) -> None:
     :return: None.
     """
     model: type[Base]
-    for model in (CodeGroup, Coding, SongArtist, ChartEntry, Song,
-                  Artist):
+    for model in (CodeGroup, Coding, Annotation, SongArtist,
+                  ChartEntry, Song, Pattern, Artist):
         session.execute(sa.delete(model))
 
 
@@ -1197,6 +1425,9 @@ def main(argv: list[str] | None = None) -> int:
             args.gender_corrections)
         CodingImporter(session).import_codings(args.codings)
         GroupImporter(session).import_groups(args.groups)
+        PatternImporter(session).import_patterns(args.patterns)
+        AnnotationImporter(session).import_annotations(
+            args.annotations)
         counts = StoreCounts.get_instance(session)
         CSVExporter(session, args.derived_dir).write()
         session.commit()
@@ -1209,6 +1440,8 @@ def main(argv: list[str] | None = None) -> int:
     elapsed: str = format_duration(time.monotonic() - started)
     print(f"Done.  {counts.songs} songs/{counts.artists} artists"
           f"/{counts.codings} codings/{counts.groups} group"
-          f" members.  {elapsed} elapsed.",
+          f" members/{counts.patterns} patterns"
+          f"/{counts.annotations} annotations.  {elapsed}"
+          " elapsed.",
           file=sys.stderr)
     return 0

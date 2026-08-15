@@ -55,6 +55,9 @@ class Song(Base):
     codings: Mapped[list[Coding]] \
         = relationship(back_populates="song")
     """The settled codings of the song."""
+    annotations: Mapped[list[Annotation]] \
+        = relationship(back_populates="song")
+    """The settled pattern annotations of the song."""
     __table_args__ = (sa.UniqueConstraint(title, artist_credit),)
     """The table-level constraints."""
 
@@ -153,3 +156,43 @@ class CodeGroup(Base):
     votes: Mapped[int] = mapped_column()
     """The number of the selection runs that selected the
     keyword for the group."""
+
+
+class Pattern(Base):
+    """A stored gendered-language pattern definition."""
+    __tablename__ = "patterns"
+    """The table name."""
+
+    pattern: Mapped[str] = mapped_column(primary_key=True)
+    """The pattern ID, as the pattern table carries it."""
+    group: Mapped[str] = mapped_column()
+    """The pattern group: male, female, or mixed."""
+    name: Mapped[str] = mapped_column()
+    """The pattern name."""
+    description: Mapped[str] = mapped_column()
+    """The pattern description."""
+    annotations: Mapped[list[Annotation]] \
+        = relationship(back_populates="pattern")
+    """The settled annotations assigning the pattern to a song."""
+
+
+class Annotation(Base):
+    """A settled pattern annotation of a song, with its vote
+    count."""
+    __tablename__ = "annotations"
+    """The table name."""
+
+    song_id: Mapped[int] = mapped_column(sa.ForeignKey(Song.id),
+                                         primary_key=True)
+    """The ID of the annotated song."""
+    pattern_id: Mapped[str] = mapped_column(
+        sa.ForeignKey(Pattern.pattern), primary_key=True)
+    """The ID of the assigned pattern."""
+    votes: Mapped[int] = mapped_column()
+    """The number of the annotation runs that assigned the
+    pattern to the song."""
+    song: Mapped[Song] = relationship(back_populates="annotations")
+    """The annotated song."""
+    pattern: Mapped[Pattern] \
+        = relationship(back_populates="annotations")
+    """The assigned pattern."""

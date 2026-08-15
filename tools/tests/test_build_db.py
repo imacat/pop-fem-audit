@@ -19,10 +19,12 @@ from pop_fem_audit_tools import config
 from pop_fem_audit_tools.commands import build_db
 from pop_fem_audit_tools.database import DataSource
 from pop_fem_audit_tools.models import (
+    Annotation,
     Artist,
     ChartEntry,
     CodeGroup,
     Coding,
+    Pattern,
     Role,
     Song,
 )
@@ -272,6 +274,8 @@ class TestBuildDB(unittest.TestCase):
         self.__groups: Path = self.__dir / "groups.csv"
         self.__gender_corrections: Path = \
             self.__dir / "gender_corrections.csv"
+        self.__patterns: Path = self.__dir / "patterns.csv"
+        self.__annotations: Path = self.__dir / "annotations.csv"
         self.__write_chart(self.CHART_CSV)
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL="sqlite://",
@@ -1348,3 +1352,153 @@ class TestBuildDB(unittest.TestCase):
         self.assertIn(str(self.__gender_corrections), stderr)
         session: Session = self.__session()
         self.assertEqual(list(session.scalars(sa.select(Song))), [])
+
+    PATTERNS_CSV: str = (
+        "Pattern,Group,Name,Description\n"
+        "M1,male,Dominance,A pattern of asserted dominance.\n"
+        "F1,female,Nurture,A pattern of caretaking language.\n")
+    """The pattern CSV fixture: one male and one female pattern."""
+
+    ANNOTATIONS_CSV: str = (
+        "Song,Artist Credit,Pattern,Votes\n"
+        "Hello,Adele,M1,3\n"
+        "One Dance,Drake featuring Wizkid,F1,2\n")
+    """The annotation CSV fixture linking two songs, each to one
+    of the pattern fixture's patterns."""
+
+    def __write_patterns(self, content: str) -> None:
+        """Write the pattern CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__patterns.write_text(content, encoding="utf-8")
+
+    def __write_annotations(self, content: str) -> None:
+        """Write the annotation CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__annotations.write_text(content, encoding="utf-8")
+
+    def __stored_patterns(self) -> dict[str, tuple[str, str, str]]:
+        """Read the stored patterns keyed by the pattern ID.
+
+        :return: The stored (group, name, description) tuples,
+            keyed by the pattern ID.
+        """
+        session: Session = self.__session()
+        return {x.pattern: (x.group, x.name, x.description)
+                for x in session.scalars(sa.select(Pattern))}
+
+    def __stored_annotations(self) -> dict[tuple[str, str], int]:
+        """Read the stored annotations keyed by song and pattern.
+
+        :return: The stored votes, keyed by the song title and
+            the pattern ID.
+        """
+        session: Session = self.__session()
+        return {(x.song.title, x.pattern.pattern): x.votes
+                for x in session.scalars(sa.select(Annotation))}
+
+    def test_patterns_and_annotations_imported(self) -> None:
+        """Test that the pattern and annotation CSVs import
+        together, reflected in the final counts message."""
+        self.__write_patterns(self.PATTERNS_CSV)
+        self.__write_annotations(self.ANNOTATIONS_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--patterns", str(self.__patterns),
+            "--annotations", str(self.__annotations))
+        self.assertEqual(status, 0)
+        self.assertIn("2 patterns", stderr)
+        self.assertIn("2 annotations", stderr)
+        self.assertEqual(
+            self.__stored_patterns(),
+            {"M1": ("male", "Dominance",
+                    "A pattern of asserted dominance."),
+             "F1": ("female", "Nurture",
+                    "A pattern of caretaking language.")})
+        self.assertEqual(
+            self.__stored_annotations(),
+            {("Hello", "M1"): 3,
+             ("One Dance", "F1"): 2})
+
+    def test_omitted_patterns_and_annotations_import_nothing(
+            self) -> None:
+        """Test that omitting both options leaves the pattern and
+        annotation tables empty."""
+        self.__write_patterns(self.PATTERNS_CSV)
+        self.__write_annotations(self.ANNOTATIONS_CSV)
+        status: int
+        stderr: str
+        status, stderr = self.__run_build()
+        self.assertEqual(status, 0)
+        self.assertIn("0 patterns", stderr)
+        self.assertIn("0 annotations", stderr)
+        self.assertEqual(self.__stored_patterns(), {})
+        self.assertEqual(self.__stored_annotations(), {})
+
+    def test_annotations_unknown_song_fails(self) -> None:
+        """Test that an annotation row naming an unknown song
+        fails the build, naming the file and the offending title
+        and credit."""
+        self.__write_patterns(self.PATTERNS_CSV)
+        self.__write_annotations(
+            "Song,Artist Credit,Pattern,Votes\n"
+            "Nowhere,Nobody,M1,3\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--patterns", str(self.__patterns),
+            "--annotations", str(self.__annotations))
+        self.assertNotEqual(status, 0)
+        self.assertIn(str(self.__annotations), stderr)
+        self.assertIn("no song \"Nowhere\" by \"Nobody\"", stderr)
+        self.assertEqual(self.__stored_annotations(), {})
+
+    def test_annotations_unknown_pattern_fails(self) -> None:
+        """Test that an annotation row naming a pattern the store
+        does not have fails the build, naming the file and the
+        offending pattern ID."""
+        self.__write_annotations(
+            "Song,Artist Credit,Pattern,Votes\n"
+            "Hello,Adele,X9,3\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--annotations", str(self.__annotations))
+        self.assertNotEqual(status, 0)
+        self.assertIn(str(self.__annotations), stderr)
+        self.assertIn("no pattern \"X9\"", stderr)
+        self.assertEqual(self.__stored_annotations(), {})
+
+    def test_patterns_missing_column_fails(self) -> None:
+        """Test that a pattern CSV missing a required column fails
+        the build."""
+        self.__write_patterns(
+            "Pattern,Group,Name\n"
+            "M1,male,Dominance\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--patterns", str(self.__patterns))
+        self.assertNotEqual(status, 0)
+        self.assertIn("missing column(s): Description", stderr)
+        self.assertEqual(self.__stored_patterns(), {})
+
+    def test_annotations_missing_column_fails(self) -> None:
+        """Test that an annotation CSV missing a required column
+        fails the build."""
+        self.__write_annotations(
+            "Song,Artist Credit,Pattern\n"
+            "Hello,Adele,M1\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--annotations", str(self.__annotations))
+        self.assertNotEqual(status, 0)
+        self.assertIn("missing column(s): Votes", stderr)
+        self.assertEqual(self.__stored_annotations(), {})

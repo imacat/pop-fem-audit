@@ -5,9 +5,10 @@
 - LLM analysis runs via Python scripts calling the Anthropic
   Messages API, Batch API where possible.  Steps 1 and 3 run
   on `claude-sonnet-4-6` with `temperature=0` and thinking
-  disabled; step 4 runs on `claude-fable-5`, which accepts
-  neither parameter -- its sampling variance is absorbed by
-  the majority vote.
+  disabled; steps 4 and 5 run on `claude-fable-5`, which
+  accepts neither parameter -- step 4 absorbs its sampling
+  variance by the majority vote, step 5 by consolidating the
+  three readings.
 - Prompt definition files live in
   `prompts/<step>-<substep>-<task>.md` (e.g. 01-tag.md; no
   version suffix -- versions live in git history) and are
@@ -23,7 +24,11 @@
   (song, keyword) or (group, keyword) pair) when at least
   two of the three runs assign it ("3 runs + majority
   vote").  Free-generation steps run
-  twice and both outputs are pooled.  The vocabulary is
+  twice and both outputs are pooled.  The step-5 qualitative
+  readings are neither: three independent readings per song,
+  consolidated per song and synthesized across songs by
+  their own definition files -- a qualitative protocol, not
+  a vote (see docs/methodology.md).  The vocabulary is
   built by a deterministic subcommand (embedding +
   clustering), not by an LLM.  If a validation outcome is
   unexpected, revise the definition file and repeat that

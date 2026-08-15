@@ -270,6 +270,8 @@ class TestBuildDB(unittest.TestCase):
             self.__dir / "artists_wikidata.csv"
         self.__codings: Path = self.__dir / "codings.csv"
         self.__groups: Path = self.__dir / "groups.csv"
+        self.__gender_corrections: Path = \
+            self.__dir / "gender_corrections.csv"
         self.__write_chart(self.CHART_CSV)
         config.set_settings(config.Settings(
             SQLALCHEMY_DATABASE_URL="sqlite://",
@@ -1222,3 +1224,127 @@ class TestBuildDB(unittest.TestCase):
             "--groups", str(self.__groups))
         self.assertNotEqual(status, 0)
         self.assertIn("missing column(s): Votes", stderr)
+
+    def __write_gender_corrections(self, content: str) -> None:
+        """Write the gender correction CSV fixture.
+
+        :param content: The CSV content.
+        :return: None.
+        """
+        self.__gender_corrections.write_text(
+            content, encoding="utf-8")
+
+    def test_gender_correction_overrides_derived_gender(
+            self) -> None:
+        """Test that a correction row overrides an already-derived
+        performer gender, stored verbatim."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender,Note\n"
+            "Female Song,Adele & Taylor Swift,mixed,reviewed\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata),
+            "--gender-corrections", str(self.__gender_corrections))
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            self.__performer_genders()["Female Song"], "mixed")
+
+    def test_gender_correction_sets_undetermined_gender(
+            self) -> None:
+        """Test that a correction row sets the performer gender of
+        a song the derivation left undetermined."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender,Note\n"
+            "Unknown Song,Adele featuring Nobody,female,"
+            "reviewed\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata),
+            "--gender-corrections", str(self.__gender_corrections))
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            self.__performer_genders()["Unknown Song"], "female")
+
+    def test_gender_correction_in_songs_csv(self) -> None:
+        """Test that songs.csv mirrors the corrected performer
+        gender."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender,Note\n"
+            "Female Song,Adele & Taylor Swift,mixed,reviewed\n")
+        self.assertEqual(
+            self.__run_build(
+                "--wikidata-csv", str(self.__wikidata),
+                "--gender-corrections",
+                str(self.__gender_corrections))[0], 0)
+        rows: list[list[str]] = self.__read_csv_rows("songs.csv")
+        self.assertIn(("Female Song", "mixed"),
+                      {(row[0], row[3]) for row in rows})
+
+    def test_omitted_gender_corrections_leaves_derived_gender(
+            self) -> None:
+        """Test that an omitted correction option leaves the
+        derived performer genders untouched."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender,Note\n"
+            "Female Song,Adele & Taylor Swift,mixed,reviewed\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata))
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            self.__performer_genders()["Female Song"], "female")
+
+    def test_gender_correction_unknown_song_fails(self) -> None:
+        """Test that a correction row naming an unknown song fails
+        the build, naming the file and the offending title and
+        credit."""
+        self.__write_chart(self.GENDER_CHART_CSV)
+        self.__write_wikidata(self.GENDER_WIKIDATA_CSV)
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender,Note\n"
+            "Nowhere,Nobody,female,reviewed\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--wikidata-csv", str(self.__wikidata),
+            "--gender-corrections", str(self.__gender_corrections))
+        self.assertNotEqual(status, 0)
+        self.assertIn(str(self.__gender_corrections), stderr)
+        self.assertIn("no song \"Nowhere\" by \"Nobody\"", stderr)
+
+    def test_gender_corrections_missing_column_fails(self) -> None:
+        """Test that a gender correction CSV missing a required
+        column fails the build."""
+        self.__write_gender_corrections(
+            "Title,Artist Credit,Performer Gender\n"
+            "Hello,Adele,female\n")
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--gender-corrections", str(self.__gender_corrections))
+        self.assertNotEqual(status, 0)
+        self.assertIn("missing column(s): Note", stderr)
+
+    def test_missing_gender_corrections_csv_fails(self) -> None:
+        """Test that a given but missing gender correction CSV
+        fails the build."""
+        status: int
+        stderr: str
+        status, stderr = self.__run_build(
+            "--gender-corrections", str(self.__gender_corrections))
+        self.assertNotEqual(status, 0)
+        self.assertIn("error:", stderr)
+        self.assertIn(str(self.__gender_corrections), stderr)
+        session: Session = self.__session()
+        self.assertEqual(list(session.scalars(sa.select(Song))), [])

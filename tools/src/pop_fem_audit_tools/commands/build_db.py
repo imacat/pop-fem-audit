@@ -9,7 +9,8 @@ inputs: the year-end chart CSV and the output directory for the
 review CSV files, given as the two positional command-line
 arguments, and the optional inputs, each given as an
 option: the lyrics cache directory, the Wikidata artist
-snapshot CSV, and the settled coding table CSV.  An omitted option
+snapshot CSV, the settled coding table CSV, and the gender
+correction table CSV.  An omitted option
 leaves its layer unloaded; a given option whose path does
 not exist fails the build.  Missing tables
 are created on a fresh store; existing tables are never altered,
@@ -47,6 +48,12 @@ credited artist without an artist type -- a label, a brand, or a
 producer collective -- is not a performing act: it has no voice,
 so its gender is inapplicable, and it takes no part in the
 derivation.  See `PerformerGenderDeriver.performer_gender`.
+
+Once the performer genders are derived, an optional gender
+correction table CSV overrides the performer gender of the songs
+it names, matched by exact title and exact artist credit, with
+its performer gender column stored verbatim; see
+`GenderCorrectionImporter`.
 
 On a successful build, two review CSV files, ``songs.csv`` and
 ``artists.csv``, are (re)written under the given output directory,
@@ -122,6 +129,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--groups", type=Path, default=None,
         help="the settled code group table CSV file to import")
+    parser.add_argument(
+        "--gender-corrections", type=Path, default=None,
+        help="the gender correction table CSV file to apply")
     return parser.parse_args(argv)
 
 
@@ -687,6 +697,98 @@ class PerformerGenderDeriver:
         return None
 
 
+class GenderCorrectionImporter:
+    """The gender-correction job: overrides the derived performer
+    gender of the stored songs it names."""
+
+    COLUMNS: tuple[str, ...] = (
+        "Title", "Artist Credit", "Performer Gender", "Note")
+    """The required columns of the gender correction CSV file."""
+
+    def __init__(self, session: Session) -> None:
+        """Initialize the importer.
+
+        :param session: The database session.
+        """
+        self.__session: Session = session
+
+    def import_gender_corrections(self, path: Path | None) -> None:
+        """Apply the gender correction table onto the stored songs.
+
+        A None input leaves the derived performer genders
+        untouched.  Otherwise every row of the CSV file matches one
+        stored song by its exact title and exact artist credit and
+        sets ``Song.performer_gender`` to the row's performer
+        gender column verbatim; the note column is ignored.  Apply
+        this after `PerformerGenderDeriver.derive_performer_genders`
+        has run, so a correction overrides the derived value.  When
+        the method returns, the applied corrections are queryable
+        in the session.
+
+        :param path: The gender correction table CSV file to apply,
+            or None to skip the corrections.
+        :return: None.
+        :raises BuildError: When the file lacks a required column,
+            or a row names a song that the store does not have.
+        :raises OSError: When the file cannot be read.
+        """
+        if path is None:
+            return
+        songs: dict[tuple[str, str], Song] = {
+            (x.title, x.artist_credit): x
+            for x in self.__session.scalars(sa.select(Song))}
+        with open(path, encoding="utf-8", newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(path, reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.__apply_correction(path, songs, row)
+        self.__session.flush()
+
+    @staticmethod
+    def __apply_correction(path: Path,
+                           songs: dict[tuple[str, str], Song],
+                           row: dict[str, str]) -> None:
+        """Apply one gender correction row.
+
+        :param path: The gender correction CSV file, for the error
+            message.
+        :param songs: The stored songs, keyed by the title and the
+            artist credit.
+        :param row: The gender correction CSV row.
+        :return: None.
+        :raises BuildError: When the row names a song that the
+            store does not have.
+        """
+        key: tuple[str, str] = (
+            row["Title"], row["Artist Credit"])
+        song: Song | None = songs.get(key)
+        if song is None:
+            raise BuildError(
+                f"{path}: no song \"{row['Title']}\" by"
+                f" \"{row['Artist Credit']}\"")
+        song.performer_gender = row["Performer Gender"]
+
+    @classmethod
+    def __check_columns(cls, path: Path,
+                        fieldnames: Sequence[str] | None) -> None:
+        """Verify the gender correction CSV file has the required
+        columns.
+
+        :param path: The gender correction CSV file.
+        :param fieldnames: The header row of the file, or None
+            when the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in cls.COLUMNS if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{path}: missing column(s): {', '.join(missing)}")
+
+
 class CodingImporter:
     """The coding-import job: loads the settled coding table onto
     the stored songs."""
@@ -1091,6 +1193,8 @@ def main(argv: list[str] | None = None) -> int:
         CaptureImporter(session).import_captures(
             args.lyrics_dir, args.wikidata_csv)
         PerformerGenderDeriver(session).derive_performer_genders()
+        GenderCorrectionImporter(session).import_gender_corrections(
+            args.gender_corrections)
         CodingImporter(session).import_codings(args.codings)
         GroupImporter(session).import_groups(args.groups)
         counts = StoreCounts.get_instance(session)

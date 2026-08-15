@@ -817,3 +817,23 @@
   獨立;run1 之覆蓋=`run1`(144 首)∪`run1-rescue-444`
   (1 首),步驟 5-2 輸入組裝時 song-444 之 run1 份取自
   補送歸檔,組裝腳本並驗證三輪歌曲集合一致(145 首)。
+
+- **performer_gender 語意定為「演唱聲音的性別」,新增
+  手工修正機制**:原值由 `build-db` 自署名藝人的
+  Wikidata 性別推導,將僅掛名不開口者(製作人、取樣
+  來源)也計入,致三首純女聲歌曲被判為 mixed:
+  〈Friends〉(Marshmello 僅製作)、〈Barbie World〉
+  (Aqua 為取樣掛名,Ken 聲部不在歌詞中)、〈Bzrp Music
+  Sessions, Vol. 53〉(Bizarrap 僅製作)。裁定:不另設
+  發話位置變項(單獨為男聲設變項說不通,女聲、非二元
+  聲部亦無對應變項),而是修正 performer_gender 本身——
+  其語意即演唱聲音的性別。機制:`build-db` 新增
+  `--gender-corrections` 選項,於推導後套用
+  `data/manual/performer-gender-corrections.csv`(研究者
+  手工編定,Title+Artist Credit 精確比對,查無即建置
+  失敗),鏡射 coding-corrections 前例;不直接改推導
+  規則,因署名層推導對其餘 880 首仍正確。下游數字隨
+  重建更新:wp 66 首成 female 50/mixed 12/male 3/
+  genderfluid 1;fe 144 首成 female 98/mixed 30/male 13/
+  genderfluid 2/non-binary 1;wp∪fe 145 首中署名含男性
+  且開口者 44 首。步驟 5 報告中三首之性別標示同步更正。

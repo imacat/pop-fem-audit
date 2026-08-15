@@ -50,5 +50,8 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-15 | 05-01-read | run3 | claude-fable-5 | msgbatch_01Unn7C7WCnuVoLraJRXksoG | 7 分 59 秒 | 191,459 | 190,433 | $5.72 | 現行（145/145 有效） |
 | 2026-08-15 | 05-02-consolidate | run1 | claude-fable-5 | msgbatch_01WPyH4pCCiieHs4yU3xtHzN | 2 分 28 秒 | 326,287 | 242,785 | $7.70 | 現行（145/145 有效） |
 | 2026-08-15 | 05-03-synthesize | run1 | claude-fable-5 | msgbatch_01XbNQb1SFrUxhk2ZWF7epPA | 3 分 0 秒 | 103,888 | 9,982 | $0.77 | 現行（15 個樣態；研究者審定用草稿） |
+| 2026-08-15 | 05-03-synthesize | run2 | claude-fable-5 | msgbatch_01FKqq8U6m5HLLsx7KpQES26 | 3 分 4 秒 | 13,573 | 6,883 | $0.24 | 現行（男聲群 14 首；13 個樣態） |
+| 2026-08-15 | 05-03-synthesize | run3 | claude-fable-5 | msgbatch_017tfhiRTnaxqCp6YFyoivsu | 4 分 4 秒 | 60,727 | 8,519 | $0.52 | 現行（女聲群 98 首；14 個樣態） |
+| 2026-08-15 | 05-03-synthesize | run4 | claude-fable-5 | msgbatch_01SNjTLiNPEba4LW2tcUAcTJ | 4 分 3 秒 | 29,958 | 9,793 | $0.39 | 現行（混合群 30 首；16 個樣態） |
 
-累計支出：$88.80。
+累計支出：$89.95。

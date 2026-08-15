@@ -53,5 +53,10 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 | 2026-08-15 | 05-03-synthesize | run2 | claude-fable-5 | msgbatch_01FKqq8U6m5HLLsx7KpQES26 | 3 分 4 秒 | 13,573 | 6,883 | $0.24 | 現行（男聲群 14 首；13 個樣態） |
 | 2026-08-15 | 05-03-synthesize | run3 | claude-fable-5 | msgbatch_017tfhiRTnaxqCp6YFyoivsu | 4 分 4 秒 | 60,727 | 8,519 | $0.52 | 現行（女聲群 98 首；14 個樣態） |
 | 2026-08-15 | 05-03-synthesize | run4 | claude-fable-5 | msgbatch_01SNjTLiNPEba4LW2tcUAcTJ | 4 分 3 秒 | 29,958 | 9,793 | $0.39 | 現行（混合群 30 首；16 個樣態） |
+| 2026-08-15 | 05-04-annotate | run1 | claude-fable-5 | msgbatch_01H9gXXhNbhZG6gzZtvMHxhh | 3 分 9 秒 | 815,492 | 300,901 | $11.60 | 現行（109/111 有效；song-177、song-199 遭 max_tokens 截斷，單筆補送） |
+| 2026-08-15 | 05-04-annotate | run1-rescue-177-199 | claude-fable-5 | msgbatch_01YEdroZ51b8btPfG1aqPFCD | 3 分 5 秒 | 17,802 | 11,601 | $0.38 | 現行（run1 之 2 筆補送，max_tokens 提為 16000，成功） |
+| 2026-08-15 | 05-04-annotate | — | claude-fable-5 | msgbatch_01G67STqZsHpnhedat2HRU85 | 3 分 0 秒 | 17,802 | 14,162 | $0.44 | 誤送（補送批次輪詢中斷後誤判死亡而重送；原批次自行完成並歸檔為現行，本批次取消不及、兩筆皆完成，結果棄用） |
+| 2026-08-15 | 05-04-annotate | run2 | claude-fable-5 | msgbatch_01VVJpsfidNtF66GnHQdWnGR | 9 分 16 秒 | 815,492 | 306,582 | $11.74 | 現行（111/111 有效；max_tokens 16000，零截斷） |
+| 2026-08-15 | 05-04-annotate | run3 | claude-fable-5 | msgbatch_01AsYvZd8rsTYVfUYLzWfeMK | 4 分 12 秒 | 815,492 | 298,512 | $11.54 | 現行（111/111 有效；max_tokens 16000，零截斷） |
 
-累計支出：$89.95。
+累計支出：$125.65。

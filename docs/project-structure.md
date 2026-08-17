@@ -1,7 +1,7 @@
 # 專案目錄結構
 
 （2026-07-30 討論定案；2026-07-31 更新為 tools/ 子專案與
-SQLite 工作儲存架構）
+SQLite 工作儲存架構；2026-08-17 依完成後的現況更新）
 
 ```
 pop-fem-audit/
@@ -19,12 +19,18 @@ pop-fem-audit/
 │   │   └── lyrics/                        # 歌詞 .txt 快取
 │   │                                      #   （gitignored，版權）
 │   ├── manual/                # 人工著作：只由研究者手寫
-│   │                          #   （黃金標準編碼等）
+│   │   ├── coding-corrections.csv         # 編碼與引述的校對表
+│   │   └── performer-gender-corrections.csv  # 演唱聲音性別的
+│   │                                      #   手工修正
 │   └── derived/               # 衍生：只由 build-db 寫入
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-code.md
+│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-code.md、
+│                              #   04-group.md、05-01-read.md、
+│                              #   05-02-consolidate.md、
+│                              #   05-03-synthesize.md、
+│                              #   05-04-annotate.md
 │                              #   （步內僅一個執行時省略次步）
 │                              #   不帶版本號，版本即 git 歷史
 │                              #   （編號的所指是工序：確定性
@@ -52,6 +58,9 @@ pop-fem-audit/
 │   │   │   ├── cluster_keywords.py # pool the tagging runs'
 │   │   │   │                       #   keywords and cluster them
 │   │   │   │                       #   into the codes (step 2)
+│   │   │   ├── tally_codings.py    # settle step 3 by majority
+│   │   │   ├── tally_groups.py     # settle step 4 by majority
+│   │   │   ├── tally_annotations.py # settle step 5-4 by majority
 │   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
 │   │   │                      #   →歸檔至指定目錄（Batch API）；
 │   │   │                      #   多次執行的計票由獨立子命令承擔
@@ -62,7 +71,10 @@ pop-fem-audit/
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
 │   │                          #   重跑同一 run 須明示 --replace）
-│   ├── <步驟名>/              #   一步一個目錄（如 03-code）
+│   ├── <步驟名>/              #   一步一個目錄（01-tag、03-code、
+│   │                          #   04-group、05-01-read、
+│   │                          #   05-02-consolidate、
+│   │                          #   05-03-synthesize、05-04-annotate）
 │   │   └── run<N>/            #   LLM 步驟：每個 run 一份自我
 │   │       ├── prompt.md      #   完備歸檔（定義檔快照）
 │   │       ├── output.jsonl   #   該次執行原始輸出
@@ -70,12 +82,17 @@ pop-fem-audit/
 │   │                          #   batch ID、token 用量
 │   └── 02-cluster/           # 確定性步驟：無執行變異，
 │                              #   不分 run<N> 層
-├── results/                   # 論文引用的報表 CSV（export 產出；
-│                              #   「可再生仍 commit」的唯一例外）
+├── results/                   # 論文引用的定案表 CSV（計票子命令
+│   │                          #   產出；「可再生仍 commit」的例外）
+│   ├── codings.csv            # 步驟 3 定案編碼
+│   ├── groups.csv             # 步驟 4 定案編碼群
+│   ├── patterns.csv           # 步驟 5-3 定案樣態表
+│   ├── annotations.csv        # 步驟 5-4 定案歌×樣態
+│   └── pattern-matrix.csv     # 前四者的人讀寬表
 ├── docs/
 │   ├── research-plan.md       # 研究步驟規劃（本檔之姊妹篇）
 │   ├── project-structure.md   # 本檔
-│   ├── codebook.md            # 人工編碼手冊（版本由 git 管理）
+│   ├── output-validation.md   # LLM 輸出的契約查核紀錄
 │   ├── decision-log.md        # 決策日誌：每次改定義檔的原因
 │   ├── run-costs.md           # 每次執行的 token 用量與費用
 │   └── methodology.md         # 方法細節（全文方法節底稿；
@@ -94,12 +111,15 @@ pop-fem-audit/
 - **`prompts/` 檔名不帶版本號**：版本即 git 歷史，失敗的
   版本不保留；論文引用的單位是 `runs/` 內隨執行保存的定義檔
   快照（每個執行目錄自我完備），不需檔名可指的版本名。
-- **工作儲存的資料表**：`songs`、`chart_entries`、`artists`、
-  `song_artists`、`codings`（定案編碼：一歌一標籤一列，`quotes`
-  存該標籤所據的歌詞引述，多句以 `|` 相接）。定案表
-  `results/codings.csv` 經 `build-db --codings` 匯入，與其餘資料
-  同一交易，儲存不會半建；詳見 `research-plan.md`「資料儲存與
-  模型」。
+- **工作儲存的資料表**：`songs`（含 `performer_gender`＝演唱
+  聲音的性別）、`chart_entries`、`artists`、`song_artists`、
+  `codings`（定案編碼：一歌一標籤一列，`quotes` 存該標籤所據的
+  歌詞引述，多句以 `|` 相接）、`groups`（語意編碼群）、
+  `patterns`（深讀樣態）、`annotations`（歌×樣態定案矩陣）。
+  各定案表經 `build-db` 的 `--codings`、`--groups`、
+  `--patterns`、`--annotations` 匯入，性別修正經
+  `--gender-corrections` 套用，與其餘資料同一交易，儲存不會
+  半建；詳見 `research-plan.md`「資料儲存與模型」。
 - **Commit 判準**：能由「committed 輸入＋程式」決定性再生者不
   commit（SQLite 工作儲存、LLM 輸入檔）；源頭、捕捉、人工著作
   一律以文字 commit。「可再生仍 commit」的例外有二：

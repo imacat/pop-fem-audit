@@ -82,7 +82,7 @@ pop-fem-audit/
 │                              #   映射分析方法須在看結果前寫定）
 └── paper/
     ├── abstract.md            # 摘要
-    └── full-paper.md          # 全文
+    └── 流行音樂中「女性力量」….odt  # 全文
 ```
 
 ## 設計理由

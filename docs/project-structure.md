@@ -95,6 +95,7 @@ pop-fem-audit/
 │   ├── output-validation.md   # LLM 輸出的契約查核紀錄
 │   ├── decision-log.md        # 決策日誌：每次改定義檔的原因
 │   ├── run-costs.md           # 每次執行的 token 用量與費用
+│   ├── reliability.md         # 信度：量測方式與結果
 │   └── methodology.md         # 方法細節（全文方法節底稿；
 │                              #   映射分析方法須在看結果前寫定）
 └── paper/

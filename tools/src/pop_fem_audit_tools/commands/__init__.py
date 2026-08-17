@@ -95,6 +95,32 @@ def run_llm_command(argv: list[str] | None = None) -> int:
     return main(argv)
 
 
+def tally_annotations_command(argv: list[str] | None = None) -> int:
+    """Settle the step-5 pattern annotations by a majority of the
+    three annotation runs.
+
+    Writes the pattern table CSV file, holding the header row
+    ``Pattern,Group,Name,Description`` and one row per pattern
+    extracted from the three gendered synthesis archives, and the
+    annotation table CSV file, holding the header row
+    ``Song,Artist Credit,Pattern,Votes`` and one row per (song,
+    pattern) pair at least two of the three annotation runs'
+    cleaned ballots carry, the song named by its title and its
+    stored artist credit from the SQLite working store.  Nothing
+    is written when a synthesis section yields an empty name or
+    description, a run record is malformed, a song does not
+    appear exactly three times in the pooled ballots, or a
+    settled song is not in the working store; the error message
+    names what failed.
+
+    :param argv: The command-line arguments, or None for
+        ``sys.argv``.
+    :return: The exit status: 0 on success, non-zero on failure.
+    """
+    from .tally_annotations import main
+    return main(argv)
+
+
 def tally_codings_command(argv: list[str] | None = None) -> int:
     """Settle the coding by a majority of the three coding runs.
 

@@ -79,6 +79,12 @@ tally-groups
 Settle the semantic code groups by a majority of the three group-selection runs' archives, and write the final group table, dropping any keyword outside the settled vocabulary.  Check ``pop-fem-audit-tools tally-groups -h`` for complete instructions on its usage.
 
 
+tally-annotations
+-----------------
+
+Settle the pattern annotations by a majority of the three annotation runs' archives.  It extracts the patterns from the group synthesis archives, checks every ballot against the patterns applicable to that song's performer gender, and writes the settled pattern table and the settled song-by-pattern table.  Check ``pop-fem-audit-tools tally-annotations -h`` for complete instructions on its usage.
+
+
 Copyright
 =========
 

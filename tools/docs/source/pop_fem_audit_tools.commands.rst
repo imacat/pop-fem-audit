@@ -52,6 +52,14 @@ pop\_fem\_audit\_tools.commands.run\_llm module
    :show-inheritance:
    :undoc-members:
 
+pop\_fem\_audit\_tools.commands.tally\_annotations module
+---------------------------------------------------------
+
+.. automodule:: pop_fem_audit_tools.commands.tally_annotations
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 pop\_fem\_audit\_tools.commands.tally\_codings module
 -----------------------------------------------------
 

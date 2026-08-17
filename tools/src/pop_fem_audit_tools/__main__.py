@@ -22,6 +22,7 @@ from .commands import (
     fetch_artists_command,
     fetch_lyrics_command,
     run_llm_command,
+    tally_annotations_command,
     tally_codings_command,
     tally_groups_command,
 )
@@ -36,6 +37,7 @@ SUBCOMMANDS: dict[str, Callable[[list[str] | None], int]] = {
     "fetch-artists": fetch_artists_command,
     "fetch-lyrics": fetch_lyrics_command,
     "run-llm": run_llm_command,
+    "tally-annotations": tally_annotations_command,
     "tally-codings": tally_codings_command,
     "tally-groups": tally_groups_command,
 }

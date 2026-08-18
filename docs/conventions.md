@@ -1,6 +1,16 @@
 # Project Conventions
 
+The standing working rules of this project.  Formerly the
+project `CLAUDE.md`; moved here so that Claude Code subagents
+do not inherit it into their context (blind-reading agents
+must not see it).  A main session working on this project
+reads this file before touching the pipeline, the data, or
+the documents.
+
 ## Analysis pipeline
+
+The pipeline has run to completion; these conventions govern
+any rerun or extension.
 
 - LLM analysis runs via Python scripts calling the Anthropic
   Messages API, Batch API where possible.  Steps 1 and 3 run
@@ -64,5 +74,5 @@
 - `results/` holds the final tallied tables (what the paper
   cites); `runs/` holds raw audit records.  The paper cites
   `results/` only.
-- Any change to a definition file, the codebook, or the plan is
-  recorded in `docs/decision-log.md` with date and reason.
+- Any change to a definition file or the plan is recorded in
+  `docs/decision-log.md` with date and reason.

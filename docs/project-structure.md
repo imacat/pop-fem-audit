@@ -6,8 +6,6 @@ SQLite 工作儲存架構；2026-08-17 依完成後的現況更新）
 ```
 pop-fem-audit/
 ├── README.md                  # 專案說明、重現步驟
-├── CLAUDE.md                  # 極簡工作規範（subagent 會讀到，
-│                              #   絕不放理論、codebook、預期結果）
 ├── .gitignore                 # captures/lyrics/、.env、scratch
 ├── data/                      # 依生命週期分層（文字格式）
 │   ├── source/                # 源頭：手放後不動
@@ -91,6 +89,8 @@ pop-fem-audit/
 │   ├── annotations.csv        # 步驟 5d 定案歌×樣態
 │   └── pattern-matrix.csv     # 前四者的人讀寬表
 ├── docs/
+│   ├── conventions.md         # 常設工作規範（原 CLAUDE.md；
+│   │                          #   移入 docs/ 使 subagent 不繼承）
 │   ├── research-plan.md       # 研究步驟規劃（本檔之姊妹篇）
 │   ├── project-structure.md   # 本檔
 │   ├── output-validation.md   # LLM 輸出的契約查核紀錄
@@ -132,6 +132,8 @@ pop-fem-audit/
 - **設定**經 pydantic-settings 統一：`.env`（gitignored，範本
   `tools/.env.example`）供應 `SQLALCHEMY_DATABASE_URL` 與
   `ANTHROPIC_API_KEY`，絕不寫入 repo。
-- **CLAUDE.md 極簡**：實測證實 Claude Code subagent 會繼承專案
-  CLAUDE.md 全文，故其中只放工作流程規則，領域知識一律放
-  `docs/`（subagent 不會自動讀到）。
+- **不設 CLAUDE.md**：實測證實 Claude Code subagent 會繼承專案
+  CLAUDE.md 全文（原本因此只放極簡工作規則），2026-08-18 進一步
+  將其移為 `docs/conventions.md`——docs/ 不會自動注入 subagent
+  的 context，盲判型 agent 便不會看到工作規範；主會話動手前
+  自行閱讀之。

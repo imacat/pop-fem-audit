@@ -1,39 +1,18 @@
-# pop-fem-audit
+# 流行音樂中「女性力量」語彙的挪用與污染——以 Billboard Year-End Hot 100（2016-2025）為例的內容分析
 
-流行音樂中「女性力量」語彙的挪用與污染——以 Billboard Year-End
-Hot 100（2016–2025）為例的內容分析。
+這是研究論文《流行音樂中「女性力量」語彙的挪用與污染——以 Billboard Year-End Hot 100（2016-2025）為例的內容分析》的專案資料，包括論文本身、文件、紀錄、資料、工具程式、AI提示詞，等等。
 
-台灣女性學學會 2026 年會論文之研究資料與分析程式。
+## 論文和摘要
 
-## 目錄結構
+研究論文全文和摘要，請參閱 paper/ 資料夾。
 
-見 `docs/project-structure.md`。研究步驟規劃見
-`docs/research-plan.md`；方法細節見 `docs/methodology.md`；
-人工編碼手冊見 `docs/codebook.md`；決策日誌見
-`docs/decision-log.md`。
+## 文件說明
 
-## 重現方式
+研究方法、記錄等文件，請參閱 docs/ 資料夾。
 
-1. 準備 Python 3.14+ 環境，安裝分析管線套件：
-   `pip install -e tools/`。
-2. 自 `tools/.env.example` 建立 `tools/.env`，寫入
-   Anthropic API 金鑰。
-3. 依 `docs/research-plan.md` 的階段順序，於 `tools/` 目錄下
-   執行子命令，必要輸入以位置引數、選擇性輸入以選項給定（如
-   `pop-fem-audit-tools build-db
-   ../data/source/yearend_hot100_2016_2025.csv
-   ../data/derived
-   --lyrics-dir ../data/captures/lyrics
-   --wikidata-csv ../data/captures/artists-wikidata.csv`）。
-   LLM 步驟使用 `claude-sonnet-4-6`、temperature=0、
-   thinking 關閉；輸出可逐項比對的步驟獨立執行三次，由
-   程式取三票多數決定案（「三次執行＋多數決」協定），
-   自由生成步驟兩次執行進池。
-4. 每次執行的完整紀錄（定義檔快照、原始輸出、參數）存於
-   `runs/`，可逐筆稽核。論文引用的最終資料表在 `results/`。
+## 輔助工具程式
 
-注意：歌詞受版權保護，`data/captures/lyrics/` 不隨 repo 發布，須自行
-以 `tools/` 中的抓取程式重建。
+輔助工具程式，請參閱 tools/ 資料夾。
 
 ## 授權
 
@@ -44,3 +23,9 @@ Hot 100（2016–2025）為例的內容分析。
 排除物件：
 1. 本專案引用之第三方歌詞，相應權利歸各該權利人所有；
 2. tools/ 資料夾內之工具程式，依該工具程式授權條款提供。
+
+## 作者
+
+楊士青<br>
+imacat@mail.imacat.idv.tw<br>
+2026/8/18<br>

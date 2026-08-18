@@ -5,7 +5,7 @@ SQLite 工作儲存架構；2026-08-17 依完成後的現況更新）
 
 ```
 pop-fem-audit/
-├── README.md                  # 專案說明、重現步驟
+├── README.md                  # 專案說明
 ├── .gitignore                 # captures/lyrics/、.env、scratch
 ├── data/                      # 依生命週期分層（文字格式）
 │   ├── source/                # 源頭：手放後不動

@@ -10,53 +10,61 @@ $3／$15、opus-4-6 $5／$25、opus-5 與 fable-5 $10／$50）
 被 `--replace` 取代的執行以「已取代」標記，數字保留供
 總支出核算。
 
-| 日期 | 步驟 | 執行 | 模型 | 批次 ID | 耗時 | input | output | 費用 (USD) | 狀態 |
-|---|---|---|---|---|---|---:|---:|---:|---|
-| 2026-08-04 | 01-01-01-tag | run1 | claude-sonnet-4-6 | msgbatch_01PTACDQMr8M6ahnshbedjtB | 6 分 27 秒 | 763,318 | 338,661 | $3.68 | 已取代（浮水印清洗與防圍欄修訂後重跑） |
-| 2026-08-05 | 01-01-01-tag | run1 | claude-sonnet-4-6 | msgbatch_01TikJNd2pZVxzQ8SaybVthu | 4 分 57 秒 | 774,604 | 323,651 | $3.59 | 已取代（合法 JSON 修訂後重跑） |
-| 2026-08-05 | 01-01-01-tag | run1 | claude-sonnet-4-6 | msgbatch_01JFBCNqnu1cwXyqmEKLHQYF | 4 分 30 秒 | 790,370 | 328,227 | $3.65 | 已取代（song-288 平台失敗，整批重跑驗證） |
-| 2026-08-05 | 01-01-01-tag | run1 | claude-sonnet-4-6 | msgbatch_01VSDneWuSbf8mShA32jiWrX | 6 分 15 秒 | 790,370 | 326,193 | $3.63 | 已取代（措辭修訂後全體重跑） |
-| 2026-08-05 | 01-01-01-tag | run1-rescue-288 | claude-sonnet-4-6 | msgbatch_019Hq6bNVXVmp4DjRZ2cgVda | 2 分 5 秒 | 1,015 | 376 | $0.01 | 已取代（措辭修訂後全體重跑，該首原生通過）|
-| 2026-08-05 | 01-01-01-tag | run1 | claude-sonnet-4-6 | msgbatch_01VgZ77KAPGWmuu3PnQFqZ7Q | 7 分 1 秒 | 794,913 | 326,435 | $3.64 | 現行 |
-| 2026-08-05 | 01-01-01-tag | run2 | claude-sonnet-4-6 | msgbatch_01TLFey3L4fimKxcebTZQGYn | 4 分 21 秒 | 794,913 | 328,324 | $3.65 | 現行 |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-sonnet-4-6 | msgbatch_01BvYMFmH8zrUq9SNxWSNba7 | 9 分 14 秒 | 46,454 | 60,974 | $0.53 | 已取代（完整分割驗證不過：漏 366、重複分派 511、撞名 4） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-opus-5 | msgbatch_018TkYpdT3DsZqq2q94FQCUN | — | 0 | 0 | $0.00 | 拒收（temperature 已棄用） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-opus-4-8 | msgbatch_018Wuux4adz5mWSvzJjfgLxb | — | 0 | 0 | $0.00 | 拒收（temperature 已棄用） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-opus-4-6 | msgbatch_01Lmt2j1Txyof9CctUK7CbHA | 12 分 19 秒 | 46,454 | 54,864 | $0.80 | 已取代（圍欄違規；漏 190、發明 151、重複 11） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-opus-5 | msgbatch_012SEfebTnjU5uWN6hhfnhhh | 8 分 45 秒 | 63,368 | 64,000 | $1.92 | 已取代（64k 截斷） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-opus-5 | msgbatch_01Wi9xEoQKCy1nZK6myVNg77 | 11 分 34 秒 | 63,368 | 70,175 | $2.07 | 已取代（驗證不過：漏 59、發明 140、重複 3） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_01M15hUs8P9FDTqWvAHdc1cA | 32 分 45 秒 | 63,368 | 107,721 | $3.01 | 現行歸檔（JSON 語法毀損，驗證不過） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_012stRP28uuQDQwobm41HMLh | — | 0 | 0 | $0.00 | 拒收（thinking.type.enabled 不支援） |
-| 2026-08-05 | 01-02-01-merge | run1 | claude-fable-5 | msgbatch_01KpS7AMx1zAHTcNujgGsouJ | 26 分 28 秒 | 63,368 | 128,000 | $3.52 | 現行歸檔（effort max：128k 全耗於推理，正文空白） |
-| 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01L7VepTxSNz5vruvzzjuL2c | 6 分 36 秒 | 1,247,264 | 492,730 | $5.57 | 36 首輸出遭內容過濾攔阻，待修訂重跑 |
-| 2026-08-05 | 03-01-code | 引述減量實驗（36 首）| claude-sonnet-4-6 | msgbatch_01Hskdhi2DkudYmgZhhgFts7 | 3 分 51 秒 | 56,458 | 11,074 | $0.17 | 實驗：每碼一行引述，36 首全數通過過濾；歸檔不入 repo |
-| 2026-08-05 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01GG5Ez9KT1pPwtQaY4sW7tv | 4 分 35 秒 | 1,293,724 | 269,166 | $3.96 | 過濾零攔阻；song-168、song-590 因餘額用盡失敗，song-775 拒答 |
-| 2026-08-05 | 03-01-code | 101 碼樹狀探測（148 首）| claude-sonnet-4-6 | msgbatch_017jo3E5gWVks9b39iWMTqz3 | 2 小時 11 分 | 385,270 | 79,690 | $0.87 | 實驗：k=100 葉碼＋women-power；零違規碼； 歸檔不入 repo |
-| 2026-08-06 | 命名實驗（100 組）| — | claude-sonnet-4-6 | msgbatch_01XSi1YtWzdVyYUzYh7DQRWg | 3 分 5 秒 | 55,090 | 1,168 | $0.09 | 實驗：LLM 命名對照 medoid，未採用；歸檔不入 repo |
-| 2026-08-06 | 命名實驗（100 組）| — | claude-fable-5 | msgbatch_01Y8SJj1h1ZuSQRErhqkvgZE | 3 分 2 秒 | 76,211 | 2,049 | $0.43 | 實驗：同上，加禁用 themes；未採用；歸檔不入 repo |
-| 2026-08-06 | 03-01-code | run1 | claude-sonnet-4-6 | msgbatch_01GS1opvurvsf62oknnQxhtx | 3 分 46 秒 | 1,625,458 | 362,759 | $5.16 | 現行（101 碼；883 首全數有效，零攔阻） |
-| 2026-08-06 | 03-01-code | run2 | claude-sonnet-4-6 | msgbatch_01CxnwNLWzZbRpZK7UAdpb8i | 5 分 22 秒 | 1,625,458 | 364,098 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） |
-| 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_019xcQXwrbwDGFc9nE5M8AjE | 4 分 0 秒 | 763,193 | 42,389 | $1.46 | 已取代（2 首遭內容過濾攔阻、13 首輸出夾帶散文；定義檔修訂後重跑） |
-| 2026-08-06 | 03-02-arbitration | — | claude-sonnet-4-6 | msgbatch_01N7bDbXRSfAVUzzaj2thKeR | 4 分 20 秒 | 781,037 | 39,315 | $1.47 | 現行（644 首全數有效，零攔阻；保留 1,481／送裁 1,699） |
-| 2026-08-06 | 03-code | run3 | claude-sonnet-4-6 | msgbatch_01KnkCaGETnFJrPddrxZTYHA | 6 分 26 秒 | 1,625,458 | 363,840 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） |
-| 2026-08-14 | 04-group | run1 | claude-sonnet-4-6 | msgbatch_01UPNedog6feQzJ9WVfSAxBD | 1 分 1 秒 | 3,129 | 470 | $0.01 | 已取代（僅 3 群；改納 women-power 群後重跑） |
-| 2026-08-14 | 04-group | run1 | claude-sonnet-4-6 | msgbatch_01KntJgxdicStaMjNL12P3zi | 1 分 25 秒 | 4,170 | 558 | $0.01 | 已取代（改以 claude-fable-5 執行；vulnerable 輸出含詞彙表外碼 1 筆；歸檔另行私人備份，不入版本庫） |
-| 2026-08-14 | 04-group | run1 | claude-fable-5 | msgbatch_01Mr6goBb2Efa4YrqCprbP4U | 55 秒 | 5,553 | 2,049 | $0.08 | 現行（4 群；零違規碼；temperature 與 thinking 參數不適用於本模型，未送出） |
-| 2026-08-14 | 04-group | run2 | claude-fable-5 | msgbatch_01C17xW3YBefThTYZ83g7KkL | 1 分 21 秒 | 5,553 | 1,891 | $0.08 | 現行（4 群；零違規碼） |
-| 2026-08-14 | 04-group | run3 | claude-fable-5 | msgbatch_01DveEMYyjCAYe6wxpcCD87V | 2 分 9 秒 | 5,553 | 1,975 | $0.08 | 現行（4 群；零違規碼） |
-| 2026-08-15 | 05-01-read | run1 | claude-fable-5 | msgbatch_018NJejke75o7kzKyjZeeKwi | 2 分 12 秒 | 189,607 | 181,299 | $5.48 | 現行（144/145 有效；song-444 平台錯誤，單筆補送） |
-| 2026-08-15 | 05-01-read | run1-rescue-444 | claude-fable-5 | msgbatch_01DgygMm6iYn2qEnyqHkTMfa | 1 分 52 秒 | 1,852 | 1,557 | $0.05 | 現行（run1 之 song-444 單筆補送，成功） |
-| 2026-08-15 | 05-01-read | run2 | claude-fable-5 | msgbatch_011txWpWDtdkNXNiPA74ZUfQ | 15 分 25 秒 | 191,459 | 185,630 | $5.60 | 現行（145/145 有效） |
-| 2026-08-15 | 05-01-read | run3 | claude-fable-5 | msgbatch_01Unn7C7WCnuVoLraJRXksoG | 7 分 59 秒 | 191,459 | 190,433 | $5.72 | 現行（145/145 有效） |
-| 2026-08-15 | 05-02-consolidate | run1 | claude-fable-5 | msgbatch_01WPyH4pCCiieHs4yU3xtHzN | 2 分 28 秒 | 326,287 | 242,785 | $7.70 | 現行（145/145 有效） |
-| 2026-08-15 | 05-03-synthesize | run1 | claude-fable-5 | msgbatch_01XbNQb1SFrUxhk2ZWF7epPA | 3 分 0 秒 | 103,888 | 9,982 | $0.77 | 現行（15 個樣態；研究者審定用草稿） |
-| 2026-08-15 | 05-03-synthesize | run2 | claude-fable-5 | msgbatch_01FKqq8U6m5HLLsx7KpQES26 | 3 分 4 秒 | 13,573 | 6,883 | $0.24 | 現行（男聲群 14 首；13 個樣態） |
-| 2026-08-15 | 05-03-synthesize | run3 | claude-fable-5 | msgbatch_017tfhiRTnaxqCp6YFyoivsu | 4 分 4 秒 | 60,727 | 8,519 | $0.52 | 現行（女聲群 98 首；14 個樣態） |
-| 2026-08-15 | 05-03-synthesize | run4 | claude-fable-5 | msgbatch_01SNjTLiNPEba4LW2tcUAcTJ | 4 分 3 秒 | 29,958 | 9,793 | $0.39 | 現行（混合群 30 首；16 個樣態） |
-| 2026-08-15 | 05-04-annotate | run1 | claude-fable-5 | msgbatch_01H9gXXhNbhZG6gzZtvMHxhh | 3 分 9 秒 | 815,492 | 300,901 | $11.60 | 現行（109/111 有效；song-177、song-199 遭 max_tokens 截斷，單筆補送） |
-| 2026-08-15 | 05-04-annotate | run1-rescue-177-199 | claude-fable-5 | msgbatch_01YEdroZ51b8btPfG1aqPFCD | 3 分 5 秒 | 17,802 | 11,601 | $0.38 | 現行（run1 之 2 筆補送，max_tokens 提為 16000，成功） |
-| 2026-08-15 | 05-04-annotate | — | claude-fable-5 | msgbatch_01G67STqZsHpnhedat2HRU85 | 3 分 0 秒 | 17,802 | 14,162 | $0.44 | 誤送（補送批次輪詢中斷後誤判死亡而重送；原批次自行完成並歸檔為現行，本批次取消不及、兩筆皆完成，結果棄用） |
-| 2026-08-15 | 05-04-annotate | run2 | claude-fable-5 | msgbatch_01VVJpsfidNtF66GnHQdWnGR | 9 分 16 秒 | 815,492 | 306,582 | $11.74 | 現行（111/111 有效；max_tokens 16000，零截斷） |
-| 2026-08-15 | 05-04-annotate | run3 | claude-fable-5 | msgbatch_01AsYvZd8rsTYVfUYLzWfeMK | 4 分 12 秒 | 815,492 | 298,512 | $11.54 | 現行（111/111 有效；max_tokens 16000，零截斷） |
+「步驟」欄的名稱於 2026-08-18 一律換為現行編號（見
+`decision-log.md` 當日條目），執行當時的名稱記於末欄
+「原步驟名」，未曾改名者留空。已刪除的工序——步驟 2 的
+LLM 合併嘗試（`01-02-01-merge`，詞彙表改採詞向量分群時
+放棄）與步驟 3 的仲裁（`03-02-arbitration`，改採三票
+多數決時刪除）——不另發新名，步驟欄標「已廢棄」，僅存
+本表供總支出核算。
+
+| 日期 | 步驟 | 執行 | 模型 | 批次 ID | 耗時 | input | output | 費用 (USD) | 狀態 | 原步驟名 |
+|---|---|---|---|---|---|---:|---:|---:|---|---|
+| 2026-08-04 | 1-tag | run1 | claude-sonnet-4-6 | msgbatch_01PTACDQMr8M6ahnshbedjtB | 6 分 27 秒 | 763,318 | 338,661 | $3.68 | 已取代（浮水印清洗與防圍欄修訂後重跑） | 01-01-01-tag |
+| 2026-08-05 | 1-tag | run1 | claude-sonnet-4-6 | msgbatch_01TikJNd2pZVxzQ8SaybVthu | 4 分 57 秒 | 774,604 | 323,651 | $3.59 | 已取代（合法 JSON 修訂後重跑） | 01-01-01-tag |
+| 2026-08-05 | 1-tag | run1 | claude-sonnet-4-6 | msgbatch_01JFBCNqnu1cwXyqmEKLHQYF | 4 分 30 秒 | 790,370 | 328,227 | $3.65 | 已取代（song-288 平台失敗，整批重跑驗證） | 01-01-01-tag |
+| 2026-08-05 | 1-tag | run1 | claude-sonnet-4-6 | msgbatch_01VSDneWuSbf8mShA32jiWrX | 6 分 15 秒 | 790,370 | 326,193 | $3.63 | 已取代（措辭修訂後全體重跑） | 01-01-01-tag |
+| 2026-08-05 | 1-tag | run1-rescue-288 | claude-sonnet-4-6 | msgbatch_019Hq6bNVXVmp4DjRZ2cgVda | 2 分 5 秒 | 1,015 | 376 | $0.01 | 已取代（措辭修訂後全體重跑，該首原生通過）| 01-01-01-tag |
+| 2026-08-05 | 1-tag | run1 | claude-sonnet-4-6 | msgbatch_01VgZ77KAPGWmuu3PnQFqZ7Q | 7 分 1 秒 | 794,913 | 326,435 | $3.64 | 現行 | 01-01-01-tag |
+| 2026-08-05 | 1-tag | run2 | claude-sonnet-4-6 | msgbatch_01TLFey3L4fimKxcebTZQGYn | 4 分 21 秒 | 794,913 | 328,324 | $3.65 | 現行 | 01-01-01-tag |
+| 2026-08-05 | 已廢棄 | run1 | claude-sonnet-4-6 | msgbatch_01BvYMFmH8zrUq9SNxWSNba7 | 9 分 14 秒 | 46,454 | 60,974 | $0.53 | 已取代（完整分割驗證不過：漏 366、重複分派 511、撞名 4） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-opus-5 | msgbatch_018TkYpdT3DsZqq2q94FQCUN | — | 0 | 0 | $0.00 | 拒收（temperature 已棄用） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-opus-4-8 | msgbatch_018Wuux4adz5mWSvzJjfgLxb | — | 0 | 0 | $0.00 | 拒收（temperature 已棄用） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-opus-4-6 | msgbatch_01Lmt2j1Txyof9CctUK7CbHA | 12 分 19 秒 | 46,454 | 54,864 | $0.80 | 已取代（圍欄違規；漏 190、發明 151、重複 11） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-opus-5 | msgbatch_012SEfebTnjU5uWN6hhfnhhh | 8 分 45 秒 | 63,368 | 64,000 | $1.92 | 已取代（64k 截斷） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-opus-5 | msgbatch_01Wi9xEoQKCy1nZK6myVNg77 | 11 分 34 秒 | 63,368 | 70,175 | $2.07 | 已取代（驗證不過：漏 59、發明 140、重複 3） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-fable-5 | msgbatch_01M15hUs8P9FDTqWvAHdc1cA | 32 分 45 秒 | 63,368 | 107,721 | $3.01 | 現行歸檔（JSON 語法毀損，驗證不過） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-fable-5 | msgbatch_012stRP28uuQDQwobm41HMLh | — | 0 | 0 | $0.00 | 拒收（thinking.type.enabled 不支援） | 01-02-01-merge |
+| 2026-08-05 | 已廢棄 | run1 | claude-fable-5 | msgbatch_01KpS7AMx1zAHTcNujgGsouJ | 26 分 28 秒 | 63,368 | 128,000 | $3.52 | 現行歸檔（effort max：128k 全耗於推理，正文空白） | 01-02-01-merge |
+| 2026-08-05 | 3a-code | run1 | claude-sonnet-4-6 | msgbatch_01L7VepTxSNz5vruvzzjuL2c | 6 分 36 秒 | 1,247,264 | 492,730 | $5.57 | 36 首輸出遭內容過濾攔阻，待修訂重跑 | 03-01-code |
+| 2026-08-05 | 3a-code | 引述減量實驗（36 首）| claude-sonnet-4-6 | msgbatch_01Hskdhi2DkudYmgZhhgFts7 | 3 分 51 秒 | 56,458 | 11,074 | $0.17 | 實驗：每碼一行引述，36 首全數通過過濾；歸檔不入 repo | 03-01-code |
+| 2026-08-05 | 3a-code | run1 | claude-sonnet-4-6 | msgbatch_01GG5Ez9KT1pPwtQaY4sW7tv | 4 分 35 秒 | 1,293,724 | 269,166 | $3.96 | 過濾零攔阻；song-168、song-590 因餘額用盡失敗，song-775 拒答 | 03-01-code |
+| 2026-08-05 | 3a-code | 101 碼樹狀探測（148 首）| claude-sonnet-4-6 | msgbatch_017jo3E5gWVks9b39iWMTqz3 | 2 小時 11 分 | 385,270 | 79,690 | $0.87 | 實驗：k=100 葉碼＋women-power；零違規碼； 歸檔不入 repo | 03-01-code |
+| 2026-08-06 | 命名實驗（100 組）| — | claude-sonnet-4-6 | msgbatch_01XSi1YtWzdVyYUzYh7DQRWg | 3 分 5 秒 | 55,090 | 1,168 | $0.09 | 實驗：LLM 命名對照 medoid，未採用；歸檔不入 repo |  |
+| 2026-08-06 | 命名實驗（100 組）| — | claude-fable-5 | msgbatch_01Y8SJj1h1ZuSQRErhqkvgZE | 3 分 2 秒 | 76,211 | 2,049 | $0.43 | 實驗：同上，加禁用 themes；未採用；歸檔不入 repo |  |
+| 2026-08-06 | 3a-code | run1 | claude-sonnet-4-6 | msgbatch_01GS1opvurvsf62oknnQxhtx | 3 分 46 秒 | 1,625,458 | 362,759 | $5.16 | 現行（101 碼；883 首全數有效，零攔阻） | 03-01-code |
+| 2026-08-06 | 3a-code | run2 | claude-sonnet-4-6 | msgbatch_01CxnwNLWzZbRpZK7UAdpb8i | 5 分 22 秒 | 1,625,458 | 364,098 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） | 03-01-code |
+| 2026-08-06 | 已廢棄 | — | claude-sonnet-4-6 | msgbatch_019xcQXwrbwDGFc9nE5M8AjE | 4 分 0 秒 | 763,193 | 42,389 | $1.46 | 已取代（2 首遭內容過濾攔阻、13 首輸出夾帶散文；定義檔修訂後重跑） | 03-02-arbitration |
+| 2026-08-06 | 已廢棄 | — | claude-sonnet-4-6 | msgbatch_01N7bDbXRSfAVUzzaj2thKeR | 4 分 20 秒 | 781,037 | 39,315 | $1.47 | 現行（644 首全數有效，零攔阻；保留 1,481／送裁 1,699） | 03-02-arbitration |
+| 2026-08-06 | 3a-code | run3 | claude-sonnet-4-6 | msgbatch_01KnkCaGETnFJrPddrxZTYHA | 6 分 26 秒 | 1,625,458 | 363,840 | $5.17 | 現行（101 碼；883 首全數有效，零攔阻） | 03-code |
+| 2026-08-14 | 4-group | run1 | claude-sonnet-4-6 | msgbatch_01UPNedog6feQzJ9WVfSAxBD | 1 分 1 秒 | 3,129 | 470 | $0.01 | 已取代（僅 3 群；改納 women-power 群後重跑） | 04-group |
+| 2026-08-14 | 4-group | run1 | claude-sonnet-4-6 | msgbatch_01KntJgxdicStaMjNL12P3zi | 1 分 25 秒 | 4,170 | 558 | $0.01 | 已取代（改以 claude-fable-5 執行；vulnerable 輸出含詞彙表外碼 1 筆；歸檔另行私人備份，不入版本庫） | 04-group |
+| 2026-08-14 | 4-group | run1 | claude-fable-5 | msgbatch_01Mr6goBb2Efa4YrqCprbP4U | 55 秒 | 5,553 | 2,049 | $0.08 | 現行（4 群；零違規碼；temperature 與 thinking 參數不適用於本模型，未送出） | 04-group |
+| 2026-08-14 | 4-group | run2 | claude-fable-5 | msgbatch_01C17xW3YBefThTYZ83g7KkL | 1 分 21 秒 | 5,553 | 1,891 | $0.08 | 現行（4 群；零違規碼） | 04-group |
+| 2026-08-14 | 4-group | run3 | claude-fable-5 | msgbatch_01DveEMYyjCAYe6wxpcCD87V | 2 分 9 秒 | 5,553 | 1,975 | $0.08 | 現行（4 群；零違規碼） | 04-group |
+| 2026-08-15 | 5a-read | run1 | claude-fable-5 | msgbatch_018NJejke75o7kzKyjZeeKwi | 2 分 12 秒 | 189,607 | 181,299 | $5.48 | 現行（144/145 有效；song-444 平台錯誤，單筆補送） | 05-01-read |
+| 2026-08-15 | 5a-read | run1-rescue-444 | claude-fable-5 | msgbatch_01DgygMm6iYn2qEnyqHkTMfa | 1 分 52 秒 | 1,852 | 1,557 | $0.05 | 現行（run1 之 song-444 單筆補送，成功） | 05-01-read |
+| 2026-08-15 | 5a-read | run2 | claude-fable-5 | msgbatch_011txWpWDtdkNXNiPA74ZUfQ | 15 分 25 秒 | 191,459 | 185,630 | $5.60 | 現行（145/145 有效） | 05-01-read |
+| 2026-08-15 | 5a-read | run3 | claude-fable-5 | msgbatch_01Unn7C7WCnuVoLraJRXksoG | 7 分 59 秒 | 191,459 | 190,433 | $5.72 | 現行（145/145 有效） | 05-01-read |
+| 2026-08-15 | 5b-consolidate | run1 | claude-fable-5 | msgbatch_01WPyH4pCCiieHs4yU3xtHzN | 2 分 28 秒 | 326,287 | 242,785 | $7.70 | 現行（145/145 有效） | 05-02-consolidate |
+| 2026-08-15 | 5c-synthesize | run1 | claude-fable-5 | msgbatch_01XbNQb1SFrUxhk2ZWF7epPA | 3 分 0 秒 | 103,888 | 9,982 | $0.77 | 現行（15 個樣態；研究者審定用草稿） | 05-03-synthesize |
+| 2026-08-15 | 5c-synthesize | run2 | claude-fable-5 | msgbatch_01FKqq8U6m5HLLsx7KpQES26 | 3 分 4 秒 | 13,573 | 6,883 | $0.24 | 現行（男聲群 14 首；13 個樣態） | 05-03-synthesize |
+| 2026-08-15 | 5c-synthesize | run3 | claude-fable-5 | msgbatch_017tfhiRTnaxqCp6YFyoivsu | 4 分 4 秒 | 60,727 | 8,519 | $0.52 | 現行（女聲群 98 首；14 個樣態） | 05-03-synthesize |
+| 2026-08-15 | 5c-synthesize | run4 | claude-fable-5 | msgbatch_01SNjTLiNPEba4LW2tcUAcTJ | 4 分 3 秒 | 29,958 | 9,793 | $0.39 | 現行（混合群 30 首；16 個樣態） | 05-03-synthesize |
+| 2026-08-15 | 5d-annotate | run1 | claude-fable-5 | msgbatch_01H9gXXhNbhZG6gzZtvMHxhh | 3 分 9 秒 | 815,492 | 300,901 | $11.60 | 現行（109/111 有效；song-177、song-199 遭 max_tokens 截斷，單筆補送） | 05-04-annotate |
+| 2026-08-15 | 5d-annotate | run1-rescue-177-199 | claude-fable-5 | msgbatch_01YEdroZ51b8btPfG1aqPFCD | 3 分 5 秒 | 17,802 | 11,601 | $0.38 | 現行（run1 之 2 筆補送，max_tokens 提為 16000，成功） | 05-04-annotate |
+| 2026-08-15 | 5d-annotate | — | claude-fable-5 | msgbatch_01G67STqZsHpnhedat2HRU85 | 3 分 0 秒 | 17,802 | 14,162 | $0.44 | 誤送（補送批次輪詢中斷後誤判死亡而重送；原批次自行完成並歸檔為現行，本批次取消不及、兩筆皆完成，結果棄用） | 05-04-annotate |
+| 2026-08-15 | 5d-annotate | run2 | claude-fable-5 | msgbatch_01VVJpsfidNtF66GnHQdWnGR | 9 分 16 秒 | 815,492 | 306,582 | $11.74 | 現行（111/111 有效；max_tokens 16000，零截斷） | 05-04-annotate |
+| 2026-08-15 | 5d-annotate | run3 | claude-fable-5 | msgbatch_01AsYvZd8rsTYVfUYLzWfeMK | 4 分 12 秒 | 815,492 | 298,512 | $11.54 | 現行（111/111 有效；max_tokens 16000，零截斷） | 05-04-annotate |
 
 累計支出：$125.65。

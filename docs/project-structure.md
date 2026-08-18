@@ -26,16 +26,17 @@ pop-fem-audit/
 │       ├── songs.csv          # 歌曲報表（人讀；進 git）
 │       └── artists.csv        # 歌手報表（人讀；進 git）
 ├── prompts/                   # LLM 定義檔（逐字作為 system prompt）
-│   └── <步>-<次步>-<task>.md  # 01-tag.md、03-code.md、
-│                              #   04-group.md、05-01-read.md、
-│                              #   05-02-consolidate.md、
-│                              #   05-03-synthesize.md、
-│                              #   05-04-annotate.md
-│                              #   （步內僅一個執行時省略次步）
+│   └── <步><次步>-<task>.md   # 1-tag.md、3a-code.md、
+│                              #   4-group.md、5a-read.md、
+│                              #   5b-consolidate.md、
+│                              #   5c-synthesize.md、
+│                              #   5d-annotate.md
+│                              #   （次步以字母標示，與論文正文
+│                              #   的步驟編號一致；步內僅一個
+│                              #   執行時省略次步）
 │                              #   不帶版本號，版本即 git 歷史
 │                              #   （編號的所指是工序：確定性
-│                              #   的步驟 2 無定義檔仍佔一號；
-│                              #   補零只為排序）
+│                              #   的步驟 2 無定義檔仍佔一號）
 ├── tools/                     # 輔助工具子專案（src-layout）
 │   ├── pyproject.toml         #   發行名 pop-fem-audit-tools；
 │   │                          #   pip install -e tools/ 安裝
@@ -60,7 +61,7 @@ pop-fem-audit/
 │   │   │   │                       #   into the codes (step 2)
 │   │   │   ├── tally_codings.py    # settle step 3 by majority
 │   │   │   ├── tally_groups.py     # settle step 4 by majority
-│   │   │   ├── tally_annotations.py # settle step 5-4 by majority
+│   │   │   ├── tally_annotations.py # settle step 5d by majority
 │   │   │   └── run_llm.py     # API 執行器：一份定義檔＋一份輸入
 │   │   │                      #   →歸檔至指定目錄（Batch API）；
 │   │   │                      #   多次執行的計票由獨立子命令承擔
@@ -71,23 +72,23 @@ pop-fem-audit/
 │   └── tests/                 # 單元測試（unittest）
 ├── runs/                      # 現行執行的完整稽核紀錄（進 git；
 │   │                          #   重跑同一 run 須明示 --replace）
-│   ├── <步驟名>/              #   一步一個目錄（01-tag、03-code、
-│   │                          #   04-group、05-01-read、
-│   │                          #   05-02-consolidate、
-│   │                          #   05-03-synthesize、05-04-annotate）
+│   ├── <步驟名>/              #   一步一個目錄（1-tag、3a-code、
+│   │                          #   4-group、5a-read、
+│   │                          #   5b-consolidate、
+│   │                          #   5c-synthesize、5d-annotate）
 │   │   └── run<N>/            #   LLM 步驟：每個 run 一份自我
 │   │       ├── prompt.md      #   完備歸檔（定義檔快照）
 │   │       ├── output.jsonl   #   該次執行原始輸出
 │   │       └── meta.json      #   model ID、temperature、時間戳、
 │   │                          #   batch ID、token 用量
-│   └── 02-cluster/           # 確定性步驟：無執行變異，
+│   └── 2-cluster/            # 確定性步驟：無執行變異，
 │                              #   不分 run<N> 層
 ├── results/                   # 論文引用的定案表 CSV（計票子命令
 │   │                          #   產出；「可再生仍 commit」的例外）
 │   ├── codings.csv            # 步驟 3 定案編碼
 │   ├── groups.csv             # 步驟 4 定案編碼群
-│   ├── patterns.csv           # 步驟 5-3 定案樣態表
-│   ├── annotations.csv        # 步驟 5-4 定案歌×樣態
+│   ├── patterns.csv           # 步驟 5c 定案樣態表
+│   ├── annotations.csv        # 步驟 5d 定案歌×樣態
 │   └── pattern-matrix.csv     # 前四者的人讀寬表
 ├── docs/
 │   ├── research-plan.md       # 研究步驟規劃（本檔之姊妹篇）

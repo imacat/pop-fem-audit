@@ -10,13 +10,13 @@
   variance by the majority vote, step 5 by consolidating the
   three readings.
 - Prompt definition files live in
-  `prompts/<step>-<substep>-<task>.md` (e.g. 01-tag.md; no
-  version suffix -- versions live in git history) and are
-  passed verbatim as the system prompt.  The number names a
-  step of the research procedure, not the file: the
-  deterministic vocabulary step (step 2) has no definition
-  file yet holds its own number.  Zero padding is for
-  sorting only -- prose says "step 1", "step 3".
+  `prompts/<step><substep>-<task>.md` (e.g. 1-tag.md,
+  5a-read.md; substeps are lettered, matching the step
+  numbering of the paper; no version suffix -- versions live
+  in git history) and are passed verbatim as the system
+  prompt.  The number names a step of the research
+  procedure, not the file: the deterministic vocabulary step
+  (step 2) has no definition file yet holds its own number.
 - Itemwise LLM judgments (per-song coding in step 3,
   per-keyword group selection in step 4) run the same
   definition file three times, independently, over the same

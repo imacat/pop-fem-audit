@@ -13,6 +13,8 @@ This is a collection of supporting tools for the conference paper "流行音樂�
    :maxdepth: 2
    :caption: Contents:
 
+   changelog
+
 
 Indices and tables
 ==================

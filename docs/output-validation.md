@@ -46,9 +46,8 @@ song-750 run3: -use=[]  -abuse=["I got a thing for the hard
                                  liquor on ice"]
 ```
 
-模型寫錯後綴、已輸出的 token 收不回，遂以空陣列收束該鍵，
-再於正確的鍵補上引述。song-750 的 run1 與 run2 則整筆使用
-錯拼的鍵並附上引述，故該首的三票分裂於兩種拼寫之間。
+song-750 的 run1 與 run2 則整筆使用錯拼的鍵並附上引述，
+故該首的三票分裂於兩種拼寫之間。
 
 ## 引述的存在
 

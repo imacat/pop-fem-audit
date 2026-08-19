@@ -632,7 +632,7 @@ class PerformerGenderDeriver:
         known: set[str] = {x for x in values if x}
         if len(known) > 1:
             return cls.__MIXED
-        if len(known) == 1 and all(x for x in values):
+        if len(known) == 1 and all(values):
             return known.pop()
         return None
 

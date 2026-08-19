@@ -21,7 +21,7 @@ from pop_fem_audit_tools.commands import run_llm
 class RunLLMTestCase(unittest.TestCase):
     """The common base test case with the shared helpers."""
 
-    def make_temp_dir(self) -> Path:
+    def _make_temp_dir(self) -> Path:
         """Create a temporary directory removed on test cleanup.
 
         :return: The path of the temporary directory.
@@ -31,8 +31,8 @@ class RunLLMTestCase(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         return Path(tmp.name)
 
-    def make_success_entry(self, custom_id: str,
-                           text: str) -> mock.Mock:
+    def _make_success_entry(self, custom_id: str,
+                            text: str) -> mock.Mock:
         """Create a mock succeeded batch result entry.
 
         :param custom_id: The custom ID of the entry.
@@ -47,8 +47,8 @@ class RunLLMTestCase(unittest.TestCase):
         return entry
 
     @staticmethod
-    def make_error_entry(custom_id: str,
-                         error_type: str) -> mock.Mock:
+    def _make_error_entry(custom_id: str,
+                          error_type: str) -> mock.Mock:
         """Create a mock errored batch result entry.
 
         The error object is shaped as the SDK envelope: the outer
@@ -95,7 +95,7 @@ class TestLoadItems(RunLLMTestCase):
 
     def setUp(self) -> None:
         """Create the prompt and input paths for a dry run."""
-        directory: Path = self.make_temp_dir()
+        directory: Path = self._make_temp_dir()
         self.__prompt: Path = directory / "task.md"
         self.__prompt.write_text("The task.\n", encoding="utf-8")
         self.__input: Path = directory / "items.jsonl"
@@ -171,7 +171,7 @@ class TestRequestBuilding(RunLLMTestCase):
 
     def setUp(self) -> None:
         """Create the prompt and input files for a dry run."""
-        directory: Path = self.make_temp_dir()
+        directory: Path = self._make_temp_dir()
         self.__prompt: Path = directory / "task.md"
         self.__prompt.write_text(
             "the system prompt", encoding="utf-8")
@@ -224,7 +224,7 @@ class TestMainFlow(RunLLMTestCase):
 
     def setUp(self) -> None:
         """Create a temporary directory with the input files."""
-        directory: Path = self.make_temp_dir()
+        directory: Path = self._make_temp_dir()
         self.__runs: Path = directory / "runs"
         self.__archive_dir: Path = self.__runs / "task_v1" / "run1"
         self.__prompt: Path = directory / "task_v1.md"
@@ -310,8 +310,8 @@ class TestMainFlow(RunLLMTestCase):
         the item order preserved and the token usage summed, the
         output text written unescaped."""
         client: mock.Mock = self.__make_client(
-            [self.make_success_entry("a", "answer 中文 a"),
-             self.make_success_entry("b", "answer b")])
+            [self._make_success_entry("a", "answer 中文 a"),
+             self._make_success_entry("b", "answer b")])
         status: int
         stderr: str
         with mock.patch(
@@ -356,8 +356,8 @@ class TestMainFlow(RunLLMTestCase):
         (run_dir / "stale.jsonl").write_text(
             "stale", encoding="utf-8")
         client: mock.Mock = self.__make_client(
-            [self.make_success_entry("a", "answer a"),
-             self.make_success_entry("b", "answer b")])
+            [self._make_success_entry("a", "answer a"),
+             self._make_success_entry("b", "answer b")])
         status: int = self.__run_main(
             self.__argv + ["--replace"], client)[0]
         self.assertEqual(status, 0)
@@ -375,8 +375,8 @@ class TestMainFlow(RunLLMTestCase):
         (run2_dir / "output.jsonl").write_text(
             "stale run2 data", encoding="utf-8")
         client: mock.Mock = self.__make_client(
-            [self.make_success_entry("a", "answer a"),
-             self.make_success_entry("b", "answer b")])
+            [self._make_success_entry("a", "answer a"),
+             self._make_success_entry("b", "answer b")])
         argv: list[str] = [
             str(self.__prompt), str(self.__input),
             str(run2_dir), "--replace"]
@@ -393,8 +393,8 @@ class TestMainFlow(RunLLMTestCase):
         """Test that a failed item aborts with a non-zero status,
         the summed usage counting only the succeeded item."""
         client: mock.Mock = self.__make_client(
-            [self.make_success_entry("a", "answer a"),
-             self.make_error_entry("b", "invalid_request_error")])
+            [self._make_success_entry("a", "answer a"),
+             self._make_error_entry("b", "invalid_request_error")])
         status: int
         stderr: str
         status, _, stderr = self.__run_main(self.__argv, client)
@@ -417,7 +417,7 @@ class TestMainFlow(RunLLMTestCase):
         """Test that an item missing from the batch results is
         reported as a failed item."""
         client: mock.Mock = self.__make_client(
-            [self.make_success_entry("a", "answer a")])
+            [self._make_success_entry("a", "answer a")])
         status: int
         stderr: str
         status, _, stderr = self.__run_main(self.__argv, client)

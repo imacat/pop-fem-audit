@@ -161,6 +161,10 @@ class RetryExhausted(Exception):
     """
 
 
+NOTE_NOT_FOUND: str = "not found"
+"""The note marking an artist that could not be resolved."""
+
+
 class ArtistFetcher:
     """A fetcher of artist metadata from Wikidata.
 
@@ -252,9 +256,6 @@ class ArtistFetcher:
         = ("band", "group", "duo", "trio")
     """The label keywords that suggest a musical ensemble,
     covering labels like "boy band" and "girl group"."""
-    __NOTE_NOT_FOUND: ClassVar[str] = "not found"
-    """The note sentinel of an artist without a resolved
-    Wikidata item."""
     __MIXED_GENDER: ClassVar[str] = "mixed"
     """The gender recorded for a group whose members do not
     share one gender."""
@@ -301,7 +302,7 @@ class ArtistFetcher:
         try:
             qid: str | None = self.__resolve_qid(name, titles)
             if qid is None:
-                snapshot.note = self.__NOTE_NOT_FOUND
+                snapshot.note = NOTE_NOT_FOUND
                 return snapshot
             snapshot.qid = qid
             self.__resolve(snapshot)
@@ -1039,9 +1040,9 @@ class ArtistSnapshotUpdater:
                     artist.name, titles)
                 self.__append_row(csv_file, snapshot)
                 status: str = snapshot.qid
-                if snapshot.note == "not found":
+                if snapshot.note == NOTE_NOT_FOUND:
                     not_found += 1
-                    status = "not found"
+                    status = NOTE_NOT_FOUND
                 elif snapshot.note.startswith("error: "):
                     errors += 1
                     status = snapshot.note

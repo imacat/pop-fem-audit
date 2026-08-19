@@ -82,11 +82,11 @@ class AnnotationTallier:
     song's stored performer gender; a gender missing here
     (including None) takes every prefix."""
     __NUMBERING_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?:模式[一二三四五六七八九十]+|[一二三四五六七八九十]+)[：、]")
+        r"^(?:模式)?[一二三四五六七八九十]+[：、]")
     """The leading numbering token of a pattern heading, stripped
     to yield the pattern name."""
     __HEADING_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^#+\s*(.*)$")
+        r"^#++\s*+(.*)$")
     """A Markdown heading line, the heading text captured."""
 
     def __init__(self, male_synthesis: Path, female_synthesis: Path,
@@ -311,36 +311,7 @@ class AnnotationTallier:
         pooled: dict[int, list[list[str]]] = {}
         run_dir: Path
         for run_dir in self.__run_dirs:
-            path: Path = run_dir / "output.jsonl"
-            text: str
-            try:
-                text = path.read_text(encoding="utf-8")
-            except OSError as error:
-                raise TallyError(str(error)) from error
-            line: str
-            for line in text.split("\n"):
-                if line.strip() == "":
-                    continue
-                record: Any
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError as error:
-                    raise TallyError(
-                        f"{path}: malformed JSON: {error}") \
-                        from error
-                song_id: int = self.__parse_song_id(
-                    record["id"], run_dir)
-                if "text" not in record:
-                    print(
-                        f"warning: {run_dir}: song-{song_id}: no"
-                        " \"text\" field, skipped",
-                        file=sys.stderr)
-                    continue
-                ballot: list[str] | None = self.__parse_ballot(
-                    record["text"], run_dir, song_id)
-                if ballot is None:
-                    continue
-                pooled.setdefault(song_id, []).append(ballot)
+            self.__load_run_ballots(run_dir, pooled)
         song_id: int
         ballots: list[list[str]]
         for song_id, ballots in pooled.items():
@@ -350,6 +321,74 @@ class AnnotationTallier:
                     f" times in the pool, expected"
                     f" {self.__BALLOTS_PER_SONG}")
         return pooled
+
+    @classmethod
+    def __load_run_ballots(
+            cls, run_dir: Path,
+            pooled: dict[int, list[list[str]]]) -> None:
+        """Load one run's ballots into the pool.
+
+        :param run_dir: The annotation run's archive directory,
+            containing ``output.jsonl``.
+        :param pooled: The pool to append the run's ballots
+            into, keyed by the numeric song ID; mutated in
+            place.
+        :return: None.
+        :raises TallyError: When the run's ``output.jsonl``
+            cannot be read, or a line is malformed JSON.
+        """
+        path: Path = run_dir / "output.jsonl"
+        text: str
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise TallyError(str(error)) from error
+        line: str
+        for line in text.split("\n"):
+            if line.strip() == "":
+                continue
+            record: Any
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise TallyError(
+                    f"{path}: malformed JSON: {error}") \
+                    from error
+            cls.__load_ballot_record(record, run_dir, pooled)
+
+    @classmethod
+    def __load_ballot_record(
+            cls, record: Any, run_dir: Path,
+            pooled: dict[int, list[list[str]]]) -> None:
+        """Parse and pool one ballot record.
+
+        A record whose "text" field is missing, or does not
+        parse to a JSON array of strings, is skipped, a warning
+        naming the run directory and song reported on standard
+        error, as an observable side effect.
+
+        :param record: The parsed JSON record.
+        :param run_dir: The run directory the record came from,
+            for the warning and error messages.
+        :param pooled: The pool to append the record's ballot
+            into, keyed by the numeric song ID; mutated in
+            place.
+        :return: None.
+        :raises TallyError: When the record's "id" field is not
+            in the ``song-<ID>`` form.
+        """
+        song_id: int = cls.__parse_song_id(record["id"], run_dir)
+        if "text" not in record:
+            print(
+                f"warning: {run_dir}: song-{song_id}: no"
+                " \"text\" field, skipped",
+                file=sys.stderr)
+            return
+        ballot: list[str] | None = cls.__parse_ballot(
+            record["text"], run_dir, song_id)
+        if ballot is None:
+            return
+        pooled.setdefault(song_id, []).append(ballot)
 
     @classmethod
     def __parse_song_id(cls, item_id: Any, run_dir: Path) -> int:

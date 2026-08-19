@@ -24,8 +24,7 @@ keyword set for ``export-llm-input --extras`` is written as a JSON
 file holding the group name keywords plus every extra a-priori
 keyword the caller gives with the repeatable ``--extra-keyword``
 command-line option, as
-:attr:`KeywordsToMerge.KEYWORDS_TO_MERGE_JSON`; with no
-``--extra-keyword``, it holds the group names alone.  No default
+:attr:`KeywordsToMerge.KEYWORDS_TO_MERGE_JSON`.  No default
 extra keyword is ever injected; the caller supplies each one
 consciously.  Finally, the command-line choices and the
 environment that produced the numbers -- neither recoverable from
@@ -160,15 +159,8 @@ class KeywordPooler:
             if line.strip() == "":
                 continue
             record: Any = json.loads(line)
-            if not isinstance(record, dict) or "id" not in record:
-                raise ValueError(
-                    f"{path}: record without \"id\": {line}")
             if "error" in record:
                 continue
-            if "text" not in record:
-                raise ValueError(
-                    f"{path}: id {record['id']}: record without"
-                    " \"text\" or \"error\"")
             song_id: int = cls.__parse_song_id(record["id"], path)
             try:
                 keywords: Any = json.loads(
@@ -297,7 +289,8 @@ class KeywordGroups:
 class KeywordClusterer:
     """The clusterer of the pooled keywords into coding groups."""
 
-    DEFAULT_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
+    DEFAULT_MODEL: ClassVar[str] \
+        = "sentence-transformers/all-mpnet-base-v2"
     """The sentence embedding model used when the caller names
     none."""
 
@@ -668,11 +661,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "output_dir", type=Path,
         help="the output directory, created if missing, that"
-             f" receives {PooledKeywords.SOURCE_KEYWORDS_TXT},"
-             f" {KeywordGroups.RESULT_KEYWORDS_TXT},"
-             f" {KeywordGroups.RESULT_GROUPS_CSV},"
-             f" {KeywordsToMerge.KEYWORDS_TO_MERGE_JSON},"
-             f" and {RunMeta.META_JSON}")
+             " receives the run's output artifacts")
     parser.add_argument(
         "--model", default=model,
         help=f"the sentence embedding model (default \"{model}\")")
@@ -698,16 +687,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Pool the two tagging runs' keywords and cluster them.
 
-    Writes the five fixed-named artifacts under the output
-    directory, creating it (with parents) if it does not exist:
-    the pooled keyword text file; then the group membership CSV
-    file, holding the clustering result alone; the group name
-    keyword text file, holding the same group names as a readable
-    list; the coding keyword set JSON file, holding the group
-    names plus every extra keyword given via ``--extra-keyword``;
-    and the run metadata JSON file, recording the command-line
-    choices and the environment.  Each file is written as soon as
-    its content is computed, so when the input is rejected, or an
+    Creates the output directory (with parents) if it does not
+    exist.  Each output artifact is written as soon as its
+    content is computed, so when the input is rejected, or an
     extra keyword duplicates a group name or another extra
     keyword, the output directory holds whatever the steps before
     the failing one produced, and the error message names what
@@ -719,8 +701,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
+        args.output_dir.mkdir(parents=True, exist_ok=True)
         source: PooledKeywords = KeywordPooler(
             args.run_dir_1, args.run_dir_2, args.output_dir).run()
         clusters: KeywordGroups = KeywordClusterer(
@@ -735,7 +717,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Done.  Clustered {len(source.keywords)} keywords into"
             f" {len(clusters.names)}.  {elapsed} elapsed.",
             file=sys.stderr)
-    except ClusterError as error:
+    except (ClusterError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     return 0

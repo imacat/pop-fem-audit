@@ -12,12 +12,10 @@ layer.  The working store is only read, never written; the
 ``build-db`` subcommand assembles the captured files into the
 store on the next rebuild.
 
-Every fetched row is meant for later human verification: the
-description of the resolved item is recorded in the note column
-so that a bad match can be spotted.  An unresolved artist or an
-error on one artist is noted on its row and does not fail the
-run.  A row whose name is no longer an artist of the store is
-dropped from the snapshot and reported on the standard error.
+An unresolved artist or an error on one artist is noted on its
+row and does not fail the run.  A row whose name is no longer an
+artist of the store is dropped from the snapshot and reported on
+the standard error.
 """
 import argparse
 import csv
@@ -33,7 +31,7 @@ import urllib.request
 from collections.abc import Container, Sequence
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Literal, TextIO
+from typing import Any, ClassVar, Literal, TextIO
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -42,71 +40,6 @@ from .. import VERSION
 from ..database import ds
 from ..models import Artist, Song, SongArtist
 from ..utils import format_duration
-
-API_URL: str = "https://www.wikidata.org/w/api.php"
-"""The URL of the Wikidata API endpoint."""
-SPARQL_URL: str = "https://query.wikidata.org/sparql"
-"""The URL of the Wikidata Query Service SPARQL endpoint."""
-USER_AGENT: str = (
-    f"pop-fem-audit-tools/{VERSION}"
-    " (https://github.com/imacat/pop-fem-audit;"
-    " mailto:imacat@mail.imacat.idv.tw)")
-"""The User-Agent header sent on every HTTP request."""
-TIMEOUT: float = 30.0
-"""The timeout of an API HTTP request, in seconds."""
-SPARQL_TIMEOUT: float = 90.0
-"""The timeout of a SPARQL HTTP request, in seconds.
-
-Higher than the API timeout: the WDQS server aborts a slow
-query at 60 seconds, and a lower client timeout would race
-that server-side abort and misclassify a slow-but-answerable
-query as a client-side timeout instead of letting the server's
-own HTTP error response arrive and enter the retry path."""
-SLEEP_SECONDS: float = 1.0
-"""The delay between consecutive HTTP requests, in seconds."""
-MAX_ATTEMPTS: int = 5
-"""The maximum number of attempts on a transient error."""
-RETRY_SECONDS: float = 15.0
-"""The back-off unit on a transient error, in seconds;
-multiplied by the attempt number already made."""
-RETRY_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503})
-"""The HTTP statuses that are retried with a back-off."""
-MAX_STAGE1_TITLES: int = 3
-"""The maximum number of charted titles used for the stage-1 song
-corroboration."""
-HUMAN_QID: str = "Q5"
-"""The Wikidata item ID of "human"."""
-ENSEMBLE_QID: str = "Q2088357"
-"""The Wikidata item ID of "musical ensemble"."""
-ORIGINAL_CAST_QID: str = "Q106497009"
-"""The Wikidata item ID of "original cast"."""
-GROUP_KEYWORDS: Sequence[str] = ("band", "group", "duo", "trio")
-"""The label keywords that suggest a musical ensemble, covering
-labels like "boy band" and "girl group"."""
-NOTE_NOT_FOUND: str = "not found"
-"""The note sentinel of an artist without a resolved Wikidata
-item, written to the snapshot and read back for the
-classification."""
-CORPUS_START_YEAR: int = 2016
-"""The first year of the corpus window: a member who left a group
-before it never performed a corpus song."""
-MIXED_GENDER: str = "mixed"
-"""The gender recorded for a group whose members do not share one
-gender."""
-TIME_YEAR_PATTERN: re.Pattern[str] = re.compile(r"^[+-]?\d+")
-"""The leading year of a Wikidata time value."""
-PINNED_QIDS: dict[str, str] = {}
-"""The last-resort pinned item IDs, keyed by the artist name.
-
-An entry is for an artist the algorithm documented on
-``ArtistFetcher`` is structurally unable to resolve, with its
-justification recorded here.  Currently empty: the only pin ever
-needed, "Pinkfong" (typed as a brand, which the type gate
-excludes by design), became moot when the store's artist entity
-behind that credit was identified as Hope Segoine.
-
-A pinned name skips the candidate retrieval and corroboration
-steps; its item ID is used directly."""
 
 
 class ArtistType(enum.StrEnum):
@@ -147,14 +80,13 @@ class ArtistSnapshot:
         return asdict(self)
 
 
-SNAPSHOT_FIELDS: Sequence[str] = tuple(
-    x.name for x in fields(ArtistSnapshot))
-"""The header columns of the Wikidata artist snapshot CSV file."""
-
-
 @dataclass
 class GroupMember:
     """One has-part member of a Wikidata group item."""
+
+    __CORPUS_START_YEAR: ClassVar[int] = 2016
+    """The first year of the corpus window: a member who left a
+    group before it never performed a corpus song."""
 
     qid: str
     """The item ID of the member."""
@@ -181,7 +113,7 @@ class GroupMember:
         if len(self.end_years) == 0:
             return True
         last_end: int = max(self.end_years)
-        if last_end >= CORPUS_START_YEAR:
+        if last_end >= self.__CORPUS_START_YEAR:
             return True
         if len(self.start_years) == 0:
             return False
@@ -227,22 +159,6 @@ class RetryExhausted(Exception):
     A transient error is a retryable HTTP status (429, 500,
     502, or 503) or a read timeout.
     """
-
-
-def parse_args(argv: list[str] | None) -> argparse.Namespace:
-    """Parse the command-line arguments.
-
-    :param argv: The command-line arguments, or None for
-        ``sys.argv``.
-    :return: The parsed arguments.
-    """
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description="Fetch the artist metadata from Wikidata"
-                    " into the capture layer.")
-    parser.add_argument(
-        "wikidata_csv", type=Path,
-        help="the Wikidata artist snapshot CSV file")
-    return parser.parse_args(argv)
 
 
 class ArtistFetcher:
@@ -291,6 +207,74 @@ class ArtistFetcher:
     in the note.
     """
 
+    __API_URL: ClassVar[str] = "https://www.wikidata.org/w/api.php"
+    """The URL of the Wikidata API endpoint."""
+    __SPARQL_URL: ClassVar[str] \
+        = "https://query.wikidata.org/sparql"
+    """The URL of the Wikidata Query Service SPARQL endpoint."""
+    __USER_AGENT: ClassVar[str] = (
+        f"pop-fem-audit-tools/{VERSION}"
+        " (https://github.com/imacat/pop-fem-audit;"
+        " mailto:imacat@mail.imacat.idv.tw)")
+    """The User-Agent header sent on every HTTP request."""
+    __TIMEOUT: ClassVar[float] = 30.0
+    """The timeout of an API HTTP request, in seconds."""
+    __SPARQL_TIMEOUT: ClassVar[float] = 90.0
+    """The timeout of a SPARQL HTTP request, in seconds.
+
+    Higher than the API timeout: the WDQS server aborts a slow
+    query at 60 seconds, and a lower client timeout would race
+    that server-side abort and misclassify a slow-but-answerable
+    query as a client-side timeout instead of letting the
+    server's own HTTP error response arrive and enter the retry
+    path."""
+    __SLEEP_SECONDS: ClassVar[float] = 1.0
+    """The delay between consecutive HTTP requests, in
+    seconds."""
+    __MAX_ATTEMPTS: ClassVar[int] = 5
+    """The maximum number of attempts on a transient error."""
+    __RETRY_SECONDS: ClassVar[float] = 15.0
+    """The back-off unit on a transient error, in seconds;
+    multiplied by the attempt number already made."""
+    __RETRY_STATUSES: ClassVar[frozenset[int]] \
+        = frozenset({429, 500, 502, 503})
+    """The HTTP statuses that are retried with a back-off."""
+    __MAX_STAGE1_TITLES: ClassVar[int] = 3
+    """The maximum number of charted titles used for the
+    stage-1 song corroboration."""
+    __HUMAN_QID: ClassVar[str] = "Q5"
+    """The Wikidata item ID of "human"."""
+    __ENSEMBLE_QID: ClassVar[str] = "Q2088357"
+    """The Wikidata item ID of "musical ensemble"."""
+    __ORIGINAL_CAST_QID: ClassVar[str] = "Q106497009"
+    """The Wikidata item ID of "original cast"."""
+    __GROUP_KEYWORDS: ClassVar[Sequence[str]] \
+        = ("band", "group", "duo", "trio")
+    """The label keywords that suggest a musical ensemble,
+    covering labels like "boy band" and "girl group"."""
+    __NOTE_NOT_FOUND: ClassVar[str] = "not found"
+    """The note sentinel of an artist without a resolved
+    Wikidata item."""
+    __MIXED_GENDER: ClassVar[str] = "mixed"
+    """The gender recorded for a group whose members do not
+    share one gender."""
+    __TIME_YEAR_PATTERN: ClassVar[re.Pattern[str]] \
+        = re.compile(r"^[+-]?\d+")
+    """The leading year of a Wikidata time value."""
+    __PINNED_QIDS: ClassVar[dict[str, str]] = {}
+    """The last-resort pinned item IDs, keyed by the artist name.
+
+    An entry is for an artist the algorithm documented on
+    ``ArtistFetcher`` is structurally unable to resolve, with its
+    justification recorded here.  Currently empty: the only pin
+    ever needed, "Pinkfong" (typed as a brand, which the type
+    gate excludes by design), became moot when the store's
+    artist entity behind that credit was identified as Hope
+    Segoine.
+
+    A pinned name skips the candidate retrieval and corroboration
+    steps; its item ID is used directly."""
+
     def __init__(self) -> None:
         """Construct the fetcher."""
         self.__sent: int = 0
@@ -317,7 +301,7 @@ class ArtistFetcher:
         try:
             qid: str | None = self.__resolve_qid(name, titles)
             if qid is None:
-                snapshot.note = NOTE_NOT_FOUND
+                snapshot.note = self.__NOTE_NOT_FOUND
                 return snapshot
             snapshot.qid = qid
             self.__resolve(snapshot)
@@ -342,8 +326,8 @@ class ArtistFetcher:
             transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
-        if name in PINNED_QIDS:
-            return PINNED_QIDS[name]
+        if name in self.__PINNED_QIDS:
+            return self.__PINNED_QIDS[name]
         candidates: list[str] = self.__candidates(name)
         if len(candidates) == 0:
             return None
@@ -373,11 +357,11 @@ class ArtistFetcher:
           {{ ?item rdfs:label ?name }}
           UNION {{ ?item skos:altLabel ?name }}
           {{
-            ?item wdt:P31 wd:{HUMAN_QID}
+            ?item wdt:P31 wd:{self.__HUMAN_QID}
           }} UNION {{
-            ?item wdt:P31/wdt:P279* wd:{ENSEMBLE_QID}
+            ?item wdt:P31/wdt:P279* wd:{self.__ENSEMBLE_QID}
           }} UNION {{
-            ?item wdt:P31 wd:{ORIGINAL_CAST_QID}
+            ?item wdt:P31 wd:{self.__ORIGINAL_CAST_QID}
           }}
         }}
         """
@@ -403,7 +387,7 @@ class ArtistFetcher:
             transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
-        subset: Sequence[str] = titles[:MAX_STAGE1_TITLES]
+        subset: Sequence[str] = titles[:self.__MAX_STAGE1_TITLES]
         if len(subset) == 0:
             return None
         query: str = f"""
@@ -532,7 +516,7 @@ class ArtistFetcher:
         qid: str
         for qid in qids:
             member: MemberClaims = claims.get(qid, MemberClaims())
-            if HUMAN_QID not in member.instance_of_ids:
+            if self.__HUMAN_QID not in member.instance_of_ids:
                 continue
             if len(member.gender_ids) == 0:
                 return
@@ -543,7 +527,7 @@ class ArtistFetcher:
             [x[1] for x in genders], any_language=True)
         unique: set[str] = {x[1] for x in genders}
         snapshot.gender = labels[genders[0][1]] \
-            if len(unique) == 1 else MIXED_GENDER
+            if len(unique) == 1 else self.__MIXED_GENDER
         basis: str = "gender derived from members: " + "; ".join(
             f"{x} {labels[y]}" for x, y in genders)
         snapshot.note = f"{snapshot.note}; {basis}" \
@@ -677,7 +661,8 @@ class ArtistFetcher:
                     or not isinstance(value.get("time"), str):
                 continue
             match: re.Match[str] | None \
-                = TIME_YEAR_PATTERN.match(value["time"])
+                = ArtistFetcher.__TIME_YEAR_PATTERN.match(
+                    value["time"])
             if match is not None:
                 years.append(int(match.group()))
         return years
@@ -806,12 +791,13 @@ class ArtistFetcher:
             ``ArtistType.GROUP`` for a musical ensemble, or the
             empty string for the human to decide.
         """
-        if HUMAN_QID in type_ids:
+        if ArtistFetcher.__HUMAN_QID in type_ids:
             return ArtistType.SOLO
         qid: str
         for qid in type_ids:
             label: str = labels.get(qid, "").lower()
-            if any(x in label for x in GROUP_KEYWORDS):
+            if any(x in label
+                   for x in ArtistFetcher.__GROUP_KEYWORDS):
                 return ArtistType.GROUP
         return ""
 
@@ -827,14 +813,15 @@ class ArtistFetcher:
             transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
-        url: str = (f"{SPARQL_URL}?"
-                    f"{urllib.parse.urlencode({'query': query})}")
+        url: str = (
+            f"{self.__SPARQL_URL}?"
+            f"{urllib.parse.urlencode({'query': query})}")
         request: urllib.request.Request = urllib.request.Request(
             url, headers={
-                "User-Agent": USER_AGENT,
+                "User-Agent": self.__USER_AGENT,
                 "Accept": "application/sparql-results+json"})
         body: bytes = self.__send(
-            request, timeout=SPARQL_TIMEOUT)
+            request, timeout=self.__SPARQL_TIMEOUT)
         data: Any = json.loads(body)
         bindings: Any = None
         if isinstance(data, dict) \
@@ -868,13 +855,14 @@ class ArtistFetcher:
             transient error are exhausted.
         :raises ValueError: On a JSON decoding error.
         """
-        url: str = f"{API_URL}?{urllib.parse.urlencode(params)}"
+        url: str \
+            = f"{self.__API_URL}?{urllib.parse.urlencode(params)}"
         request: urllib.request.Request = urllib.request.Request(
-            url, headers={"User-Agent": USER_AGENT})
+            url, headers={"User-Agent": self.__USER_AGENT})
         return json.loads(self.__send(request))
 
     def __send(self, request: urllib.request.Request,
-               timeout: float = TIMEOUT) -> bytes:
+               timeout: float = __TIMEOUT) -> bytes:
         """Send an HTTP request, retrying on a transient error.
 
         Consecutive requests are separated by a fixed delay.  A
@@ -892,7 +880,7 @@ class ArtistFetcher:
             transient error are exhausted.
         """
         if self.__sent > 0:
-            time.sleep(SLEEP_SECONDS)
+            time.sleep(self.__SLEEP_SECONDS)
         self.__sent += 1
         attempt: int = 1
         reason: str | None
@@ -905,10 +893,10 @@ class ArtistFetcher:
                 reason = self.__retry_reason(error)
                 if reason is None:
                     raise
-                if attempt >= MAX_ATTEMPTS:
+                if attempt >= self.__MAX_ATTEMPTS:
                     raise RetryExhausted(
                         f"retries exhausted ({reason})") from error
-            time.sleep(RETRY_SECONDS * attempt)
+            time.sleep(self.__RETRY_SECONDS * attempt)
             attempt += 1
 
     @staticmethod
@@ -923,7 +911,7 @@ class ArtistFetcher:
             the error is not transient and must not be retried.
         """
         if isinstance(error, urllib.error.HTTPError):
-            if error.code not in RETRY_STATUSES:
+            if error.code not in ArtistFetcher.__RETRY_STATUSES:
                 return None
             return str(error)
         if isinstance(error, TimeoutError):
@@ -968,92 +956,216 @@ class ArtistFetcher:
         return uri.rsplit("/", 1)[-1]
 
 
-def read_snapshot_rows(file: TextIO) -> list[dict[str, str]]:
-    """Read the current rows of a snapshot CSV file handle.
+@dataclass(frozen=True)
+class FetchCounts:
+    """The outcome counts of one snapshot update run."""
 
-    :param file: The open, seekable snapshot CSV file.
-    :return: The rows, keyed by the column name.
-    :raises OSError: When the file cannot be read.
+    fetched: int
+    """The number of artists newly resolved."""
+    not_found: int
+    """The number of artists left unresolved."""
+    errors: int
+    """The number of artists that ended in an error."""
+
+
+class ArtistSnapshotUpdater:
+    """The updater of the Wikidata artist snapshot CSV file.
+
+    Fetches the metadata of every artist of the working store
+    that the snapshot does not resolve yet, appends a row for
+    each to the snapshot as it is fetched, and rewrites the
+    snapshot sorted by artist name with its stale rows dropped.
     """
-    file.seek(0)
-    reader: csv.DictReader[str] = csv.DictReader(file)
-    return list(reader)
 
+    __SNAPSHOT_FIELDS: ClassVar[Sequence[str]] = tuple(
+        x.name for x in fields(ArtistSnapshot))
+    """The header columns of the Wikidata artist snapshot CSV file."""
 
-def read_artist_titles(session: Session,
-                       artist_id: int) -> list[str]:
-    """Read the charted song titles credited to an artist.
+    def __init__(self, wikidata_csv: Path) -> None:
+        """Set up the updater.
 
-    :param session: The database session.
-    :param artist_id: The artist ID.
-    :return: The song titles credited to the artist, ordered by
-        the song ID, with the duplicate titles removed.
-    """
-    titles: Sequence[str] = session.scalars(
-        sa.select(Song.title)
-        .join(SongArtist, SongArtist.song_id == Song.id)
-        .where(SongArtist.artist_id == artist_id)
-        .order_by(Song.id)).all()
-    return list(dict.fromkeys(titles))
+        :param wikidata_csv: The Wikidata artist snapshot CSV
+            file.
+        """
+        self.__wikidata_csv: Path = wikidata_csv
+        """The Wikidata artist snapshot CSV file."""
 
+    def run(self) -> FetchCounts:
+        """Fetch every unresolved artist and update the snapshot.
 
-def ensure_snapshot_header(file: TextIO) -> None:
-    """Write the snapshot CSV header row if the file is empty.
+        :return: The counts of the run.
+        :raises OSError: When the snapshot file, or its parent
+            directory, cannot be read or written.
+        :raises sqlalchemy.exc.SQLAlchemyError: When the working
+            store cannot be read.
+        """
+        session: Session = ds.get_db()
+        try:
+            return self.__run(session)
+        finally:
+            session.close()
 
-    :param file: The open, seekable snapshot CSV file.
-    :return: None.
-    :raises OSError: When the file cannot be written.
-    """
-    file.seek(0, os.SEEK_END)
-    if file.tell() == 0:
-        csv.writer(file).writerow(SNAPSHOT_FIELDS)
+    def __run(self, session: Session) -> FetchCounts:
+        """Run the fetch loop with an open database session.
+
+        :param session: The database session.
+        :return: The counts of the run.
+        :raises OSError: When the snapshot file, or its parent
+            directory, cannot be read or written.
+        """
+        fetcher: ArtistFetcher = ArtistFetcher()
+        fetched: int = 0
+        not_found: int = 0
+        errors: int = 0
+        self.__wikidata_csv.parent.mkdir(
+            parents=True, exist_ok=True)
+        with open(self.__wikidata_csv, "a+", encoding="utf-8",
+                  newline="") as csv_file:
+            done: set[str] = {
+                x["name"] for x in
+                self.__read_snapshot_rows(csv_file)
+                if x["gender"] != ""}
+            self.__ensure_snapshot_header(csv_file)
+            names: set[str] = set()
+            artist: Artist
+            for artist in session.scalars(
+                    sa.select(Artist).order_by(Artist.id)):
+                names.add(artist.name)
+                if artist.name in done:
+                    continue
+                titles: list[str] = self.__read_artist_titles(
+                    session, artist.id)
+                snapshot: ArtistSnapshot = fetcher.fetch(
+                    artist.name, titles)
+                self.__append_row(csv_file, snapshot)
+                status: str = snapshot.qid
+                if snapshot.note == "not found":
+                    not_found += 1
+                    status = "not found"
+                elif snapshot.note.startswith("error: "):
+                    errors += 1
+                    status = snapshot.note
+                else:
+                    fetched += 1
+                print(f"artist \"{artist.name}\": {status}",
+                      file=sys.stderr)
+            self.__write_snapshot(csv_file, names)
+        return FetchCounts(
+            fetched=fetched, not_found=not_found, errors=errors)
+
+    @staticmethod
+    def __read_snapshot_rows(file: TextIO) \
+            -> list[dict[str, str]]:
+        """Read the current rows of a snapshot CSV file handle.
+
+        :param file: The open, seekable snapshot CSV file.
+        :return: The rows, keyed by the column name.
+        :raises OSError: When the file cannot be read.
+        """
+        file.seek(0)
+        reader: csv.DictReader[str] = csv.DictReader(file)
+        return list(reader)
+
+    @staticmethod
+    def __read_artist_titles(session: Session,
+                             artist_id: int) -> list[str]:
+        """Read the charted song titles credited to an artist.
+
+        :param session: The database session.
+        :param artist_id: The artist ID.
+        :return: The song titles credited to the artist, ordered
+            by the song ID, with the duplicate titles removed.
+        """
+        titles: Sequence[str] = session.scalars(
+            sa.select(Song.title)
+            .join(SongArtist, SongArtist.song_id == Song.id)
+            .where(SongArtist.artist_id == artist_id)
+            .order_by(Song.id)).all()
+        return list(dict.fromkeys(titles))
+
+    @staticmethod
+    def __ensure_snapshot_header(file: TextIO) -> None:
+        """Write the snapshot CSV header row if the file is
+        empty.
+
+        :param file: The open, seekable snapshot CSV file.
+        :return: None.
+        :raises OSError: When the file cannot be written.
+        """
+        file.seek(0, os.SEEK_END)
+        if file.tell() == 0:
+            csv.writer(file).writerow(
+                ArtistSnapshotUpdater.__SNAPSHOT_FIELDS)
+            file.flush()
+
+    @staticmethod
+    def __append_row(file: TextIO,
+                     snapshot: ArtistSnapshot) -> None:
+        """Append a snapshot row to a snapshot CSV file handle.
+
+        :param file: The open snapshot CSV file, opened for
+            append.
+        :param snapshot: The snapshot of an artist.
+        :return: None.
+        :raises OSError: When the file cannot be written.
+        """
+        csv.DictWriter(
+            file, ArtistSnapshotUpdater.__SNAPSHOT_FIELDS).writerow(
+            snapshot.to_row())
         file.flush()
 
+    @staticmethod
+    def __write_snapshot(file: TextIO, names: Container[str]) \
+            -> None:
+        """Rewrite a snapshot CSV file handle sorted by artist
+        name.
 
-def append_row(file: TextIO, snapshot: ArtistSnapshot) -> None:
-    """Append a snapshot row to a snapshot CSV file handle.
+        The rows are ordered by the case-folded artist name,
+        matching the convention of the derived ``artists.csv``.
+        An artist keeps one row only, the last one of the file,
+        so that a re-fetched artist replaces its earlier row.  A
+        row whose name is not an artist of the store is dropped
+        and reported on the standard error.
 
-    :param file: The open snapshot CSV file, opened for append.
-    :param snapshot: The snapshot of an artist.
-    :return: None.
-    :raises OSError: When the file cannot be written.
+        :param file: The open, seekable snapshot CSV file.
+        :param names: The artist names of the working store.
+        :return: None.
+        :raises OSError: When the file cannot be read or written.
+        """
+        kept: dict[str, dict[str, str]] = {}
+        row: dict[str, str]
+        for row in ArtistSnapshotUpdater.__read_snapshot_rows(
+                file):
+            if row["name"] not in names:
+                print(f"dropped stale row \"{row['name']}\":"
+                      " no such artist in the store",
+                      file=sys.stderr)
+                continue
+            kept[row["name"]] = row
+        ordered: list[dict[str, str]] = sorted(
+            kept.values(), key=lambda x: x["name"].casefold())
+        file.seek(0)
+        file.truncate()
+        writer: csv.DictWriter[str] = csv.DictWriter(
+            file, ArtistSnapshotUpdater.__SNAPSHOT_FIELDS)
+        writer.writeheader()
+        writer.writerows(ordered)
+
+
+def parse_args(argv: list[str] | None) -> argparse.Namespace:
+    """Parse the command-line arguments.
+
+    :param argv: The command-line arguments, or None for
+        ``sys.argv``.
+    :return: The parsed arguments.
     """
-    csv.DictWriter(file, SNAPSHOT_FIELDS).writerow(
-        snapshot.to_row())
-    file.flush()
-
-
-def write_snapshot(file: TextIO, names: Container[str]) -> None:
-    """Rewrite a snapshot CSV file handle sorted by artist name.
-
-    The rows are ordered by the case-folded artist name, matching
-    the convention of the derived ``artists.csv``.  An artist
-    keeps one row only, the last one of the file, so that a
-    re-fetched artist replaces its earlier row.  A row whose name
-    is not an artist of the store is dropped and reported on the
-    standard error.
-
-    :param file: The open, seekable snapshot CSV file.
-    :param names: The artist names of the working store.
-    :return: None.
-    :raises OSError: When the file cannot be read or written.
-    """
-    kept: dict[str, dict[str, str]] = {}
-    row: dict[str, str]
-    for row in read_snapshot_rows(file):
-        if row["name"] not in names:
-            print(f"dropped stale row \"{row['name']}\":"
-                  " no such artist in the store", file=sys.stderr)
-            continue
-        kept[row["name"]] = row
-    ordered: list[dict[str, str]] = sorted(
-        kept.values(), key=lambda x: x["name"].casefold())
-    file.seek(0)
-    file.truncate()
-    writer: csv.DictWriter[str] = csv.DictWriter(
-        file, SNAPSHOT_FIELDS)
-    writer.writeheader()
-    writer.writerows(ordered)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Fetch the artist metadata from Wikidata"
+                    " into the capture layer.")
+    parser.add_argument(
+        "wikidata_csv", type=Path,
+        help="the Wikidata artist snapshot CSV file")
+    return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1066,52 +1178,16 @@ def main(argv: list[str] | None = None) -> int:
     """
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
-    fetcher: ArtistFetcher = ArtistFetcher()
-    fetched: int = 0
-    not_found: int = 0
-    errors: int = 0
-    session: Session = ds.get_db()
     try:
-        args.wikidata_csv.parent.mkdir(
-            parents=True, exist_ok=True)
-        with open(args.wikidata_csv, "a+", encoding="utf-8",
-                  newline="") as csv_file:
-            done: set[str] = {x["name"] for x in
-                              read_snapshot_rows(csv_file)
-                              if x["gender"] != ""}
-            ensure_snapshot_header(csv_file)
-            names: set[str] = set()
-            artist: Artist
-            for artist in session.scalars(
-                    sa.select(Artist).order_by(Artist.id)):
-                names.add(artist.name)
-                if artist.name in done:
-                    continue
-                titles: list[str] = read_artist_titles(
-                    session, artist.id)
-                snapshot: ArtistSnapshot = fetcher.fetch(
-                    artist.name, titles)
-                append_row(csv_file, snapshot)
-                status: str = snapshot.qid
-                if snapshot.note == NOTE_NOT_FOUND:
-                    not_found += 1
-                    status = "not found"
-                elif snapshot.note.startswith("error: "):
-                    errors += 1
-                    status = snapshot.note
-                else:
-                    fetched += 1
-                print(f"artist \"{artist.name}\": {status}",
-                      file=sys.stderr)
-            write_snapshot(csv_file, names)
+        counts: FetchCounts \
+            = ArtistSnapshotUpdater(args.wikidata_csv).run()
     except (OSError, sa.exc.SQLAlchemyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    finally:
-        session.close()
-    attempted: int = fetched + not_found + errors
+    attempted: int = counts.fetched + counts.not_found \
+        + counts.errors
     elapsed: str = format_duration(time.monotonic() - started)
-    print(f"Done.  Resolved {fetched}/{attempted} artists."
-          f"  {elapsed} elapsed.",
+    print(f"Done.  Resolved {counts.fetched}/{attempted}"
+          f" artists.  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

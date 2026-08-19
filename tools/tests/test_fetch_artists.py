@@ -51,10 +51,12 @@ class TestFetchArtists(unittest.TestCase):
         self.addCleanup(self.__ds.engine.dispose)
         patchers: list[Any] = [
             mock.patch.object(fetch_artists, "ds", self.__ds),
-            mock.patch.object(fetch_artists, "SLEEP_SECONDS",
-                              0.0),
-            mock.patch.object(fetch_artists, "RETRY_SECONDS",
-                              0.0)]
+            mock.patch.object(
+                fetch_artists.ArtistFetcher,
+                "_ArtistFetcher__SLEEP_SECONDS", 0.0),
+            mock.patch.object(
+                fetch_artists.ArtistFetcher,
+                "_ArtistFetcher__RETRY_SECONDS", 0.0)]
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -315,10 +317,12 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 3)
         first: Any = urlopen.call_args_list[0][0][0]
-        self.assertEqual(first.get_header("User-agent"),
-                         fetch_artists.USER_AGENT)
-        self.assertTrue(
-            first.full_url.startswith(fetch_artists.SPARQL_URL))
+        self.assertEqual(
+            first.get_header("User-agent"),
+            fetch_artists.ArtistFetcher._ArtistFetcher__USER_AGENT)
+        self.assertTrue(first.full_url.startswith(
+            fetch_artists.ArtistFetcher
+            ._ArtistFetcher__SPARQL_URL))
         self.assertEqual(
             first.get_header("Accept"),
             "application/sparql-results+json")
@@ -358,7 +362,8 @@ class TestFetchArtists(unittest.TestCase):
             qid, {}, "a brand the type gate excludes")
         urlopen: mock.Mock
         with mock.patch.object(
-                fetch_artists, "PINNED_QIDS",
+                fetch_artists.ArtistFetcher,
+                "_ArtistFetcher__PINNED_QIDS",
                 {"Brandy Brand": qid}), \
                 mock.patch(
                     "urllib.request.urlopen",
@@ -369,7 +374,7 @@ class TestFetchArtists(unittest.TestCase):
         self.assertEqual(urlopen.call_count, 1)
         first: Any = urlopen.call_args_list[0][0][0]
         self.assertTrue(first.full_url.startswith(
-            fetch_artists.API_URL))
+            fetch_artists.ArtistFetcher._ArtistFetcher__API_URL))
         rows: list[list[str]] = self.__read_rows(
             self.__snapshot)
         self.assertEqual(rows[1], [
@@ -886,7 +891,8 @@ class TestFetchArtists(unittest.TestCase):
                 "urllib.request.urlopen",
                 side_effect=[self.__response(empty)]) as urlopen,
               mock.patch.object(
-                  fetch_artists, "read_artist_titles",
+                  fetch_artists.ArtistSnapshotUpdater,
+                  "_ArtistSnapshotUpdater__read_artist_titles",
                   side_effect=[[], OSError("boom")])):
             status: int = self.__run_fetch()[0]
         self.assertNotEqual(status, 0)

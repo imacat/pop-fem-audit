@@ -21,7 +21,7 @@ from pop_fem_audit_tools.commands import run_llm
 class RunLLMTestCase(unittest.TestCase):
     """The common base test case with the shared helpers."""
 
-    def _make_temp_dir(self) -> Path:
+    def make_temp_dir(self) -> Path:
         """Create a temporary directory removed on test cleanup.
 
         :return: The path of the temporary directory.
@@ -31,8 +31,8 @@ class RunLLMTestCase(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         return Path(tmp.name)
 
-    def _make_success_entry(self, custom_id: str,
-                            text: str) -> mock.Mock:
+    def make_success_entry(self, custom_id: str,
+                           text: str) -> mock.Mock:
         """Create a mock succeeded batch result entry.
 
         :param custom_id: The custom ID of the entry.
@@ -47,8 +47,8 @@ class RunLLMTestCase(unittest.TestCase):
         return entry
 
     @staticmethod
-    def _make_error_entry(custom_id: str,
-                          error_type: str) -> mock.Mock:
+    def make_error_entry(custom_id: str,
+                         error_type: str) -> mock.Mock:
         """Create a mock errored batch result entry.
 
         The error object is shaped as the SDK envelope: the outer
@@ -90,86 +90,113 @@ class RunLLMTestCase(unittest.TestCase):
 
 
 class TestLoadItems(RunLLMTestCase):
-    """Test cases for the input JSONL validation."""
+    """Test cases for the input JSONL validation, driven by a dry
+    run since the validation happens before any API call."""
 
     def setUp(self) -> None:
-        """Create a temporary directory for the input files."""
-        self.__dir: Path = self._make_temp_dir()
+        """Create the prompt and input paths for a dry run."""
+        directory: Path = self.make_temp_dir()
+        self.__prompt: Path = directory / "task.md"
+        self.__prompt.write_text("The task.\n", encoding="utf-8")
+        self.__input: Path = directory / "items.jsonl"
+        self.__archive_dir: Path = directory / "runs" / "run1"
 
-    def __write_input(self, content: str) -> Path:
-        """Write an input file with the given content.
+    def __run_dry(self, content: str) -> tuple[int, str]:
+        """Write the input file and dry-run against it.
 
-        :param content: The file content.
-        :return: The path of the input file.
+        :param content: The input file content.
+        :return: The exit status and the standard error text.
         """
-        path: Path = self.__dir / "items.jsonl"
-        path.write_text(content, encoding="utf-8")
-        return path
-
-    def test_valid_items(self) -> None:
-        """Test that valid items are loaded in file order."""
-        path: Path = self.__write_input(
-            '{"id": "a", "content": "one"}\n'
-            '{"id": "b", "content": "two"}\n')
-        items: list[run_llm.InputItem] = run_llm.load_items(path)
-        self.assertEqual(items, [
-            run_llm.InputItem(id="a", content="one"),
-            run_llm.InputItem(id="b", content="two")])
+        self.__input.write_text(content, encoding="utf-8")
+        stderr: io.StringIO = io.StringIO()
+        status: int
+        with redirect_stderr(stderr):
+            status = run_llm.main([
+                str(self.__prompt), str(self.__input),
+                str(self.__archive_dir), "--dry-run"])
+        return status, stderr.getvalue()
 
     def test_malformed_json_names_line(self) -> None:
         """Test that malformed JSON reports the line number."""
-        path: Path = self.__write_input(
+        status: int
+        stderr: str
+        status, stderr = self.__run_dry(
             '{"id": "a", "content": "one"}\n'
             'not json\n')
-        with self.assertRaises(run_llm.InputFormatError) as context:
-            run_llm.load_items(path)
-        self.assertIn("line 2", str(context.exception))
+        self.assertEqual(status, 1)
+        self.assertIn("line 2", stderr)
 
     def test_missing_key_names_line(self) -> None:
         """Test that a missing key reports the line number."""
-        path: Path = self.__write_input('{"id": "a"}\n')
-        with self.assertRaises(run_llm.InputFormatError) as context:
-            run_llm.load_items(path)
-        self.assertIn("line 1", str(context.exception))
+        status: int
+        stderr: str
+        status, stderr = self.__run_dry('{"id": "a"}\n')
+        self.assertEqual(status, 1)
+        self.assertIn("line 1", stderr)
 
     def test_extra_key_rejected(self) -> None:
         """Test that an extra key is rejected."""
-        path: Path = self.__write_input(
+        status: int
+        status, _ = self.__run_dry(
             '{"id": "a", "content": "one", "extra": 1}\n')
-        with self.assertRaises(run_llm.InputFormatError):
-            run_llm.load_items(path)
+        self.assertEqual(status, 1)
 
     def test_non_string_content_rejected(self) -> None:
         """Test that a non-string content is rejected."""
-        path: Path = self.__write_input('{"id": "a", "content": 3}\n')
-        with self.assertRaises(run_llm.InputFormatError):
-            run_llm.load_items(path)
+        status: int
+        status, _ = self.__run_dry('{"id": "a", "content": 3}\n')
+        self.assertEqual(status, 1)
 
     def test_duplicated_id_names_line(self) -> None:
         """Test that a duplicated ID reports the line number."""
-        path: Path = self.__write_input(
+        status: int
+        stderr: str
+        status, stderr = self.__run_dry(
             '{"id": "a", "content": "one"}\n'
             '{"id": "a", "content": "two"}\n')
-        with self.assertRaises(run_llm.InputFormatError) as context:
-            run_llm.load_items(path)
-        self.assertIn("line 2", str(context.exception))
-        self.assertIn("a", str(context.exception))
+        self.assertEqual(status, 1)
+        self.assertIn("line 2", stderr)
+        self.assertIn("a", stderr)
 
     def test_empty_file_rejected(self) -> None:
         """Test that an empty input file is rejected."""
-        path: Path = self.__write_input("")
-        with self.assertRaises(run_llm.InputFormatError):
-            run_llm.load_items(path)
+        status: int
+        status, _ = self.__run_dry("")
+        self.assertEqual(status, 1)
+        self.assertFalse(self.__archive_dir.exists())
 
 
 class TestRequestBuilding(RunLLMTestCase):
-    """Test cases for the request construction."""
+    """Test cases for the request preview, driven by a dry run."""
 
-    def test_build_request(self) -> None:
-        """Test the shape of a batch request."""
-        request: dict[str, Any] = run_llm.build_request(
-            run_llm.InputItem(id="song-1", content="the lyrics"),
-            "the system prompt", 2048, "claude-sonnet-4-6")
+    def setUp(self) -> None:
+        """Create the prompt and input files for a dry run."""
+        directory: Path = self.make_temp_dir()
+        self.__prompt: Path = directory / "task.md"
+        self.__prompt.write_text(
+            "the system prompt", encoding="utf-8")
+        self.__input: Path = directory / "items.jsonl"
+        self.__input.write_text(
+            '{"id": "song-1", "content": "the lyrics"}\n',
+            encoding="utf-8")
+        self.__archive_dir: Path = directory / "runs" / "run1"
+
+    def __preview(self, extra_argv: list[str]) -> dict[str, Any]:
+        """Dry-run and parse the previewed request.
+
+        :param extra_argv: The extra command-line arguments.
+        :return: The parsed request.
+        """
+        stdout: io.StringIO = io.StringIO()
+        with redirect_stdout(stdout):
+            run_llm.main([
+                str(self.__prompt), str(self.__input),
+                str(self.__archive_dir), "--dry-run"] + extra_argv)
+        return json.loads(stdout.getvalue())
+
+    def test_default_model_request(self) -> None:
+        """Test the request shape for the default model."""
+        request: dict[str, Any] = self.__preview([])
         self.assertEqual(request["custom_id"], "song-1")
         params: dict[str, Any] = request["params"]
         self.assertEqual(params["model"], "claude-sonnet-4-6")
@@ -177,125 +204,19 @@ class TestRequestBuilding(RunLLMTestCase):
         self.assertEqual(params["thinking"], {"type": "disabled"})
         self.assertEqual(params["max_tokens"], 2048)
         self.assertEqual(params["system"], "the system prompt")
-        self.assertEqual(params["messages"],
-                         [{"role": "user", "content": "the lyrics"}])
+        self.assertEqual(
+            params["messages"],
+            [{"role": "user", "content": "the lyrics"}])
 
-    def test_build_request_fable_5(self) -> None:
+    def test_fable_5_request(self) -> None:
         """Test the request shape for the claude-fable-5 model."""
-        request: dict[str, Any] = run_llm.build_request(
-            run_llm.InputItem(id="group-1", content="the groups"),
-            "the system prompt", 8192, "claude-fable-5")
+        request: dict[str, Any] = self.__preview(
+            ["--model", "claude-fable-5", "--max-tokens", "8192"])
         params: dict[str, Any] = request["params"]
         self.assertEqual(params["model"], "claude-fable-5")
         self.assertNotIn("temperature", params)
         self.assertNotIn("thinking", params)
         self.assertEqual(params["max_tokens"], 8192)
-        self.assertEqual(params["system"], "the system prompt")
-        self.assertEqual(params["messages"],
-                         [{"role": "user", "content": "the groups"}])
-
-
-class TestCollectResults(RunLLMTestCase):
-    """Test cases for the batch result collection."""
-
-    def test_collect_success_and_error(self) -> None:
-        """Test collecting succeeded and errored results."""
-        client: mock.Mock = mock.Mock()
-        client.messages.batches.results.return_value = iter([
-            self._make_success_entry("a", "output a"),
-            self._make_error_entry("b", "invalid_request_error")])
-        results: run_llm.Results = run_llm.collect_results(
-            client, "batch_x")
-        self.assertEqual(results["a"].text, "output a")
-        self.assertEqual(results["a"].stop_reason, "end_turn")
-        self.assertEqual(results["a"].usage,
-                         {"input_tokens": 10, "output_tokens": 5})
-        self.assertEqual(results["b"], run_llm.BatchResult(
-            id="b", error="invalid_request_error"))
-        client.messages.batches.results.assert_called_once_with(
-            "batch_x")
-
-    def test_find_failures(self) -> None:
-        """Test finding failed and missing items."""
-        results: run_llm.Results = {
-            "a": run_llm.BatchResult(id="a", text="fine"),
-            "b": run_llm.BatchResult(id="b", error="errored")}
-        self.assertEqual(
-            run_llm.find_failures(["a", "b", "c"], results),
-            ["b", "c"])
-
-    def test_sum_usage(self) -> None:
-        """Test summing the token usage across results."""
-        results: run_llm.Results = {
-            "a": run_llm.BatchResult(
-                id="a", text="fine",
-                usage={"input_tokens": 10, "output_tokens": 5}),
-            "b": run_llm.BatchResult(
-                id="b", text="fine",
-                usage={"input_tokens": 3, "output_tokens": 2}),
-            "c": run_llm.BatchResult(id="c", error="errored")}
-        self.assertEqual(
-            run_llm.sum_usage(results),
-            {"input_tokens": 13, "output_tokens": 7})
-
-
-class TestArchive(RunLLMTestCase):
-    """Test cases for the archive directory handling."""
-
-    def setUp(self) -> None:
-        """Create a temporary directory as the runs root."""
-        self.__dir: Path = self._make_temp_dir()
-
-    def test_create_archive_dir(self) -> None:
-        """Test the archive directory creation."""
-        target: Path = self.__dir / "01-01-tag" / "run1"
-        directory: Path = run_llm.create_archive_dir(target, False)
-        self.assertTrue(directory.is_dir())
-        self.assertEqual(directory, target)
-
-    def test_existing_archive_dir_rejected_without_replace(
-            self) -> None:
-        """Test that an existing archive is rejected by default."""
-        target: Path = self.__dir / "01-01-tag" / "run1"
-        run_llm.create_archive_dir(target, False)
-        with self.assertRaises(FileExistsError):
-            run_llm.create_archive_dir(target, False)
-
-    def test_existing_archive_dir_replaced(self) -> None:
-        """Test that --replace replaces an existing archive."""
-        target: Path = self.__dir / "01-01-tag" / "run1"
-        first: Path = run_llm.create_archive_dir(target, False)
-        (first / "stale.txt").write_text("stale", encoding="utf-8")
-        second: Path = run_llm.create_archive_dir(target, True)
-        self.assertEqual(first, second)
-        self.assertFalse((second / "stale.txt").exists())
-
-    def test_replace_leaves_sibling_dir_untouched(self) -> None:
-        """Test that replacing run2 does not touch run1."""
-        run1: Path = run_llm.create_archive_dir(
-            self.__dir / "01-01-tag" / "run1", False)
-        (run1 / "output.jsonl").write_text(
-            "run1 data", encoding="utf-8")
-        run2: Path = run_llm.create_archive_dir(
-            self.__dir / "01-01-tag" / "run2", False)
-        (run2 / "stale.jsonl").write_text("stale", encoding="utf-8")
-        run_llm.create_archive_dir(
-            self.__dir / "01-01-tag" / "run2", True)
-        self.assertEqual(
-            (run1 / "output.jsonl").read_text(encoding="utf-8"),
-            "run1 data")
-
-    def test_write_jsonl(self) -> None:
-        """Test writing records as JSON Lines."""
-        path: Path = self.__dir / "out.jsonl"
-        run_llm.write_jsonl(path, [{"id": "a", "text": "中文"},
-                                   {"id": "b", "text": "two"}])
-        lines: list[str] = path.read_text(
-            encoding="utf-8").splitlines()
-        self.assertEqual(len(lines), 2)
-        self.assertEqual(json.loads(lines[0]),
-                         {"id": "a", "text": "中文"})
-        self.assertIn("中文", lines[0])
 
 
 class TestMainFlow(RunLLMTestCase):
@@ -303,7 +224,7 @@ class TestMainFlow(RunLLMTestCase):
 
     def setUp(self) -> None:
         """Create a temporary directory with the input files."""
-        directory: Path = self._make_temp_dir()
+        directory: Path = self.make_temp_dir()
         self.__runs: Path = directory / "runs"
         self.__archive_dir: Path = self.__runs / "task_v1" / "run1"
         self.__prompt: Path = directory / "task_v1.md"
@@ -322,8 +243,7 @@ class TestMainFlow(RunLLMTestCase):
             ANTHROPIC_API_KEY="test-key")
         config.set_settings(self.__settings)
 
-    @staticmethod
-    def __make_client(entries: list[Any]) -> mock.Mock:
+    def __make_client(self, entries: list[Any]) -> mock.Mock:
         """Create a mock Anthropic client serving canned results.
 
         :param entries: The result entries of the single run batch.
@@ -386,10 +306,12 @@ class TestMainFlow(RunLLMTestCase):
             "Done.  2 jobs finished.  02:05 elapsed."))
 
     def test_run_produces_output_file(self) -> None:
-        """Test that a run submits one batch and writes output."""
+        """Test that a run submits one batch and writes output,
+        the item order preserved and the token usage summed, the
+        output text written unescaped."""
         client: mock.Mock = self.__make_client(
-            [self._make_success_entry("a", "answer a"),
-             self._make_success_entry("b", "answer b")])
+            [self.make_success_entry("a", "answer 中文 a"),
+             self.make_success_entry("b", "answer b")])
         status: int
         stderr: str
         with mock.patch(
@@ -400,10 +322,13 @@ class TestMainFlow(RunLLMTestCase):
             client.messages.batches.create.call_count, 1)
         run_dir: Path = self.__archive_dir
         self.assertTrue((run_dir / "output.jsonl").exists())
+        output_text: str = (run_dir / "output.jsonl").read_text(
+            encoding="utf-8")
+        self.assertIn("中文", output_text)
         output: list[dict[str, Any]] = [
-            json.loads(x) for x in (run_dir / "output.jsonl")
-            .read_text(encoding="utf-8").splitlines()]
-        self.assertEqual(output[0]["text"], "answer a")
+            json.loads(x) for x in output_text.splitlines()]
+        self.assertEqual(output[0]["text"], "answer 中文 a")
+        self.assertEqual(output[1]["text"], "answer b")
         meta: dict[str, Any] = json.loads(
             (run_dir / "meta.json").read_text(encoding="utf-8"))
         self.assertNotIn("run", meta)
@@ -431,8 +356,8 @@ class TestMainFlow(RunLLMTestCase):
         (run_dir / "stale.jsonl").write_text(
             "stale", encoding="utf-8")
         client: mock.Mock = self.__make_client(
-            [self._make_success_entry("a", "answer a"),
-             self._make_success_entry("b", "answer b")])
+            [self.make_success_entry("a", "answer a"),
+             self.make_success_entry("b", "answer b")])
         status: int = self.__run_main(
             self.__argv + ["--replace"], client)[0]
         self.assertEqual(status, 0)
@@ -450,8 +375,8 @@ class TestMainFlow(RunLLMTestCase):
         (run2_dir / "output.jsonl").write_text(
             "stale run2 data", encoding="utf-8")
         client: mock.Mock = self.__make_client(
-            [self._make_success_entry("a", "answer a"),
-             self._make_success_entry("b", "answer b")])
+            [self.make_success_entry("a", "answer a"),
+             self.make_success_entry("b", "answer b")])
         argv: list[str] = [
             str(self.__prompt), str(self.__input),
             str(run2_dir), "--replace"]
@@ -465,11 +390,14 @@ class TestMainFlow(RunLLMTestCase):
             "stale run2 data")
 
     def test_run_failure_exits_non_zero(self) -> None:
-        """Test that a failed item aborts with a non-zero status."""
+        """Test that a failed item aborts with a non-zero status,
+        the summed usage counting only the succeeded item."""
         client: mock.Mock = self.__make_client(
-            [self._make_success_entry("a", "answer a"),
-             self._make_error_entry("b", "invalid_request_error")])
-        status: int = self.__run_main(self.__argv, client)[0]
+            [self.make_success_entry("a", "answer a"),
+             self.make_error_entry("b", "invalid_request_error")])
+        status: int
+        stderr: str
+        status, _, stderr = self.__run_main(self.__argv, client)
         self.assertEqual(status, 1)
         run_dir: Path = self.__archive_dir
         self.assertTrue((run_dir / "output.jsonl").exists())
@@ -479,6 +407,22 @@ class TestMainFlow(RunLLMTestCase):
         self.assertEqual(json.loads(output_lines[1]),
                          {"id": "b",
                           "error": "invalid_request_error"})
+        meta: dict[str, Any] = json.loads(
+            (run_dir / "meta.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["usage"],
+                         {"input_tokens": 10, "output_tokens": 5})
+        self.assertNotIn("Done.", stderr)
+
+    def test_missing_result_item_is_a_failure(self) -> None:
+        """Test that an item missing from the batch results is
+        reported as a failed item."""
+        client: mock.Mock = self.__make_client(
+            [self.make_success_entry("a", "answer a")])
+        status: int
+        stderr: str
+        status, _, stderr = self.__run_main(self.__argv, client)
+        self.assertEqual(status, 1)
+        self.assertIn("b", stderr)
 
     def test_invalid_input_exits_non_zero(self) -> None:
         """Test that an invalid input file aborts before archiving."""

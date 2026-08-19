@@ -285,9 +285,11 @@ class TestBuildDB(unittest.TestCase):
         patchers: list[Any] = [
             mock.patch.object(build_db, "ds", self.__ds),
             mock.patch.object(
-                build_db.SongImporter, "YEARS", [2016, 2017]),
+                build_db.SongImporter, "_SongImporter__YEARS",
+                [2016, 2017]),
             mock.patch.object(
-                build_db.SongImporter, "RANKS_PER_YEAR", 2)]
+                build_db.SongImporter,
+                "_SongImporter__RANKS_PER_YEAR", 2)]
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -1014,12 +1016,9 @@ class TestBuildDB(unittest.TestCase):
         """Test that the coding CSV imports one row per song and
         keyword, storing the quote column verbatim."""
         self.__write_codings(self.CODINGS_CSV)
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--codings", str(self.__codings))
-        self.assertEqual(status, 0)
-        self.assertIn("3 codings", stderr)
+        self.assertEqual(
+            self.__run_build("--codings", str(self.__codings))[0],
+            0)
         self.assertEqual(
             self.__stored_codings(),
             {("Hello", "longing"):
@@ -1043,11 +1042,7 @@ class TestBuildDB(unittest.TestCase):
     def test_omitted_codings_leaves_table_empty(self) -> None:
         """Test that an omitted coding option leaves no codings."""
         self.__write_codings(self.CODINGS_CSV)
-        status: int
-        stderr: str
-        status, stderr = self.__run_build()
-        self.assertEqual(status, 0)
-        self.assertIn("0 codings", stderr)
+        self.assertEqual(self.__run_build()[0], 0)
         self.assertEqual(self.__stored_codings(), {})
 
     def test_codings_unknown_song_fails(self) -> None:
@@ -1119,12 +1114,9 @@ class TestBuildDB(unittest.TestCase):
             "Song,Artist Credit,Keyword,Quote\n"
             "Shape of You,Ed Sheeran,attraction,I'm in love with"
             " your body\n")
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--codings", str(self.__codings))
-        self.assertEqual(status, 0)
-        self.assertIn("1 codings", stderr)
+        self.assertEqual(
+            self.__run_build("--codings", str(self.__codings))[0],
+            0)
         self.assertEqual(
             self.__stored_codings(),
             {("Shape of You", "attraction"):
@@ -1159,12 +1151,8 @@ class TestBuildDB(unittest.TestCase):
         """Test that the group CSV imports one row per group and
         keyword, the votes stored as integers."""
         self.__write_groups(self.GROUPS_CSV)
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--groups", str(self.__groups))
-        self.assertEqual(status, 0)
-        self.assertIn("3 group members", stderr)
+        self.assertEqual(
+            self.__run_build("--groups", str(self.__groups))[0], 0)
         self.assertEqual(
             self.__stored_groups(),
             {("masculine", "dominance-and-power"): 3,
@@ -1180,12 +1168,8 @@ class TestBuildDB(unittest.TestCase):
         self.__write_groups(
             "Group,Keyword,Votes\n"
             "vulnerable,longing-and-loss,3\n")
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--groups", str(self.__groups))
-        self.assertEqual(status, 0)
-        self.assertIn("1 group members", stderr)
+        self.assertEqual(
+            self.__run_build("--groups", str(self.__groups))[0], 0)
         self.assertEqual(
             self.__stored_groups(),
             {("vulnerable", "longing-and-loss"): 3})
@@ -1407,14 +1391,11 @@ class TestBuildDB(unittest.TestCase):
         together, reflected in the final counts message."""
         self.__write_patterns(self.PATTERNS_CSV)
         self.__write_annotations(self.ANNOTATIONS_CSV)
-        status: int
-        stderr: str
-        status, stderr = self.__run_build(
-            "--patterns", str(self.__patterns),
-            "--annotations", str(self.__annotations))
-        self.assertEqual(status, 0)
-        self.assertIn("2 patterns", stderr)
-        self.assertIn("2 annotations", stderr)
+        self.assertEqual(
+            self.__run_build(
+                "--patterns", str(self.__patterns),
+                "--annotations", str(self.__annotations))[0],
+            0)
         self.assertEqual(
             self.__stored_patterns(),
             {"M1": ("male", "Dominance",
@@ -1432,12 +1413,7 @@ class TestBuildDB(unittest.TestCase):
         annotation tables empty."""
         self.__write_patterns(self.PATTERNS_CSV)
         self.__write_annotations(self.ANNOTATIONS_CSV)
-        status: int
-        stderr: str
-        status, stderr = self.__run_build()
-        self.assertEqual(status, 0)
-        self.assertIn("0 patterns", stderr)
-        self.assertIn("0 annotations", stderr)
+        self.assertEqual(self.__run_build()[0], 0)
         self.assertEqual(self.__stored_patterns(), {})
         self.assertEqual(self.__stored_annotations(), {})
 

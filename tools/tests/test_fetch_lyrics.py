@@ -50,7 +50,9 @@ class TestFetchLyrics(unittest.TestCase):
         self.addCleanup(self.__ds.engine.dispose)
         patchers: list[Any] = [
             mock.patch.object(fetch_lyrics, "ds", self.__ds),
-            mock.patch.object(fetch_lyrics, "SLEEP_SECONDS", 0.0)]
+            mock.patch.object(
+                fetch_lyrics.LyricsFetcher,
+                "_LyricsFetcher__SLEEP_SECONDS", 0.0)]
         for patcher in patchers:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -158,8 +160,9 @@ class TestFetchLyrics(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(urlopen.call_count, 1)
         request: Any = urlopen.call_args[0][0]
-        self.assertEqual(request.get_header("User-agent"),
-                         fetch_lyrics.USER_AGENT)
+        self.assertEqual(
+            request.get_header("User-agent"),
+            fetch_lyrics.LyricsFetcher._LyricsFetcher__USER_AGENT)
         self.assertEqual(
             (self.__lyrics / "1.txt")
             .read_text(encoding="utf-8"),
@@ -321,39 +324,39 @@ class TestFetchLyrics(unittest.TestCase):
     def test_normalize_cp1252_mojibake(self) -> None:
         """Test that cp1252 mojibake codepoints are restored."""
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics("wait"),
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics("wait"),
             "wait…")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(
                 "quote"),
             "‘quote’")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(
                 "quote"),
             "“quote”")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics("dashline"),
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics("dashline"),
             "dash—line")
 
     def test_normalize_undefined_cp1252_removed(self) -> None:
         """Test that undefined cp1252 byte values are removed."""
         text: str = ("abcdef")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(text), "abcdef")
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(text), "abcdef")
 
     def test_normalize_homoglyphs(self) -> None:
         """Test that watermark homoglyphs are restored."""
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics("likе that"),
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics("likе that"),
             "like that")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics("lό que soy"),
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics("lό que soy"),
             "ló que soy")
 
     def test_normalize_space_variants(self) -> None:
         """Test that exotic space variants become ASCII space."""
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(
                 "a b c d"),
             "a b c d")
 
@@ -362,19 +365,19 @@ class TestFetchLyrics(unittest.TestCase):
         text: str = (
             "a​b‌c‍d﻿e")
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(text), "abcde")
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(text), "abcde")
 
     def test_normalize_ascii_unchanged(self) -> None:
         """Test that plain ASCII text passes through unchanged."""
         text: str = "Hello, it's me\n"
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(text), text)
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(text), text)
 
     def test_normalize_legitimate_non_ascii_unchanged(self) -> None:
         """Test that legitimate non-ASCII content is unchanged."""
         text: str = "¿cómo estás? 안녕하세요\n"
         self.assertEqual(
-            fetch_lyrics.normalize_lyrics(text), text)
+            fetch_lyrics.LyricsFetchRunner.normalize_lyrics(text), text)
 
     def test_fetched_lyrics_saved_normalized(self) -> None:
         """Test that a fetched lyric is normalized before saving."""

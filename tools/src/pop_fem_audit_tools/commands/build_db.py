@@ -7,59 +7,18 @@
 Rebuilds the working store from scratch out of the committed
 inputs: the year-end chart CSV and the output directory for the
 review CSV files, given as the two positional command-line
-arguments, and the optional inputs, each given as an
-option: the lyrics cache directory, the Wikidata artist
-snapshot CSV, the settled coding table CSV, and the gender
-correction table CSV.  An omitted option
-leaves its layer unloaded; a given option whose path does
-not exist fails the build.  Missing tables
+arguments, and the optional capture, coding, group,
+gender-correction, pattern, and annotation layers, each given as
+an option.  An omitted option leaves its layer unloaded; a given
+option whose path does not exist fails the build.  Missing tables
 are created on a fresh store; existing tables are never altered,
 as the schema lifecycle belongs to the migrations.  Every rebuild
 deletes all the rows, loads the data, and validates it in one
 transaction, committed only after the data passes the validation
 invariants; a failed build leaves the previous store contents
-intact.
-
-The rebuild is deterministic: the builder assigns the song and
-artist IDs itself, as 1, 2, 3, ... in the first-occurrence file
-order, so the IDs are reproducible across rebuilds on every
-database engine, given the frozen input file.
-
-A song is identified by its raw title together with its artist
-credit, the credit canonicalized through
-``SongImporter.CANONICAL_ARTIST_CREDITS``; a credit listed there
-collapses onto the same song as its canonical form, and the
-stored artist credit is always the canonical form.  Artist
-deduplication is by the identity key resolved from the parsed
-artist name (see `ArtistImporter.resolve_artist_identity`): the
-case-folded name, or, when that case-folded name is listed in
-``ArtistImporter.CANONICAL_ARTIST_NAMES``, the case-folded
-canonical spelling, so letter-case variants and alternate
-spellings mapped to the same canonical name all collapse onto a
-single artist row.  The stored artist name is the first-seen
-spelling, except for the names listed in
-``ArtistImporter.CANONICAL_ARTIST_NAMES``, which always store the
-canonical spelling regardless of which variant is seen first.
-
-Once the artists carry their captured attributes, every song
-takes a performer gender derived from the genders of the
-performing artists credited on it, primary and featured alike.  A
-credited artist without an artist type -- a label, a brand, or a
-producer collective -- is not a performing act: it has no voice,
-so its gender is inapplicable, and it takes no part in the
-derivation.  See `PerformerGenderDeriver.performer_gender`.
-
-Once the performer genders are derived, an optional gender
-correction table CSV overrides the performer gender of the songs
-it names, matched by exact title and exact artist credit, with
-its performer gender column stored verbatim; see
-`GenderCorrectionImporter`.
-
-On a successful build, two review CSV files, ``songs.csv`` and
-``artists.csv``, are (re)written under the given output directory,
-mirroring the stored songs and artists without their IDs; see
-`CSVExporter`.  A failed build leaves any existing review CSV
-files untouched, matching the store rollback.
+intact.  See `StoreBuilder` for the pipeline, and the individual
+importer, deriver, and exporter classes for the identity,
+derivation, correction, and export rules.
 """
 import argparse
 import csv
@@ -70,7 +29,7 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -89,106 +48,59 @@ from ..models import (
 )
 from ..utils import format_duration
 
-ARTIST_FIELDS: dict[str, str] = {
-    "qid": "wikidata_qid",
-    "gender": "gender",
-    "type": "type",
-    "genre": "genre",
-    "country": "country",
-}
-"""The artist CSV columns mapped to the Artist attributes."""
-
 
 class BuildError(Exception):
     """An error that fails the build."""
 
 
-def parse_args(argv: list[str] | None) -> argparse.Namespace:
-    """Parse the command-line arguments.
-
-    :param argv: The command-line arguments, or None for
-        ``sys.argv``.
-    :return: The parsed arguments.
-    """
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description="Rebuild the SQLite working store from the"
-                    " committed inputs.")
-    parser.add_argument(
-        "chart_csv", type=Path,
-        help="the year-end chart CSV file")
-    parser.add_argument(
-        "derived_dir", type=Path,
-        help="the output directory for the review CSV files")
-    parser.add_argument(
-        "--lyrics-dir", type=Path, default=None,
-        help="the lyrics cache directory to load")
-    parser.add_argument(
-        "--wikidata-csv", type=Path, default=None,
-        help="the Wikidata artist snapshot CSV file to apply")
-    parser.add_argument(
-        "--codings", type=Path, default=None,
-        help="the settled coding table CSV file to import")
-    parser.add_argument(
-        "--groups", type=Path, default=None,
-        help="the settled code group table CSV file to import")
-    parser.add_argument(
-        "--gender-corrections", type=Path, default=None,
-        help="the gender correction table CSV file to apply")
-    parser.add_argument(
-        "--patterns", type=Path, default=None,
-        help="the pattern definition table CSV file to import")
-    parser.add_argument(
-        "--annotations", type=Path, default=None,
-        help="the settled pattern annotation table CSV file to"
-             " import")
-    return parser.parse_args(argv)
-
-
 class SongImporter:
-    """The song-import job: loads the chart CSV into songs and
-    chart entries."""
+    """The song-import job: assigns every distinct chart song its
+    deterministic ID and records its chart appearances.
 
-    YEARS: Sequence[int] = range(2016, 2026)
+    A song repeated across the rows is stored once, matched by its
+    identity key (see `song_identity`); every row yields one chart
+    entry.  The stored title is the raw title; the stored artist
+    credit is the canonical credit from the identity key.  The
+    songs take the IDs 1, 2, 3, ... in the first-occurrence row
+    order.
+    """
+
+    __YEARS: ClassVar[Sequence[int]] = range(2016, 2026)
     """The expected chart years."""
-    RANKS_PER_YEAR: int = 100
+    __RANKS_PER_YEAR: ClassVar[int] = 100
     """The expected number of ranks on the chart of each year."""
-    CANONICAL_ARTIST_CREDITS: dict[str, str] = {
+    __CANONICAL_ARTIST_CREDITS: ClassVar[dict[str, str]] = {
         "benny blanco, Halsey & Khalid": "Benny Blanco, Halsey"
                                          " & Khalid",
     }
     """The canonical artist credit spellings, keyed by a variant
     credit string."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, chart_csv: Path) -> None:
         """Initialize the importer.
 
         :param session: The database session.
+        :param chart_csv: The chart CSV file with the columns
+            year, rank, title, and artist.
         """
         self.__session: Session = session
+        self.__chart_csv: Path = chart_csv
         self.__songs: dict[tuple[str, str], Song] = {}
 
-    def import_songs(self, path: Path) -> None:
+    def run(self) -> None:
         """Load the chart CSV into songs and chart entries.
 
-        A song repeated across the rows is stored once, matched by
-        its identity key (see `song_identity`); every row yields
-        one chart entry.  The stored title is the raw title; the
-        stored artist credit is the canonical credit from the
-        identity key.  The songs take the IDs 1, 2, 3, ... in the
-        first-occurrence row order.  When the method returns, the
-        imported songs and chart entries are queryable in the
-        session.
+        When the method returns, the imported songs and chart
+        entries are queryable in the session.
 
-        :param path: The chart CSV file with the columns year,
-            rank, title, and artist.
         :return: None.
         :raises BuildError: When the chart entries do not cover
-            each of ``YEARS`` and each rank from 1 to
-            ``RANKS_PER_YEAR`` exactly once.
+            each expected year and rank exactly once.
         :raises OSError: When the file cannot be read.
         """
         counts: Counter[tuple[int, int]] = Counter()
-        with open(path, encoding="utf-8", newline="") as file:
+        with open(self.__chart_csv, encoding="utf-8",
+                  newline="") as file:
             row: dict[str, str]
             for row in csv.DictReader(file):
                 key: tuple[str, str] = self.song_identity(
@@ -225,8 +137,8 @@ class SongImporter:
             present, or a pair is duplicated.
         """
         expected: set[tuple[int, int]] = {
-            (year, rank) for year in cls.YEARS
-            for rank in range(1, cls.RANKS_PER_YEAR + 1)}
+            (year, rank) for year in cls.__YEARS
+            for rank in range(1, cls.__RANKS_PER_YEAR + 1)}
         actual: set[tuple[int, int]] = set(counts)
         violations: list[str] = []
         year: int
@@ -250,7 +162,7 @@ class SongImporter:
         """Compute the identity key of a chart row.
 
         The key pairs the raw title with the artist credit,
-        canonicalized through ``CANONICAL_ARTIST_CREDITS``; a
+        canonicalized through the canonical artist credit table; a
         credit absent from the table maps to itself.  Two chart
         rows denote the same song iff their identity keys are
         equal.
@@ -260,32 +172,43 @@ class SongImporter:
         :return: The identity key: the raw title paired with the
             canonical artist credit.
         """
-        return title, SongImporter.CANONICAL_ARTIST_CREDITS.get(
+        return title, SongImporter.__CANONICAL_ARTIST_CREDITS.get(
             credit, credit)
 
 
 class ArtistImporter:
-    """The artist-import job: parses the stored songs' artist
-    credits into artists and song-artist credits."""
+    """The artist-import job: resolves every credited artist name
+    to a deduplicated artist row and records the song-artist
+    credits.
 
-    FEATURING_PATTERN: re.Pattern[str] = re.compile(
+    An artist parsed out of a credit (see `parse_artist_credit`) is
+    matched against the known artists by its identity key (see
+    `resolve_artist_identity`); a newly seen one takes the ID
+    following the known artists, assigned in first-seen order
+    across the songs, and its stored name is the resolved stored
+    spelling.  An artist duplicated within one song's credit, by
+    its identity key, is kept only at its first occurrence within
+    that credit, with a warning to the standard error.
+    """
+
+    __FEATURING_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r" featuring | feat\. ", re.IGNORECASE)
     """The pattern splitting the primary and featured sides."""
-    DELIMITER_PATTERN: re.Pattern[str] = re.compile(
+    __DELIMITER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r", | & | \+ | / |(?i: and | x | with )")
     """The pattern splitting the artist names within a side."""
-    COLON_PATTERN: re.Pattern[str] = re.compile(r": ")
+    __COLON_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r": ")
     """The pattern separating a group prefix from its members in a
     "<group>: <members>" credit."""
-    PAREN_MEMBERS_PATTERN: re.Pattern[str] = re.compile(
+    __PAREN_MEMBERS_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"^[^(]+ \((?P<members>[^()]+)\)$")
     """The pattern separating a group name from its members in a
     "<group> (<members>)" credit spanning the whole credit."""
-    DUET_WITH_PATTERN: re.Pattern[str] = re.compile(
+    __DUET_WITH_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r" Duet With ", re.IGNORECASE)
     """The pattern normalizing the "Duet With" co-billing connector
     to the plain "with" delimiter."""
-    PROTECTED_ARTIST_NAMES: tuple[str, ...] = (
+    __PROTECTED_ARTIST_NAMES: ClassVar[tuple[str, ...]] = (
         "Tyler, The Creator",
         "Lil Nas X",
         "Tones And I",
@@ -293,7 +216,8 @@ class ArtistImporter:
     """The exact artist names guarded from the delimiter splitting,
     because each contains a delimiter word or punctuation as part
     of the name itself."""
-    EXCEPTION_CREDITS: dict[str, list[tuple[str, Role]]] = {
+    __EXCEPTION_CREDITS: ClassVar[dict[str, list[tuple[str, Role]]]] \
+        = {
         "SpotemGottem Featuring Pooh Shiesty Or DaBaby": [
             ("SpotemGottem", Role.PRIMARY),
             ("Pooh Shiesty", Role.FEATURED),
@@ -312,7 +236,7 @@ class ArtistImporter:
     """The single-credit exceptions parsed by an explicit lookup
     rather than by the general rules, because the credit text alone
     does not spell out the correct member split."""
-    CANONICAL_ARTIST_NAMES: dict[str, str] = {
+    __CANONICAL_ARTIST_NAMES: ClassVar[dict[str, str]] = {
         "beyonce": "Beyoncé",
         "5 seconds of summer": "5 Seconds of Summer",
         "a boogie wit da hoodie": "A Boogie wit da Hoodie",
@@ -355,26 +279,20 @@ class ArtistImporter:
         self.__session: Session = session
         self.__artists: dict[str, Artist] = {}
 
-    def import_artists(self) -> None:
+    def run(self) -> None:
         """Parse the stored songs' credits into artists and
         song-artist credits.
 
         Reads the songs back from the database in ``Song.id`` order,
         including any songs pending in the same session, and for
-        each song parses ``Song.artist_credit`` (see
-        `parse_artist_credit`).  An artist parsed out of a credit is
-        matched against the known artists by its identity key (see
-        `resolve_artist_identity`); a newly seen one takes the ID
-        following the known artists, keyed by its identity key,
-        assigned in first-seen order across the songs, and its
-        stored name is the resolved stored spelling.  An artist
-        duplicated within one song's credit, by its identity key,
-        is kept only at its first occurrence within that credit,
-        with a warning to the standard error.  When the method
+        each song parses ``Song.artist_credit``.  When the method
         returns, the imported artists and credits are queryable in
         the session.
 
         :return: None.
+        :raises BuildError: When a parsed credit has no primary
+            artist or contains a blank artist name (see
+            `__check_parsed_credit`).
         """
         song: Song
         for song in self.__session.scalars(
@@ -444,7 +362,7 @@ class ArtistImporter:
     def parse_artist_credit(credit: str) -> list[tuple[str, Role]]:
         """Parse a combined artist credit into artists and roles.
 
-        A credit listed in ``EXCEPTION_CREDITS`` is looked up
+        A credit listed as a single-credit exception is looked up
         verbatim, because its correct split is not derivable from
         the credit text alone.  Otherwise the credit first reduces
         to an effective credit: a "<group>: <members>" prefix
@@ -459,7 +377,7 @@ class ArtistImporter:
         names on the delimiters ", ", " & ", " + ", " / "
         (literally) and " and ", " x ", " with "
         (case-insensitively), except for the names listed in
-        ``PROTECTED_ARTIST_NAMES``, which are never split even
+        ``__PROTECTED_ARTIST_NAMES``, which are never split even
         though each contains a delimiter word or punctuation.
 
         Known limitation: a compound act name that contains one of
@@ -471,38 +389,38 @@ class ArtistImporter:
             side first, with the role ``Role.PRIMARY`` or
             ``Role.FEATURED``.
         """
-        if credit in ArtistImporter.EXCEPTION_CREDITS:
-            return list(ArtistImporter.EXCEPTION_CREDITS[credit])
+        if credit in ArtistImporter.__EXCEPTION_CREDITS:
+            return list(ArtistImporter.__EXCEPTION_CREDITS[credit])
         effective: str = credit
         colon_match: re.Match[str] | None = \
-            ArtistImporter.COLON_PATTERN.search(effective)
+            ArtistImporter.__COLON_PATTERN.search(effective)
         if colon_match is not None:
             effective = effective[colon_match.end():]
         else:
             paren_match: re.Match[str] | None = \
-                ArtistImporter.PAREN_MEMBERS_PATTERN.match(
+                ArtistImporter.__PAREN_MEMBERS_PATTERN.match(
                     effective)
             if paren_match is not None:
                 effective = paren_match.group("members")
-        effective = ArtistImporter.DUET_WITH_PATTERN.sub(
+        effective = ArtistImporter.__DUET_WITH_PATTERN.sub(
             " with ", effective)
         placeholders: dict[str, str] = {}
         index: int
         protected: str
         for index, protected in enumerate(
-                ArtistImporter.PROTECTED_ARTIST_NAMES):
+                ArtistImporter.__PROTECTED_ARTIST_NAMES):
             if protected in effective:
                 placeholder: str = f"{index}"
                 placeholders[placeholder] = protected
                 effective = effective.replace(protected, placeholder)
-        sides: list[str] = ArtistImporter.FEATURING_PATTERN.split(
+        sides: list[str] = ArtistImporter.__FEATURING_PATTERN.split(
             effective, maxsplit=1)
         pairs: list[tuple[str, Role]] = []
         role: Role
         side: str
         for side, role in zip(sides, (Role.PRIMARY, Role.FEATURED)):
             token: str
-            for token in ArtistImporter.DELIMITER_PATTERN.split(
+            for token in ArtistImporter.__DELIMITER_PATTERN.split(
                     side):
                 name: str = ArtistImporter.__restore_protected(
                     token.strip(), placeholders)
@@ -532,9 +450,9 @@ class ArtistImporter:
     def resolve_artist_identity(name: str) -> tuple[str, str]:
         """Resolve the dedup key and the stored spelling of a name.
 
-        The name's case-folded form is looked up in
-        ``CANONICAL_ARTIST_NAMES`` first; when it is listed there,
-        the dedup key is the canonical spelling case-folded and the
+        The name's case-folded form is looked up in the canonical
+        artist name table first; when it is listed there, the
+        dedup key is the canonical spelling case-folded and the
         stored spelling is the canonical spelling, so every variant
         of the name, canonical or not, resolves to the same
         identity.  Otherwise the dedup key is the name case-folded
@@ -545,7 +463,7 @@ class ArtistImporter:
         """
         folded: str = name.casefold()
         canonical: str | None = \
-            ArtistImporter.CANONICAL_ARTIST_NAMES.get(folded)
+            ArtistImporter.__CANONICAL_ARTIST_NAMES.get(folded)
         if canonical is not None:
             return canonical.casefold(), canonical
         return folded, name
@@ -553,42 +471,55 @@ class ArtistImporter:
 
 class CaptureImporter:
     """The capture-import job: applies the optional capture-layer
-    inputs onto the stored songs and artists."""
+    inputs -- the lyrics cache and the Wikidata artist snapshot --
+    onto the stored songs and artists.
 
-    def __init__(self, session: Session) -> None:
+    A None input leaves its capture layer unloaded.  A given
+    artist snapshot applies only its non-empty cells, field by
+    field; the note column is ignored.
+    """
+
+    __ARTIST_FIELDS: ClassVar[dict[str, str]] = {
+        "qid": "wikidata_qid",
+        "gender": "gender",
+        "type": "type",
+        "genre": "genre",
+        "country": "country",
+    }
+    """The artist CSV columns mapped to the Artist attributes."""
+
+    def __init__(self, session: Session, lyrics_dir: Path | None,
+                 wikidata_csv: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
-        """
-        self.__session: Session = session
-
-    def import_captures(self, lyrics_dir: Path | None,
-                        wikidata_csv: Path | None) -> None:
-        """Apply the optional capture-layer inputs onto the store.
-
-        A None input leaves its capture layer unloaded.  When
-        ``lyrics_dir`` is given, its cached lyrics files load into
-        the matching songs (see `__load_lyrics`).  When
-        ``wikidata_csv`` is given, it applies onto the artist rows
-        (see `__apply_artist_csv`).  When the method returns, the
-        applied changes are queryable in the session.
-
         :param lyrics_dir: The lyrics cache directory to load, or
             None to skip the lyrics capture layer.
         :param wikidata_csv: The Wikidata artist snapshot CSV file
             to apply, or None to skip the artist capture layer.
+        """
+        self.__session: Session = session
+        self.__lyrics_dir: Path | None = lyrics_dir
+        self.__wikidata_csv: Path | None = wikidata_csv
+
+    def run(self) -> None:
+        """Apply the optional capture-layer inputs onto the store.
+
+        When the method returns, the applied changes are queryable
+        in the session.
+
         :return: None.
         :raises BuildError: When ``lyrics_dir`` does not exist, or
             a name in ``wikidata_csv`` matches no artist.
         :raises OSError: When a capture file cannot be read.
         """
-        if lyrics_dir is not None:
-            if not lyrics_dir.is_dir():
+        if self.__lyrics_dir is not None:
+            if not self.__lyrics_dir.is_dir():
                 raise BuildError(
-                    f"{lyrics_dir}: no such directory")
-            self.__load_lyrics(lyrics_dir)
-        if wikidata_csv is not None:
-            self.__apply_artist_csv(wikidata_csv)
+                    f"{self.__lyrics_dir}: no such directory")
+            self.__load_lyrics(self.__lyrics_dir)
+        if self.__wikidata_csv is not None:
+            self.__apply_artist_csv(self.__wikidata_csv)
         self.__session.flush()
 
     def __load_lyrics(self, directory: Path) -> None:
@@ -615,8 +546,7 @@ class CaptureImporter:
     def __apply_artist_csv(self, path: Path) -> None:
         """Apply an artist attribute CSV onto the artist rows.
 
-        Artists match by exact name.  Only the non-empty cells are
-        applied, field by field.  The note column is ignored.
+        Artists match by exact name.
 
         :param path: The CSV file with the columns name, qid,
             gender, type, genre, country, and note.
@@ -636,7 +566,8 @@ class CaptureImporter:
                         f" \"{row['name']}\"")
                 column: str
                 attribute: str
-                for column, attribute in ARTIST_FIELDS.items():
+                for column, attribute in \
+                        self.__ARTIST_FIELDS.items():
                     if row.get(column):
                         setattr(artist, attribute, row[column])
 
@@ -647,7 +578,7 @@ class PerformerGenderDeriver:
     performing acts, a credited artist without an artist type
     taking no part."""
 
-    MIXED: str = "mixed"
+    __MIXED: ClassVar[str] = "mixed"
     """The performer gender of a song whose performing credited
     artists do not all share one gender."""
 
@@ -658,7 +589,7 @@ class PerformerGenderDeriver:
         """
         self.__session: Session = session
 
-    def derive_performer_genders(self) -> None:
+    def run(self) -> None:
         """Set the performer gender of every stored song.
 
         Reads the songs back from the database, including any songs
@@ -685,12 +616,12 @@ class PerformerGenderDeriver:
         """Combine the performing artists' genders into one value.
 
         A gender that is None or empty counts as unknown.  Two or
-        more distinct known genders give ``MIXED``, an unknown one
-        notwithstanding, as an unknown cannot undo a disagreement.
-        A single known gender shared by every given artist gives
-        that gender.  Anything else -- a single known gender
-        alongside an unknown one, no known gender at all, or no
-        gender given at all -- gives None.
+        more distinct known genders give the mixed gender, an
+        unknown one notwithstanding, as an unknown cannot undo a
+        disagreement.  A single known gender shared by every given
+        artist gives that gender.  Anything else -- a single known
+        gender alongside an unknown one, no known gender at all, or
+        no gender given at all -- gives None.
 
         :param genders: The genders of the performing artists
             credited on one song, in any order.
@@ -700,70 +631,138 @@ class PerformerGenderDeriver:
         values: list[str | None] = list(genders)
         known: set[str] = {x for x in values if x}
         if len(known) > 1:
-            return cls.MIXED
+            return cls.__MIXED
         if len(known) == 1 and all(x for x in values):
             return known.pop()
         return None
 
 
-class GenderCorrectionImporter:
-    """The gender-correction job: overrides the derived performer
-    gender of the stored songs it names."""
+class ColumnCheckedImporter:
+    """The shared skeleton of an optional, header-checked CSV
+    importer: a None path leaves the layer unloaded; otherwise the
+    header is validated and every row imports within one flush.
+    A subclass supplies its required columns to the constructor and
+    overrides `prepare` and `import_row` for its own row-handling.
+    """
 
-    COLUMNS: tuple[str, ...] = (
+    def __init__(self, session: Session, path: Path | None,
+                 columns: Sequence[str]) -> None:
+        """Initialize the shared importer skeleton.
+
+        :param session: The database session.
+        :param path: The CSV file to import, or None to skip.
+        :param columns: The required column names of the file.
+        """
+        self.__session: Session = session
+        self.__path: Path | None = path
+        self.__columns: Sequence[str] = columns
+
+    @property
+    def session(self) -> Session:
+        """The database session."""
+        return self.__session
+
+    @property
+    def path(self) -> Path | None:
+        """The CSV file being imported, or None when skipped."""
+        return self.__path
+
+    def run(self) -> None:
+        """Validate the header and import every row of the file.
+
+        A None path leaves the layer unloaded.  Otherwise calls
+        `prepare` once, then `import_row` for every data row, and
+        flushes the session once every row is stored.
+
+        :return: None.
+        :raises BuildError: When the file lacks a required column,
+            or a subclass raises importing a row.
+        :raises OSError: When the file cannot be read.
+        """
+        if self.__path is None:
+            return
+        self.prepare()
+        with open(self.__path, encoding="utf-8",
+                  newline="") as file:
+            reader: csv.DictReader[str] = csv.DictReader(file)
+            self.__check_columns(reader.fieldnames)
+            row: dict[str, str]
+            for row in reader:
+                self.import_row(row)
+        self.__session.flush()
+
+    def __check_columns(
+            self, fieldnames: Sequence[str] | None) -> None:
+        """Verify the CSV file has the required columns.
+
+        :param fieldnames: The header row of the file, or None
+            when the file is empty.
+        :return: None.
+        :raises BuildError: When a required column is absent.
+        """
+        header: Sequence[str] = fieldnames or ()
+        missing: list[str] = [
+            x for x in self.__columns if x not in header]
+        if len(missing) > 0:
+            raise BuildError(
+                f"{self.__path}: missing column(s):"
+                f" {', '.join(missing)}")
+
+    def prepare(self) -> None:
+        """Set up any state needed before the rows import.
+
+        The default is a no-op; a subclass overrides this to load
+        database lookups needed by `import_row`.
+
+        :return: None.
+        """
+        return None
+
+    def import_row(self, row: dict[str, str]) -> None:
+        """Import one data row.
+
+        A subclass overrides this to store the row.
+
+        :param row: The CSV row.
+        :return: None.
+        """
+        raise NotImplementedError
+
+
+class GenderCorrectionImporter(ColumnCheckedImporter):
+    """The gender-correction job: overrides the derived performer
+    gender of the stored songs it names, matched by exact title and
+    exact artist credit, with the performer gender column stored
+    verbatim.  Run this after `PerformerGenderDeriver`, so a
+    correction overrides the derived value.
+    """
+
+    __COLUMNS: ClassVar[tuple[str, ...]] = (
         "Title", "Artist Credit", "Performer Gender", "Note")
     """The required columns of the gender correction CSV file."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, path: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
+        :param path: The gender correction table CSV file to
+            apply, or None to skip the corrections.
         """
-        self.__session: Session = session
+        super().__init__(session, path, self.__COLUMNS)
+        self.__songs: dict[tuple[str, str], Song] = {}
 
-    def import_gender_corrections(self, path: Path | None) -> None:
-        """Apply the gender correction table onto the stored songs.
+    def prepare(self) -> None:
+        """Load the stored songs, keyed by title and artist credit.
 
-        A None input leaves the derived performer genders
-        untouched.  Otherwise every row of the CSV file matches one
-        stored song by its exact title and exact artist credit and
-        sets ``Song.performer_gender`` to the row's performer
-        gender column verbatim; the note column is ignored.  Apply
-        this after `PerformerGenderDeriver.derive_performer_genders`
-        has run, so a correction overrides the derived value.  When
-        the method returns, the applied corrections are queryable
-        in the session.
-
-        :param path: The gender correction table CSV file to apply,
-            or None to skip the corrections.
         :return: None.
-        :raises BuildError: When the file lacks a required column,
-            or a row names a song that the store does not have.
-        :raises OSError: When the file cannot be read.
         """
-        if path is None:
-            return
-        songs: dict[tuple[str, str], Song] = {
+        self.__songs = {
             (x.title, x.artist_credit): x
-            for x in self.__session.scalars(sa.select(Song))}
-        with open(path, encoding="utf-8", newline="") as file:
-            reader: csv.DictReader[str] = csv.DictReader(file)
-            self.__check_columns(path, reader.fieldnames)
-            row: dict[str, str]
-            for row in reader:
-                self.__apply_correction(path, songs, row)
-        self.__session.flush()
+            for x in self.session.scalars(sa.select(Song))}
 
-    @staticmethod
-    def __apply_correction(path: Path,
-                           songs: dict[tuple[str, str], Song],
-                           row: dict[str, str]) -> None:
+    def import_row(self, row: dict[str, str]) -> None:
         """Apply one gender correction row.
 
-        :param path: The gender correction CSV file, for the error
-            message.
-        :param songs: The stored songs, keyed by the title and the
-            artist credit.
         :param row: The gender correction CSV row.
         :return: None.
         :raises BuildError: When the row names a song that the
@@ -771,93 +770,49 @@ class GenderCorrectionImporter:
         """
         key: tuple[str, str] = (
             row["Title"], row["Artist Credit"])
-        song: Song | None = songs.get(key)
+        song: Song | None = self.__songs.get(key)
         if song is None:
             raise BuildError(
-                f"{path}: no song \"{row['Title']}\" by"
+                f"{self.path}: no song \"{row['Title']}\" by"
                 f" \"{row['Artist Credit']}\"")
         song.performer_gender = row["Performer Gender"]
 
-    @classmethod
-    def __check_columns(cls, path: Path,
-                        fieldnames: Sequence[str] | None) -> None:
-        """Verify the gender correction CSV file has the required
-        columns.
 
-        :param path: The gender correction CSV file.
-        :param fieldnames: The header row of the file, or None
-            when the file is empty.
-        :return: None.
-        :raises BuildError: When a required column is absent.
-        """
-        header: Sequence[str] = fieldnames or ()
-        missing: list[str] = [
-            x for x in cls.COLUMNS if x not in header]
-        if len(missing) > 0:
-            raise BuildError(
-                f"{path}: missing column(s): {', '.join(missing)}")
-
-
-class CodingImporter:
+class CodingImporter(ColumnCheckedImporter):
     """The coding-import job: loads the settled coding table onto
-    the stored songs."""
+    the stored songs, matched by exact title and exact artist
+    credit, with the quote column stored verbatim; a quote carries
+    the lyric line-break convention ``" / "`` where the lyric has a
+    line break, and an empty quote column stores an empty string.
+    """
 
-    COLUMNS: tuple[str, ...] = (
+    __COLUMNS: ClassVar[tuple[str, ...]] = (
         "Song", "Artist Credit", "Keyword", "Quote")
     """The required columns of the coding CSV file."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, path: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
-        """
-        self.__session: Session = session
-
-    def import_codings(self, path: Path | None) -> None:
-        """Load the settled coding table onto the stored songs.
-
-        A None input leaves the coding unloaded.  Otherwise every
-        row of the CSV file yields one coding of the song named by
-        its title and artist credit, with the quote column stored
-        verbatim; a quote carries the lyric line-break convention
-        ``" / "`` where the lyric has a line break, and an empty
-        quote column stores an empty string.  When the method
-        returns, the imported codings are queryable in the
-        session.
-
         :param path: The settled coding table CSV file to import,
             or None to skip the coding.
-        :return: None.
-        :raises BuildError: When the file lacks a required column,
-            a row names a song that the store does not have, or two
-            rows name the same song and keyword.
-        :raises OSError: When the file cannot be read.
         """
-        if path is None:
-            return
-        songs: dict[tuple[str, str], Song] = {
-            (x.title, x.artist_credit): x
-            for x in self.__session.scalars(sa.select(Song))}
-        seen: set[tuple[int, str]] = set()
-        with open(path, encoding="utf-8", newline="") as file:
-            reader: csv.DictReader[str] = csv.DictReader(file)
-            self.__check_columns(path, reader.fieldnames)
-            row: dict[str, str]
-            for row in reader:
-                self.__import_coding(path, songs, seen, row)
-        self.__session.flush()
+        super().__init__(session, path, self.__COLUMNS)
+        self.__songs: dict[tuple[str, str], Song] = {}
+        self.__seen: set[tuple[int, str]] = set()
 
-    def __import_coding(self, path: Path,
-                        songs: dict[tuple[str, str], Song],
-                        seen: set[tuple[int, str]],
-                        row: dict[str, str]) -> None:
+    def prepare(self) -> None:
+        """Load the stored songs, keyed by title and artist credit.
+
+        :return: None.
+        """
+        self.__songs = {
+            (x.title, x.artist_credit): x
+            for x in self.session.scalars(sa.select(Song))}
+
+    def import_row(self, row: dict[str, str]) -> None:
         """Store one coding row.
 
-        :param path: The coding CSV file, for the error messages.
-        :param songs: The stored songs, keyed by the title and the
-            artist credit.
-        :param seen: The (song ID, keyword) pairs already stored,
-            updated with the pair of this row.
         :param row: The coding CSV row.
         :return: None.
         :raises BuildError: When the row names a song that the
@@ -865,91 +820,45 @@ class CodingImporter:
             earlier row.
         """
         key: tuple[str, str] = (row["Song"], row["Artist Credit"])
-        song: Song | None = songs.get(key)
+        song: Song | None = self.__songs.get(key)
         if song is None:
             raise BuildError(
-                f"{path}: no song \"{row['Song']}\" by"
+                f"{self.path}: no song \"{row['Song']}\" by"
                 f" \"{row['Artist Credit']}\"")
         coding_key: tuple[int, str] = (song.id, row["Keyword"])
-        if coding_key in seen:
+        if coding_key in self.__seen:
             raise BuildError(
-                f"{path}: duplicated coding: \"{row['Song']}\" by"
-                f" \"{row['Artist Credit']}\", keyword"
+                f"{self.path}: duplicated coding: \"{row['Song']}\""
+                f" by \"{row['Artist Credit']}\", keyword"
                 f" \"{row['Keyword']}\"")
-        seen.add(coding_key)
-        self.__session.add(Coding(
+        self.__seen.add(coding_key)
+        self.session.add(Coding(
             song=song, keyword=row["Keyword"],
             quotes=row["Quote"]))
 
-    @classmethod
-    def __check_columns(cls, path: Path,
-                        fieldnames: Sequence[str] | None) -> None:
-        """Verify the coding CSV file has the required columns.
 
-        :param path: The coding CSV file.
-        :param fieldnames: The header row of the file, or None when
-            the file is empty.
-        :return: None.
-        :raises BuildError: When a required column is absent.
-        """
-        header: Sequence[str] = fieldnames or ()
-        missing: list[str] = [
-            x for x in cls.COLUMNS if x not in header]
-        if len(missing) > 0:
-            raise BuildError(
-                f"{path}: missing column(s): {', '.join(missing)}")
-
-
-class GroupImporter:
+class GroupImporter(ColumnCheckedImporter):
     """The group-import job: loads the settled code group table
-    into the working store."""
+    into the working store, with the group name, the keyword, and
+    the integer vote count stored verbatim."""
 
-    COLUMNS: tuple[str, ...] = ("Group", "Keyword", "Votes")
+    __COLUMNS: ClassVar[tuple[str, ...]] = (
+        "Group", "Keyword", "Votes")
     """The required columns of the group CSV file."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, path: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
-        """
-        self.__session: Session = session
-
-    def import_groups(self, path: Path | None) -> None:
-        """Load the settled code group table into the store.
-
-        A None input leaves the groups unloaded.  Otherwise every
-        row of the CSV file yields one member keyword of one
-        group, with the group name, the keyword, and the integer
-        vote count stored verbatim.  When the method returns, the
-        imported groups are queryable in the session.
-
         :param path: The settled code group table CSV file to
             import, or None to skip the groups.
-        :return: None.
-        :raises BuildError: When the file lacks a required
-            column, a votes field is not an integer, or two rows
-            name the same group and keyword.
-        :raises OSError: When the file cannot be read.
         """
-        if path is None:
-            return
-        seen: set[tuple[str, str]] = set()
-        with open(path, encoding="utf-8", newline="") as file:
-            reader: csv.DictReader[str] = csv.DictReader(file)
-            self.__check_columns(path, reader.fieldnames)
-            row: dict[str, str]
-            for row in reader:
-                self.__import_group_row(path, seen, row)
-        self.__session.flush()
+        super().__init__(session, path, self.__COLUMNS)
+        self.__seen: set[tuple[str, str]] = set()
 
-    def __import_group_row(self, path: Path,
-                           seen: set[tuple[str, str]],
-                           row: dict[str, str]) -> None:
+    def import_row(self, row: dict[str, str]) -> None:
         """Store one group member row.
 
-        :param path: The group CSV file, for the error messages.
-        :param seen: The (group, keyword) pairs already stored,
-            updated with the pair of this row.
         :param row: The group CSV row.
         :return: None.
         :raises BuildError: When the votes field is not an
@@ -957,196 +866,103 @@ class GroupImporter:
             row.
         """
         key: tuple[str, str] = (row["Group"], row["Keyword"])
-        if key in seen:
+        if key in self.__seen:
             raise BuildError(
-                f"{path}: duplicated group member: group"
+                f"{self.path}: duplicated group member: group"
                 f" \"{row['Group']}\", keyword"
                 f" \"{row['Keyword']}\"")
-        seen.add(key)
+        self.__seen.add(key)
         votes: int
         try:
             votes = int(row["Votes"])
         except ValueError as error:
             raise BuildError(
-                f"{path}: group \"{row['Group']}\", keyword"
+                f"{self.path}: group \"{row['Group']}\", keyword"
                 f" \"{row['Keyword']}\": votes"
                 f" \"{row['Votes']}\" is not an integer"
             ) from error
-        self.__session.add(CodeGroup(
+        self.session.add(CodeGroup(
             group=row["Group"], keyword=row["Keyword"],
             votes=votes))
 
-    @classmethod
-    def __check_columns(cls, path: Path,
-                        fieldnames: Sequence[str] | None) -> None:
-        """Verify the group CSV file has the required columns.
 
-        :param path: The group CSV file.
-        :param fieldnames: The header row of the file, or None
-            when the file is empty.
-        :return: None.
-        :raises BuildError: When a required column is absent.
-        """
-        header: Sequence[str] = fieldnames or ()
-        missing: list[str] = [
-            x for x in cls.COLUMNS if x not in header]
-        if len(missing) > 0:
-            raise BuildError(
-                f"{path}: missing column(s): {', '.join(missing)}")
-
-
-class PatternImporter:
+class PatternImporter(ColumnCheckedImporter):
     """The pattern-import job: loads the pattern definition table
-    into the working store."""
+    into the working store, with the pattern ID, the group, the
+    name, and the description stored verbatim."""
 
-    COLUMNS: tuple[str, ...] = (
+    __COLUMNS: ClassVar[tuple[str, ...]] = (
         "Pattern", "Group", "Name", "Description")
     """The required columns of the pattern CSV file."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, path: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
-        """
-        self.__session: Session = session
-
-    def import_patterns(self, path: Path | None) -> None:
-        """Load the pattern definition table into the store.
-
-        A None input leaves the patterns unloaded.  Otherwise
-        every row of the CSV file stores one pattern, with the
-        pattern ID, the group, the name, and the description
-        stored verbatim.  When the method returns, the imported
-        patterns are queryable in the session.
-
         :param path: The pattern definition table CSV file to
             import, or None to skip the patterns.
-        :return: None.
-        :raises BuildError: When the file lacks a required
-            column, or two rows name the same pattern ID.
-        :raises OSError: When the file cannot be read.
         """
-        if path is None:
-            return
-        seen: set[str] = set()
-        with open(path, encoding="utf-8", newline="") as file:
-            reader: csv.DictReader[str] = csv.DictReader(file)
-            self.__check_columns(path, reader.fieldnames)
-            row: dict[str, str]
-            for row in reader:
-                self.__import_pattern_row(path, seen, row)
-        self.__session.flush()
+        super().__init__(session, path, self.__COLUMNS)
+        self.__seen: set[str] = set()
 
-    def __import_pattern_row(self, path: Path, seen: set[str],
-                             row: dict[str, str]) -> None:
+    def import_row(self, row: dict[str, str]) -> None:
         """Store one pattern row.
 
-        :param path: The pattern CSV file, for the error messages.
-        :param seen: The pattern IDs already stored, updated with
-            this row's pattern ID.
         :param row: The pattern CSV row.
         :return: None.
         :raises BuildError: When the pattern ID repeats an
             earlier row.
         """
-        if row["Pattern"] in seen:
+        if row["Pattern"] in self.__seen:
             raise BuildError(
-                f"{path}: duplicated pattern \"{row['Pattern']}\"")
-        seen.add(row["Pattern"])
-        self.__session.add(Pattern(
+                f"{self.path}: duplicated pattern"
+                f" \"{row['Pattern']}\"")
+        self.__seen.add(row["Pattern"])
+        self.session.add(Pattern(
             pattern=row["Pattern"], group=row["Group"],
             name=row["Name"], description=row["Description"]))
 
-    @classmethod
-    def __check_columns(cls, path: Path,
-                        fieldnames: Sequence[str] | None) -> None:
-        """Verify the pattern CSV file has the required columns.
 
-        :param path: The pattern CSV file.
-        :param fieldnames: The header row of the file, or None
-            when the file is empty.
-        :return: None.
-        :raises BuildError: When a required column is absent.
-        """
-        header: Sequence[str] = fieldnames or ()
-        missing: list[str] = [
-            x for x in cls.COLUMNS if x not in header]
-        if len(missing) > 0:
-            raise BuildError(
-                f"{path}: missing column(s): {', '.join(missing)}")
-
-
-class AnnotationImporter:
+class AnnotationImporter(ColumnCheckedImporter):
     """The annotation-import job: loads the settled pattern
-    annotation table onto the stored songs."""
+    annotation table onto the stored songs, linking the song named
+    by its title and artist credit to the stored pattern named by
+    its pattern ID, with the integer vote count stored verbatim.
+    Import the pattern table first (see `PatternImporter`), so
+    every named pattern is already stored.
+    """
 
-    COLUMNS: tuple[str, ...] = (
+    __COLUMNS: ClassVar[tuple[str, ...]] = (
         "Song", "Artist Credit", "Pattern", "Votes")
     """The required columns of the annotation CSV file."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, path: Path | None) -> None:
         """Initialize the importer.
 
         :param session: The database session.
-        """
-        self.__session: Session = session
-
-    def import_annotations(self, path: Path | None) -> None:
-        """Load the settled pattern annotation table onto the
-        stored songs.
-
-        A None input leaves the annotations unloaded.  Otherwise
-        every row of the CSV file yields one annotation linking
-        the song named by its title and artist credit to the
-        stored pattern named by its pattern ID, with the integer
-        vote count stored verbatim.  Import the pattern table
-        first (see `PatternImporter`), so every named pattern is
-        already stored.  When the method returns, the imported
-        annotations are queryable in the session.
-
         :param path: The settled pattern annotation table CSV
             file to import, or None to skip the annotations.
-        :return: None.
-        :raises BuildError: When the file lacks a required
-            column, a row names a song that the store does not
-            have, a row names a pattern that the store does not
-            have, a votes field is not an integer, or two rows
-            name the same song and pattern.
-        :raises OSError: When the file cannot be read.
         """
-        if path is None:
-            return
-        songs: dict[tuple[str, str], Song] = {
-            (x.title, x.artist_credit): x
-            for x in self.__session.scalars(sa.select(Song))}
-        patterns: dict[str, Pattern] = {
-            x.pattern: x
-            for x in self.__session.scalars(sa.select(Pattern))}
-        seen: set[tuple[int, str]] = set()
-        with open(path, encoding="utf-8", newline="") as file:
-            reader: csv.DictReader[str] = csv.DictReader(file)
-            self.__check_columns(path, reader.fieldnames)
-            row: dict[str, str]
-            for row in reader:
-                self.__import_annotation(
-                    path, songs, patterns, seen, row)
-        self.__session.flush()
+        super().__init__(session, path, self.__COLUMNS)
+        self.__songs: dict[tuple[str, str], Song] = {}
+        self.__patterns: dict[str, Pattern] = {}
+        self.__seen: set[tuple[int, str]] = set()
 
-    def __import_annotation(
-            self, path: Path, songs: dict[tuple[str, str], Song],
-            patterns: dict[str, Pattern],
-            seen: set[tuple[int, str]],
-            row: dict[str, str]) -> None:
+    def prepare(self) -> None:
+        """Load the stored songs and patterns for the row lookups.
+
+        :return: None.
+        """
+        self.__songs = {
+            (x.title, x.artist_credit): x
+            for x in self.session.scalars(sa.select(Song))}
+        self.__patterns = {
+            x.pattern: x
+            for x in self.session.scalars(sa.select(Pattern))}
+
+    def import_row(self, row: dict[str, str]) -> None:
         """Store one annotation row.
 
-        :param path: The annotation CSV file, for the error
-            messages.
-        :param songs: The stored songs, keyed by the title and
-            the artist credit.
-        :param patterns: The stored patterns, keyed by the
-            pattern ID.
-        :param seen: The (song ID, pattern ID) pairs already
-            stored, updated with the pair of this row.
         :param row: The annotation CSV row.
         :return: None.
         :raises BuildError: When the row names a song that the
@@ -1155,54 +971,35 @@ class AnnotationImporter:
             its song and pattern repeat an earlier row.
         """
         key: tuple[str, str] = (row["Song"], row["Artist Credit"])
-        song: Song | None = songs.get(key)
+        song: Song | None = self.__songs.get(key)
         if song is None:
             raise BuildError(
-                f"{path}: no song \"{row['Song']}\" by"
+                f"{self.path}: no song \"{row['Song']}\" by"
                 f" \"{row['Artist Credit']}\"")
-        pattern: Pattern | None = patterns.get(row["Pattern"])
+        pattern: Pattern | None = self.__patterns.get(row["Pattern"])
         if pattern is None:
             raise BuildError(
-                f"{path}: no pattern \"{row['Pattern']}\"")
+                f"{self.path}: no pattern \"{row['Pattern']}\"")
         annotation_key: tuple[int, str] = (
             song.id, pattern.pattern)
-        if annotation_key in seen:
+        if annotation_key in self.__seen:
             raise BuildError(
-                f"{path}: duplicated annotation: \"{row['Song']}\""
-                f" by \"{row['Artist Credit']}\", pattern"
-                f" \"{row['Pattern']}\"")
-        seen.add(annotation_key)
+                f"{self.path}: duplicated annotation:"
+                f" \"{row['Song']}\" by \"{row['Artist Credit']}\","
+                f" pattern \"{row['Pattern']}\"")
+        self.__seen.add(annotation_key)
         votes: int
         try:
             votes = int(row["Votes"])
         except ValueError as error:
             raise BuildError(
-                f"{path}: \"{row['Song']}\" by"
+                f"{self.path}: \"{row['Song']}\" by"
                 f" \"{row['Artist Credit']}\", pattern"
                 f" \"{row['Pattern']}\": votes"
                 f" \"{row['Votes']}\" is not an integer"
             ) from error
-        self.__session.add(Annotation(
+        self.session.add(Annotation(
             song=song, pattern=pattern, votes=votes))
-
-    @classmethod
-    def __check_columns(cls, path: Path,
-                        fieldnames: Sequence[str] | None) -> None:
-        """Verify the annotation CSV file has the required
-        columns.
-
-        :param path: The annotation CSV file.
-        :param fieldnames: The header row of the file, or None
-            when the file is empty.
-        :return: None.
-        :raises BuildError: When a required column is absent.
-        """
-        header: Sequence[str] = fieldnames or ()
-        missing: list[str] = [
-            x for x in cls.COLUMNS if x not in header]
-        if len(missing) > 0:
-            raise BuildError(
-                f"{path}: missing column(s): {', '.join(missing)}")
 
 
 @dataclass
@@ -1213,14 +1010,6 @@ class StoreCounts:
     """The number of the songs."""
     artists: int
     """The number of the artists."""
-    codings: int
-    """The number of the settled codings."""
-    groups: int
-    """The number of the settled code group members."""
-    patterns: int
-    """The number of the stored patterns."""
-    annotations: int
-    """The number of the settled pattern annotations."""
 
     @classmethod
     def get_instance(cls, session: Session) -> Self:
@@ -1239,37 +1028,17 @@ class StoreCounts:
             songs=count(
                 sa.select(sa.func.count()).select_from(Song)),
             artists=count(
-                sa.select(sa.func.count()).select_from(Artist)),
-            codings=count(
-                sa.select(sa.func.count()).select_from(Coding)),
-            groups=count(
-                sa.select(sa.func.count()).select_from(CodeGroup)),
-            patterns=count(
-                sa.select(sa.func.count()).select_from(Pattern)),
-            annotations=count(
-                sa.select(sa.func.count())
-                .select_from(Annotation)))
-
-
-def reset_store(session: Session) -> None:
-    """Delete all the rows from every table of the store.
-
-    :param session: The database session.
-    :return: None.
-    """
-    model: type[Base]
-    for model in (CodeGroup, Coding, Annotation, SongArtist,
-                  ChartEntry, Song, Pattern, Artist):
-        session.execute(sa.delete(model))
+                sa.select(sa.func.count()).select_from(Artist)))
 
 
 class CSVExporter:
-    """Writes the review CSV files mirroring the working store."""
+    """Writes the review CSV files mirroring the working store,
+    without a song or an artist ID, on a successful build."""
 
-    __SONGS_HEADER: tuple[str, ...] = (
+    __SONGS_HEADER: ClassVar[tuple[str, ...]] = (
         "Title", "Artists", "Positions", "Performer Gender")
     """The header row of ``songs.csv``, for human readers."""
-    __ARTISTS_HEADER: tuple[str, ...] = (
+    __ARTISTS_HEADER: ClassVar[tuple[str, ...]] = (
         "Name", "Wikidata QID", "Gender", "Type", "Genre", "Country",
         "Songs")
     """The header row of ``artists.csv``, for human readers."""
@@ -1402,6 +1171,139 @@ class CSVExporter:
         return rows
 
 
+class StoreBuilder:
+    """The orchestrator of a full working store rebuild: resets the
+    store, runs the importers and derivers in the pipeline order,
+    and writes the review CSV files, all in one transaction
+    committed only on success."""
+
+    def __init__(
+            self, chart_csv: Path, derived_dir: Path,
+            lyrics_dir: Path | None, wikidata_csv: Path | None,
+            codings: Path | None, groups: Path | None,
+            gender_corrections: Path | None,
+            patterns: Path | None,
+            annotations: Path | None) -> None:
+        """Set up the builder of the working store rebuild.
+
+        :param chart_csv: The year-end chart CSV file.
+        :param derived_dir: The output directory for the review
+            CSV files.
+        :param lyrics_dir: The lyrics cache directory to load, or
+            None to skip it.
+        :param wikidata_csv: The Wikidata artist snapshot CSV file
+            to apply, or None to skip it.
+        :param codings: The settled coding table CSV file to
+            import, or None to skip it.
+        :param groups: The settled code group table CSV file to
+            import, or None to skip it.
+        :param gender_corrections: The gender correction table CSV
+            file to apply, or None to skip it.
+        :param patterns: The pattern definition table CSV file to
+            import, or None to skip it.
+        :param annotations: The settled pattern annotation table
+            CSV file to import, or None to skip it.
+        """
+        self.__chart_csv: Path = chart_csv
+        self.__derived_dir: Path = derived_dir
+        self.__lyrics_dir: Path | None = lyrics_dir
+        self.__wikidata_csv: Path | None = wikidata_csv
+        self.__codings: Path | None = codings
+        self.__groups: Path | None = groups
+        self.__gender_corrections: Path | None = gender_corrections
+        self.__patterns: Path | None = patterns
+        self.__annotations: Path | None = annotations
+
+    def run(self) -> StoreCounts:
+        """Rebuild the working store from the configured inputs.
+
+        :return: The row counts of the rebuilt working store.
+        :raises BuildError: When an input is malformed, as
+            detailed on the importer and deriver classes.
+        :raises OSError: When an input or output file cannot be
+            read or written.
+        """
+        Base.metadata.create_all(ds.engine)
+        session: Session = ds.get_db()
+        counts: StoreCounts
+        try:
+            self.__reset_store(session)
+            SongImporter(session, self.__chart_csv).run()
+            ArtistImporter(session).run()
+            CaptureImporter(
+                session, self.__lyrics_dir,
+                self.__wikidata_csv).run()
+            PerformerGenderDeriver(session).run()
+            GenderCorrectionImporter(
+                session, self.__gender_corrections).run()
+            CodingImporter(session, self.__codings).run()
+            GroupImporter(session, self.__groups).run()
+            PatternImporter(session, self.__patterns).run()
+            AnnotationImporter(session, self.__annotations).run()
+            counts = StoreCounts.get_instance(session)
+            CSVExporter(session, self.__derived_dir).write()
+            session.commit()
+        except (OSError, BuildError):
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return counts
+
+    @staticmethod
+    def __reset_store(session: Session) -> None:
+        """Delete all the rows from every table of the store.
+
+        :param session: The database session.
+        :return: None.
+        """
+        model: type[Base]
+        for model in (CodeGroup, Coding, Annotation, SongArtist,
+                      ChartEntry, Song, Pattern, Artist):
+            session.execute(sa.delete(model))
+
+
+def parse_args(argv: list[str] | None) -> argparse.Namespace:
+    """Parse the command-line arguments.
+
+    :param argv: The command-line arguments, or None for
+        ``sys.argv``.
+    :return: The parsed arguments.
+    """
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Rebuild the SQLite working store from the"
+                    " committed inputs.")
+    parser.add_argument(
+        "chart_csv", type=Path,
+        help="the year-end chart CSV file")
+    parser.add_argument(
+        "derived_dir", type=Path,
+        help="the output directory for the review CSV files")
+    parser.add_argument(
+        "--lyrics-dir", type=Path, default=None,
+        help="the lyrics cache directory to load")
+    parser.add_argument(
+        "--wikidata-csv", type=Path, default=None,
+        help="the Wikidata artist snapshot CSV file to apply")
+    parser.add_argument(
+        "--codings", type=Path, default=None,
+        help="the settled coding table CSV file to import")
+    parser.add_argument(
+        "--groups", type=Path, default=None,
+        help="the settled code group table CSV file to import")
+    parser.add_argument(
+        "--gender-corrections", type=Path, default=None,
+        help="the gender correction table CSV file to apply")
+    parser.add_argument(
+        "--patterns", type=Path, default=None,
+        help="the pattern definition table CSV file to import")
+    parser.add_argument(
+        "--annotations", type=Path, default=None,
+        help="the settled pattern annotation table CSV file to"
+             " import")
+    return parser.parse_args(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Rebuild the SQLite working store from the inputs.
 
@@ -1411,37 +1313,17 @@ def main(argv: list[str] | None = None) -> int:
     """
     started: float = time.monotonic()
     args: argparse.Namespace = parse_args(argv)
-    Base.metadata.create_all(ds.engine)
-    session: Session = ds.get_db()
-    counts: StoreCounts
     try:
-        reset_store(session)
-        SongImporter(session).import_songs(args.chart_csv)
-        ArtistImporter(session).import_artists()
-        CaptureImporter(session).import_captures(
-            args.lyrics_dir, args.wikidata_csv)
-        PerformerGenderDeriver(session).derive_performer_genders()
-        GenderCorrectionImporter(session).import_gender_corrections(
-            args.gender_corrections)
-        CodingImporter(session).import_codings(args.codings)
-        GroupImporter(session).import_groups(args.groups)
-        PatternImporter(session).import_patterns(args.patterns)
-        AnnotationImporter(session).import_annotations(
-            args.annotations)
-        counts = StoreCounts.get_instance(session)
-        CSVExporter(session, args.derived_dir).write()
-        session.commit()
+        counts: StoreCounts = StoreBuilder(
+            args.chart_csv, args.derived_dir, args.lyrics_dir,
+            args.wikidata_csv, args.codings, args.groups,
+            args.gender_corrections, args.patterns,
+            args.annotations).run()
     except (OSError, BuildError) as error:
-        session.rollback()
         print(f"error: {error}", file=sys.stderr)
         return 1
-    finally:
-        session.close()
     elapsed: str = format_duration(time.monotonic() - started)
-    print(f"Done.  {counts.songs} songs/{counts.artists} artists"
-          f"/{counts.codings} codings/{counts.groups} group"
-          f" members/{counts.patterns} patterns"
-          f"/{counts.annotations} annotations.  {elapsed}"
-          " elapsed.",
+    print(f"Done.  {counts.songs} songs/{counts.artists} artists."
+          f"  {elapsed} elapsed.",
           file=sys.stderr)
     return 0

@@ -6,49 +6,16 @@ r"""The majority tally of the three coding runs.
 
 Settles the coding step: the same coding definition file is run
 three times independently, and this command counts the votes and
-writes the final coding table the paper cites, as the CSV file
-given as the fourth positional command-line argument.  Only the
-keyword key sets of the three runs' archived ``output.jsonl``
-files take part in the tally; the lyric quotes never do.  A
-(song, keyword) pair is written out when at least two of the
-three runs assign it, so three votes never tie, and it carries
-the lyric quotes of every run that assigned it, pooled,
-deduplicated, sorted by Unicode code point, and joined with a
-single ``|``: the three runs are peers, so the quote order
-follows the text alone.  A quote carries the lyric line-break
-convention ``" / "`` where the lyric has a newline, applied once
-when the run records load, so the corrections, the coding table,
-and the database all share the one representation and nothing is
-ever converted back.  No lyric of the 883-song corpus contains
-``" / "`` -- a corpus fact checked exhaustively, not a structural
-guarantee -- so the convention is unambiguous here.  The three
-archives must cover exactly the same set of song IDs, every
-record must be a successful result, and every record's "text"
-must parse to a JSON object; otherwise the tally fails and
-nothing is written.
-
-Two optional inputs guard the tally.  ``--corrections`` names a
-CSV file of researcher-reviewed repairs, applied to each run's
-records before anything else happens: a keyword row renames or
-drops one keyword assignment of one song in one run, and an
-evidence row rewrites or drops one lyric quote string wherever it
-appears in that song's record for that run.  Its two text fields
-carry the two characters ``\n`` where the text has a newline, so
-the file holds one row per line.  Every row must match, so a
-stale row fails the run.  ``--valid-keywords`` names a
-plain text file of the allowed keywords, one per line; once the
-corrections are in, every keyword left in any record must appear
-in it.  The order is fixed and matters: the corrections come
-first, so a repair may reunite the votes of a misspelled keyword
-that the check would otherwise reject.  With neither option, no
-record is touched and no vocabulary is checked.
-
-The archives identify a song as ``song-<ID>``, where ``<ID>`` is
-the song's ID in the SQLite working store.  The output table does
-not carry that ID: every song is looked up in the working store
-and written as its title and its stored artist credit instead, so
-this command runs after ``build-db``.  The step is fully
-deterministic; no LLM call is made.
+writes the final coding table the paper cites.  A (song, keyword)
+pair is written out when at least two of the three runs assign
+it, carrying the pooled, deduplicated lyric quotes of the runs
+that assigned it.  ``--corrections`` names a CSV file of
+researcher-reviewed repairs to a run's records, applied before
+the tally.  ``--valid-keywords`` names a plain text file of the
+allowed keywords that every record's keywords must appear in.
+The songs are named from the working store, so this command runs
+after ``build-db``.  When any input is malformed, the tally fails
+and nothing is written; the error message names what failed.
 """
 import argparse
 import csv
@@ -127,11 +94,6 @@ class Correction:
 class CorrectionTable:
     """The researcher-reviewed repairs of the runs' records."""
 
-    MANUAL_CORRECTIONS_CSV: ClassVar[str] \
-        = "coding-corrections.csv"
-    """The correction table CSV file's conventional name under
-    ``data/manual/``."""
-
     path: Path
     """The correction table CSV file the repairs came from."""
     corrections: list[Correction]
@@ -141,7 +103,7 @@ class CorrectionTable:
 class CorrectionsLoader:
     """The loader of the researcher-reviewed correction table."""
 
-    __HEADER: tuple[str, str, str, str, str] = (
+    __HEADER: ClassVar[tuple[str, str, str, str, str]] = (
         "Song ID", "Run", "Type", "To Be Replaced", "Correct Term")
     """The header row the correction table CSV file must carry."""
 
@@ -164,10 +126,8 @@ class CorrectionsLoader:
         of the runs the command was given, and a known type.  The
         file is read with the CSV reader, so a quoted field may
         hold a comma or a double quote.  No field holds a line
-        break: the two text fields carry the lyric line-break
-        convention ``" / "`` where the text has a newline -- the
-        same representation the loaded run records carry -- and
-        are matched and applied verbatim.  Nothing is written.
+        break (see the line-break convention on
+        ``CodingTallier``).  Nothing is written.
 
         :return: The repairs, in file order.
         :raises TallyError: When the file cannot be read, the
@@ -340,16 +300,16 @@ class TalliedCodings:
 class CodingTallier:
     """The tallier of the three coding runs' keyword votes."""
 
-    __MAJORITY: int = 2
+    __MAJORITY: ClassVar[int] = 2
     """The number of runs that must assign a keyword to a song for
     that code to be settled."""
-    __MAX_REPORTED_IDS: int = 10
+    __MAX_REPORTED_IDS: ClassVar[int] = 10
     """The number of song IDs an error message lists before
     summarizing the rest as a count."""
-    __QUOTE_SEPARATOR: str = "|"
+    __QUOTE_SEPARATOR: ClassVar[str] = "|"
     """The separator between the distinct lyric quotes of one
     settled code."""
-    __LINE_BREAK: str = " / "
+    __LINE_BREAK: ClassVar[str] = " / "
     """The lyric line-break convention replacing every LF inside a
     quote.  Unambiguous for this corpus only: none of the 883
     songs' lyrics contains the three characters, checked
@@ -616,11 +576,8 @@ class CodingTallier:
             if line.strip() == "":
                 continue
             record: Any = cls.__parse_json(line, str(path))
-            if not isinstance(record, dict) or "id" not in record:
-                raise ValueError(
-                    f"{path}: record without \"id\": {line}")
             item_id: Any = record["id"]
-            if "error" in record or "text" not in record:
+            if "text" not in record:
                 raise ValueError(
                     f"{path}: id {item_id}: not a successful"
                     " result")
@@ -647,8 +604,8 @@ class CodingTallier:
         :param label: The location of the record, for the error
             message.
         :return: The lyric quotes of every keyword, in the given
-            order, every LF inside a quote turned into the lyric
-            line-break convention ``" / "``.
+            order, every LF inside a quote turned into the
+            line-break convention.
         :raises ValueError: When a keyword's value is not a list
             of strings.
         """
@@ -739,7 +696,7 @@ class CodingTallier:
         first: set[int] = set(runs[0])
         index: int
         records: dict[int, dict[str, list[str]]]
-        for index, records in enumerate(runs):
+        for index, records in enumerate(runs[1:], start=1):
             song_ids: set[int] = set(records)
             if song_ids == first:
                 continue
@@ -813,9 +770,6 @@ class CodingTallier:
 class CodingTable:
     """The final coding table the paper cites."""
 
-    RESULT_CODINGS_CSV: ClassVar[str] = "codings.csv"
-    """The coding table CSV file's conventional name under
-    ``results/``."""
     __HEADER: ClassVar[tuple[str, str, str, str]] \
         = ("Song", "Artist Credit", "Keyword", "Quote")
     """The header row of the coding table CSV file."""
@@ -833,11 +787,8 @@ class CodingTable:
         endings, carrying the header row
         ``Song,Artist Credit,Keyword,Quote`` and one row per
         settled keyword, in the row order.  Every field is
-        written verbatim; a quote carries the lyric line-break
-        convention ``" / "`` where the lyric has a line break, so
-        no field holds a line break and the file holds one row
-        per line.  The parent directory is created when it does
-        not exist.
+        written verbatim, so the file holds one row per line.
+        The parent directory is created when it does not exist.
 
         :param output_csv: The output CSV file.
         :return: None.
@@ -970,8 +921,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="the third coding run's archive directory")
     parser.add_argument(
         "output_csv", type=Path,
-        help="the output CSV file, by convention"
-             f" results/{CodingTable.RESULT_CODINGS_CSV}")
+        help="the output CSV file")
     parser.add_argument(
         "--valid-keywords", type=Path, default=None,
         help="a plain text file of the allowed keywords, one per"
@@ -980,33 +930,23 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--corrections", type=Path, default=None,
         help="the researcher-reviewed correction table CSV file,"
-             " by convention"
-             f" data/manual/{CorrectionTable.MANUAL_CORRECTIONS_CSV},"
              " applied to the runs' records before the tally"
              " (default: no repair)")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    r"""Settle the coding by a majority of the three coding runs.
+    """Settle the coding by a majority of the three coding runs.
 
-    Writes the final coding table as the given CSV file, holding
-    the header row ``Song,Artist Credit,Keyword,Quote`` and one
-    row per keyword at least two of the three runs assign, the
-    song named by its title and its stored artist credit from the
-    SQLite working store, and the keyword carrying the pooled,
-    deduplicated, and sorted lyric quotes of the runs that
-    assigned it, joined with a single ``|`` and carrying the
-    lyric line-break convention ``" / "`` where the lyric has a
-    newline, so the table holds one row per line.  The records are
-    repaired from the ``--corrections`` table and then checked
-    against the ``--valid-keywords`` list, when either is given.
-    Nothing is written when the three archives do not cover the
-    same songs, a record is not a successful result, a record's
-    "text" does not parse to a JSON object of quote string lists,
-    a correction is invalid or matches nothing, a keyword is not
-    in the valid keyword list, or a song is not in the working
-    store; the error message names what failed.
+    Writes the final coding table CSV file described in the
+    module docstring.  The records are repaired from the
+    ``--corrections`` table and then checked against the
+    ``--valid-keywords`` list, when either is given.  Nothing is
+    written when the three archives do not cover the same songs,
+    a record is not a successful result, a correction is invalid
+    or matches nothing, a keyword is not in the valid keyword
+    list, or a song is not in the working store; the error message
+    names what failed.
 
     :param argv: The command-line arguments, or None for
         ``sys.argv``.

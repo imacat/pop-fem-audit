@@ -1,7 +1,7 @@
 # LLM 輸出的契約查核
 
 （2026-08-06 量測。對象為步驟 3 的三份執行歸檔
-`runs/3a-code/run1`–`run3`，共 883 首歌、44,149 筆標籤
+`data/runs/3a-code/run1`–`run3`，共 883 首歌、44,149 筆標籤
 指派、44,146 句引述。歌詞以模型實際看到的那一份為準，即
 `tools/instance/llm-input-code.jsonl`。）
 

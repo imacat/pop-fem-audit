@@ -31,11 +31,11 @@ agent 不得見之）。凡於本專案工作的主會話，動手管線、
   不符預期時，修訂定義檔並重複該循環；絕不手改結果。
 - 一步的每次執行皆自我完備歸檔於 `run-llm` 命令列上
   明示指定的目的目錄下（慣例為
-  `runs/<步驟>/run<N>/`）：定義檔快照、原始輸出與
+  `data/runs/<步驟>/run<N>/`）：定義檔快照、原始輸出與
   `meta.json`（model ID、參數、時間戳、batch ID）。
   一步的 N 次執行即 N 次各自的 `run-llm` 呼叫。覆蓋
   既有執行歸檔須明示旗標；被取代的執行留在 git 歷史。
-  確定性步驟歸檔於 `runs/<步驟>/`，不分 `run<N>` 層。
+  確定性步驟歸檔於 `data/runs/<步驟>/`，不分 `run<N>` 層。
 - 每次 `run-llm` 執行的 token 用量與費用記入
   `docs/run-costs.md`，與執行歸檔同一 commit。
 - 腳本自環境變數 `ANTHROPIC_API_KEY` 讀取 API key
@@ -46,19 +46,22 @@ agent 不得見之）。凡於本專案工作的主會話，動手管線、
 - `data/source/` 存手放後不動的原始檔；
   `data/captures/` 只由 fetch 命令與私人匯入腳本
   寫入；`data/manual/` 只由研究者親手寫入；
-  `data/derived/` 只由 `build-db` 子命令寫入。
+  `data/derived/` 只由 `build-db` 子命令寫入；
+  `data/runs/` 存 LLM 執行的原始歸檔，只由執行程序
+  寫入；`data/results/` 存論文引用的定案表，只由
+  計票程序寫入。
 - 歌詞全文有版權：一律置於 `data/captures/lyrics/`
   （gitignored），絕不 commit，亦絕不於 repo 任何處
   全文重現。
 
 ## 文件
 
-- `results/` 存計票後的定案表（論文所引）；`runs/` 存
-  原始稽核紀錄。論文只引 `results/`。
+- `data/results/` 存計票後的定案表（論文所引）；
+  `data/runs/` 存原始稽核紀錄。論文只引 `data/results/`。
 - **Commit 判準**：凡能由「committed 的輸入＋committed
   的程式」決定性再生者不 commit；凡不能者一律以文字
   格式 commit，格式跟著上文「資料規則」一節所定的
-  層次走。例外：`results/` 定案表與
+  層次走。例外：`data/results/` 定案表與
   `data/derived/` 人讀報表雖可再生仍 commit——理由是
   引用穩定性、審稿人零門檻、撰稿期數字變動可 diff；
   兩者皆與工作儲存同一動作產出，稽核鏈無中間空缺。

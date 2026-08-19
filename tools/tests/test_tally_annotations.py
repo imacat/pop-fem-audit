@@ -11,12 +11,14 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
-import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from pop_fem_audit_tools import config
 from pop_fem_audit_tools.commands import tally_annotations
-from pop_fem_audit_tools.database import Base
+from pop_fem_audit_tools.database import Base, DataSource
 from pop_fem_audit_tools.models import Song
 
 
@@ -24,8 +26,8 @@ class TestTallyAnnotations(unittest.TestCase):
     """Test cases for the step-5 pattern annotation tally."""
 
     def setUp(self) -> None:
-        """Create the archive directories, the database, and the
-        output paths."""
+        """Create the archive directories, the working store, and
+        the output paths."""
         tmp: tempfile.TemporaryDirectory[str] \
             = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -37,7 +39,6 @@ class TestTallyAnnotations(unittest.TestCase):
         self.__male_synthesis.mkdir()
         self.__female_synthesis.mkdir()
         self.__mixed_synthesis.mkdir()
-        self.__db_path: Path = self.__dir / "working.sqlite3"
         self.__patterns_csv: Path \
             = self.__dir / "results" / "patterns.csv"
         self.__annotations_csv: Path \
@@ -48,6 +49,15 @@ class TestTallyAnnotations(unittest.TestCase):
             run_dir: Path = self.__dir / f"run{number}"
             run_dir.mkdir()
             self.__runs.append(run_dir)
+        config.set_settings(config.Settings(
+            SQLALCHEMY_DATABASE_URL="sqlite://",
+            ANTHROPIC_API_KEY="test-key"))
+        self.__ds: DataSource = DataSource()
+        self.addCleanup(self.__ds.engine.dispose)
+        patcher: Any = mock.patch.object(
+            tally_annotations, "ds", self.__ds)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def __write_default_synthesis_archives(self) -> None:
         """Write the male, female, and mixed synthesis archives.
@@ -108,22 +118,20 @@ class TestTallyAnnotations(unittest.TestCase):
             stored performer gender of every fixture song.
         :return: None.
         """
-        engine: sa.Engine = sa.create_engine(
-            f"sqlite:///{self.__db_path}")
-        Base.metadata.create_all(engine)
-        session: Session
-        with Session(engine) as session:
+        Base.metadata.create_all(self.__ds.engine)
+        session: Session = self.__ds.get_db()
+        try:
             song_id: int
             title: str
             artist_credit: str
             gender: str | None
             for song_id, title, artist_credit, gender in songs:
                 session.add(Song(
-                    id=song_id, title=title,
-                    artist_credit=artist_credit,
+                    id=song_id, title=title, artist_credit=artist_credit,
                     performer_gender=gender))
             session.commit()
-        engine.dispose()
+        finally:
+            session.close()
 
     def __write_run(
             self, run_dir: Path,
@@ -165,11 +173,10 @@ class TestTallyAnnotations(unittest.TestCase):
         status: int
         with redirect_stderr(stderr):
             status = tally_annotations.main([
-                str(self.__male_synthesis),
-                str(self.__female_synthesis),
-                str(self.__mixed_synthesis), str(self.__db_path),
-                str(self.__patterns_csv),
-                str(self.__annotations_csv)]
+                "--female", str(self.__female_synthesis),
+                "--male", str(self.__male_synthesis),
+                "--mixed", str(self.__mixed_synthesis),
+                str(self.__patterns_csv), str(self.__annotations_csv)]
                 + [str(x) for x in self.__runs])
         return status, stderr.getvalue()
 
@@ -315,16 +322,49 @@ class TestTallyAnnotations(unittest.TestCase):
         status: int
         with redirect_stderr(stderr):
             status = tally_annotations.main([
-                str(self.__male_synthesis),
-                str(self.__female_synthesis),
-                str(self.__mixed_synthesis), str(self.__db_path),
-                str(self.__patterns_csv),
-                str(self.__annotations_csv)]
+                "--female", str(self.__female_synthesis),
+                "--male", str(self.__male_synthesis),
+                "--mixed", str(self.__mixed_synthesis),
+                str(self.__patterns_csv), str(self.__annotations_csv)]
                 + [str(x) for x in self.__runs]
                 + [str(rescue_dir)])
         self.assertEqual(status, 0)
         self.assertIn("warning:", stderr.getvalue())
         self.assertIn("JSON array of strings", stderr.getvalue())
+        self.assertEqual(self.__read_rows(self.__annotations_csv), [
+            ["Song", "Artist Credit", "Pattern", "Votes"],
+            ["Song A", "Artist A", "M1", "3"]])
+
+    def test_dead_record_with_empty_text_rescued_from_extra_run_dir(
+            self) -> None:
+        """Test that a dead record whose "text" is an empty
+        string (malformed JSON) in one run directory is skipped
+        with a warning, and its ballot is rescued from an extra
+        run directory, tallying successfully."""
+        self.__write_default_synthesis_archives()
+        self.__seed_songs([(1, "Song A", "Artist A", "male")])
+        self.__write_same_ballots_to_all_runs({1: ["M1"]})
+        (self.__runs[0] / "output.jsonl").write_text(
+            json.dumps({"id": "song-1", "text": ""}) + "\n",
+            encoding="utf-8")
+        rescue_dir: Path = self.__dir / "rescue"
+        rescue_dir.mkdir()
+        self.__write_run(rescue_dir, {1: ["M1"]})
+        stderr: io.StringIO = io.StringIO()
+        status: int
+        with redirect_stderr(stderr):
+            status = tally_annotations.main([
+                "--female", str(self.__female_synthesis),
+                "--male", str(self.__male_synthesis),
+                "--mixed", str(self.__mixed_synthesis),
+                str(self.__patterns_csv), str(self.__annotations_csv)]
+                + [str(x) for x in self.__runs]
+                + [str(rescue_dir)])
+        self.assertEqual(status, 0)
+        self.assertIn("warning:", stderr.getvalue())
+        self.assertIn("song-1", stderr.getvalue())
+        self.assertIn("\"text\" is malformed JSON", stderr.getvalue())
+        self.assertIn("skipped", stderr.getvalue())
         self.assertEqual(self.__read_rows(self.__annotations_csv), [
             ["Song", "Artist Credit", "Pattern", "Votes"],
             ["Song A", "Artist A", "M1", "3"]])
@@ -511,7 +551,7 @@ class TestTallyAnnotations(unittest.TestCase):
 
     def test_summary_line_reports_counts(self) -> None:
         """Test that the closing summary reports the settled
-        pair, song, and dropped vote counts."""
+        annotation count."""
         self.__write_default_synthesis_archives()
         self.__seed_songs([(1, "Song A", "Artist A", "male")])
         self.__write_same_ballots_to_all_runs(
@@ -520,6 +560,4 @@ class TestTallyAnnotations(unittest.TestCase):
         stderr: str
         status, stderr = self.__run_tally()
         self.assertEqual(status, 0)
-        self.assertIn("Tallied 1 settled pairs across 1 songs",
-                      stderr)
-        self.assertIn("3 votes dropped", stderr)
+        self.assertIn("Tallied 1 annotations.", stderr)

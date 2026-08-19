@@ -64,7 +64,8 @@ class TestTallyGroups(unittest.TestCase):
         with redirect_stderr(stderr):
             status = tally_groups.main(
                 [str(x) for x in self.__runs]
-                + [str(self.__valid), str(self.__output_csv)])
+                + [str(self.__output_csv),
+                   "--valid-keywords", str(self.__valid)])
         return status, stderr.getvalue()
 
     def __read_rows(self) -> list[list[str]]:

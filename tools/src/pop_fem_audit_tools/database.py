@@ -7,10 +7,11 @@
 """
 from functools import cached_property
 from pathlib import Path
-from typing import Any
 
 import sqlalchemy as sa
+from sqlalchemy.engine.interfaces import DBAPICursor, DBAPIConnection
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
+from sqlalchemy.pool import ConnectionPoolEntry
 
 from .config import Settings, get_settings
 
@@ -51,9 +52,6 @@ class DataSource:
     def __create_engine(cls, url: str) -> sa.Engine:
         """Constructs and returns the database engine.
 
-        The foreign key enforcement is enabled on every connection
-        of a SQLite engine.
-
         :param url: The SQLAlchemy database URL.
         :return: The database engine.
         """
@@ -65,23 +63,9 @@ class DataSource:
                 poolclass=sa.StaticPool)
         else:
             engine = sa.create_engine(url)
-        if engine.url.get_backend_name() == "sqlite":
-            sa.event.listen(engine, "connect",
-                            cls.__enable_sqlite_foreign_keys)
+        if engine.dialect.name == "sqlite":
+            cls.__enable_sqlite_foreign_keys(engine)
         return engine
-
-    @staticmethod
-    def __enable_sqlite_foreign_keys(dbapi_connection: Any,
-                                     _: Any) -> None:
-        """Enables the foreign key enforcement on a new connection.
-
-        :param dbapi_connection: The DBAPI connection.
-        :param _: The connection record (unused).
-        :return: None.
-        """
-        cursor: Any = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
     @staticmethod
     def __resolve_sqlite_relative_url(url: str) -> str:
@@ -100,6 +84,31 @@ class DataSource:
             base = base.parent
         path = base / "instance" / path
         return f"sqlite:///{path}"
+
+    @staticmethod
+    def __enable_sqlite_foreign_keys(engine: sa.Engine) -> None:
+        """Turns on the foreign key enforcement of SQLite.
+
+        The ``foreign_keys`` pragma is turned on for every
+        connection of the engine, so that the ``ON DELETE``
+        actions of the schema run.
+
+        :param engine: The SQLite database engine.
+        :return: None.
+        """
+        def on_connect(dbapi_connection: DBAPIConnection,
+                       _: ConnectionPoolEntry) -> None:
+            """Turns on the pragma on a new connection.
+
+            :param dbapi_connection: The DB-API connection.
+            :param _: The connection record (unused).
+            :return: None.
+            """
+            cursor: DBAPICursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+        sa.event.listen(engine, "connect", on_connect)
 
 
 ds: DataSource = DataSource()

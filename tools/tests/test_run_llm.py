@@ -188,7 +188,8 @@ class TestRequestBuilding(RunLLMTestCase):
         :return: The parsed request.
         """
         stdout: io.StringIO = io.StringIO()
-        with redirect_stdout(stdout):
+        stderr: io.StringIO = io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
             run_llm.main([
                 str(self.__prompt), str(self.__input),
                 str(self.__archive_dir), "--dry-run"] + extra_argv)

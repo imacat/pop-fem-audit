@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str
     """The Anthropic API key."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env")
     """The model configuration."""
 
 

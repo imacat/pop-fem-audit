@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """The application name."""
     admin_email: str = "imacat@mail.imacat.idv.tw"
     """The administrator email address."""
-    SQLALCHEMY_DATABASE_URL: str
+    SQLALCHEMY_DATABASE_URI: str
     """The SQLAlchemy database URL."""
     ANTHROPIC_API_KEY: str
     """The Anthropic API key."""

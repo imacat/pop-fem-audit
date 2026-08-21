@@ -278,7 +278,7 @@ class TestBuildDB(unittest.TestCase):
         self.__annotations: Path = self.__dir / "annotations.csv"
         self.__write_chart(self.CHART_CSV)
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL="sqlite://",
+            SQLALCHEMY_DATABASE_URI="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
         self.addCleanup(self.__ds.engine.dispose)

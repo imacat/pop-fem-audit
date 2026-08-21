@@ -240,7 +240,7 @@ class TestMainFlow(RunLLMTestCase):
             str(self.__prompt), str(self.__input),
             str(self.__archive_dir)]
         self.__settings: config.Settings = config.Settings(
-            SQLALCHEMY_DATABASE_URL="sqlite://",
+            SQLALCHEMY_DATABASE_URI="sqlite://",
             ANTHROPIC_API_KEY="test-key")
         config.set_settings(self.__settings)
 

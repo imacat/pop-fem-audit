@@ -30,7 +30,7 @@ class DataSource:
         :return: The database engine.
         """
         settings: Settings = get_settings()
-        return self.__create_engine(settings.SQLALCHEMY_DATABASE_URL)
+        return self.__create_engine(settings.SQLALCHEMY_DATABASE_URI)
 
     @cached_property
     def __session_local(self) -> sessionmaker:

@@ -44,7 +44,7 @@ class TestFetchLyrics(unittest.TestCase):
         self.__provenance: Path = \
             self.__dir / "lyrics-provenance.csv"
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL="sqlite://",
+            SQLALCHEMY_DATABASE_URI="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
         self.addCleanup(self.__ds.engine.dispose)

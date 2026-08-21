@@ -50,7 +50,7 @@ class TestTallyAnnotations(unittest.TestCase):
             run_dir.mkdir()
             self.__runs.append(run_dir)
         config.set_settings(config.Settings(
-            SQLALCHEMY_DATABASE_URL="sqlite://",
+            SQLALCHEMY_DATABASE_URI="sqlite://",
             ANTHROPIC_API_KEY="test-key"))
         self.__ds: DataSource = DataSource()
         self.addCleanup(self.__ds.engine.dispose)
